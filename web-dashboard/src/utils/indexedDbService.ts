@@ -483,6 +483,25 @@ export const indexedDbService = {
     });
   },
 
+  async renameFile(id: string, newName: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('files', 'readwrite');
+      const store = tx.objectStore('files');
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const file: SubjectFile | undefined = getReq.result;
+        if (file) {
+          file.name = newName;
+          file.updatedAt = Date.now();
+          store.put(file);
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
   async moveFile(id: string, newCategory: FileCategory): Promise<void> {
     const db = await openDB();
     return new Promise((resolve, reject) => {

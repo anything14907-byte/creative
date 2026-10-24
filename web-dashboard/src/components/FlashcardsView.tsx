@@ -12,14 +12,17 @@ import {
   Award, 
   ArrowRight,
   Layers,
-  X
+  X,
+  Edit2
 } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
 
 interface FlashcardsViewProps {
   subjects: SubjectMeta[];
   activeSubjectId: string;
   flashcards: Flashcard[];
   onAddFlashcard: (card: Flashcard) => void;
+  onUpdateFlashcard?: (card: Flashcard) => void;
   onReviewCard: (cardId: string, rating: 'hard' | 'good' | 'easy') => void;
   onDeleteFlashcard: (cardId: string) => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
@@ -30,6 +33,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   activeSubjectId,
   flashcards,
   onAddFlashcard,
+  onUpdateFlashcard,
   onReviewCard,
   onDeleteFlashcard,
   onShowToast
@@ -45,6 +49,10 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   const [cardTopic, setCardTopic] = useState('');
   const [cardFront, setCardFront] = useState('');
   const [cardBack, setCardBack] = useState('');
+
+  // Edit card modal state
+  const [editingCard, setEditingCard] = useState<Flashcard | null>(null);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -325,13 +333,23 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                         {sub?.name || card.subjectId} • {card.topicTitle}
                       </span>
 
-                      <button
-                        onClick={() => onDeleteFlashcard(card.id)}
-                        className="p-1 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 opacity-70 group-hover:opacity-100"
-                        title="Delete Flashcard"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setEditingCard({ ...card })}
+                          className="p-1 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 opacity-70 group-hover:opacity-100 transition-colors"
+                          title="Edit Flashcard"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={() => setDeletingCardId(card.id)}
+                          className="p-1 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 opacity-70 group-hover:opacity-100 transition-colors"
+                          title="Delete Flashcard"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <h4 className="text-sm font-bold text-paper-ink dark:text-night-text">
@@ -353,8 +371,45 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
               );
             })}
           </div>
+
+          {allFilteredCards.length === 0 && (
+            <div className="p-12 text-center rounded-3xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border space-y-3">
+              <Brain className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mx-auto opacity-70" />
+              <h3 className="text-base font-bold text-paper-ink dark:text-night-text">
+                No flashcards created yet
+              </h3>
+              <p className="text-xs text-paper-muted dark:text-night-muted max-w-sm mx-auto">
+                Only cards you create yourself will appear here. Add your first study card to memorize formulas and exam definitions!
+              </p>
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Create Flashcard</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      <ConfirmModal
+        isOpen={!!deletingCardId}
+        title="Delete Flashcard?"
+        message="Are you sure you want to delete this study card? This cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        isDanger={true}
+        onConfirm={() => {
+          if (deletingCardId) {
+            onDeleteFlashcard(deletingCardId);
+            setDeletingCardId(null);
+            onShowToast('Flashcard deleted.', 'info');
+          }
+        }}
+        onCancel={() => setDeletingCardId(null)}
+      />
 
       {/* CREATE FLASHCARD MODAL */}
       {isCreateOpen && (
@@ -438,6 +493,101 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
                   className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm"
                 >
                   Save Flashcard
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT FLASHCARD MODAL */}
+      {editingCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+          <div className="w-full max-w-lg p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative space-y-4">
+            <button 
+              onClick={() => setEditingCard(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <Edit2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-base font-bold text-paper-ink dark:text-night-text">
+                Edit Flashcard
+              </h3>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (onUpdateFlashcard) {
+                  onUpdateFlashcard(editingCard);
+                }
+                setEditingCard(null);
+              }} 
+              className="space-y-3.5"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Subject</label>
+                  <select
+                    value={editingCard.subjectId}
+                    onChange={e => setEditingCard({ ...editingCard, subjectId: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-emerald-500"
+                  >
+                    {subjects.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold mb-1">Topic / Concept</label>
+                  <input
+                    type="text"
+                    value={editingCard.topicTitle}
+                    onChange={e => setEditingCard({ ...editingCard, topicTitle: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1">Card Front (Question or Prompt)</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={editingCard.front}
+                  onChange={e => setEditingCard({ ...editingCard, front: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1">Card Back (Model Answer / Key Points)</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={editingCard.back}
+                  onChange={e => setEditingCard({ ...editingCard, back: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCard(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-paper-border dark:border-night-border text-xs font-bold btn-tactile"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm"
+                >
+                  Update Flashcard
                 </button>
               </div>
             </form>

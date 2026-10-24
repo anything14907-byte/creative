@@ -45,6 +45,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     setIsExporting(true);
     try {
       await indexedDbService.exportCompleteBackup();
+      localStorage.setItem('pyq_last_backup_export_ts', String(Date.now()));
       onShowToast('Single-file backup exported successfully! 📦', 'success');
     } catch (err: any) {
       onShowToast(`Export failed: ${err.message}`, 'error');

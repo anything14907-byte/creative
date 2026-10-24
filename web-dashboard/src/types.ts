@@ -15,9 +15,10 @@ export interface ExamSession {
 
 export interface SubjectUnit {
   id: string; // e.g. 'u1' or 'unit-1'
-  unit?: number; // 1, 2, 3...
+  unitLabel?: string; // User-typed label: e.g. "Unit 3", "Module A", "Section 1"
+  unit?: number; // 1, 2, 3... (legacy fallback)
   unitNumber?: string | number; // e.g. "Unit 3", "Unit 4", or custom
-  title: string; // e.g. 'Process Scheduling & CPU Algorithms' or 'Thermodynamics'
+  title: string; // e.g. 'Continuous Distribution, Central Limit Theorem'
   name?: string; // alias for title
 }
 
@@ -236,7 +237,9 @@ export interface SubjectFile {
   id: string;
   examId?: string; // Links file to a specific ExamSession
   subjectId: string;
+  unitId?: string; // Links file to a specific SubjectUnit
   name: string; // Title / filename
+  description?: string;
   category: FileCategory; // 'pyq' | 'notes' | 'images'
   fileType: 'pdf' | 'image' | string;
   dataUrl: string; // Base64 data URL for instant offline preview & rendering

@@ -16,11 +16,14 @@ import {
   Clock
 } from 'lucide-react';
 
+import { ConfirmModal } from './ConfirmModal';
+
 interface FocusTimerViewProps {
   subjects: SubjectMeta[];
   activeSubjectId: string;
   pomodoroLogs: PomodoroSession[];
   onLogSession: (subjectId: string, minutes: number) => void;
+  onResetTimerData?: () => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -31,6 +34,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   activeSubjectId,
   pomodoroLogs,
   onLogSession,
+  onResetTimerData,
   onShowToast
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
@@ -38,6 +42,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -310,10 +315,38 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
 
       {/* Recent Sessions List */}
       <div className="space-y-3">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          <span>Recent Focus Sessions</span>
-        </h4>
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            <span>Recent Focus Sessions</span>
+          </h4>
+
+          {onResetTimerData && pomodoroLogs.length > 0 && (
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 btn-tactile"
+              title="Reset all timer study sessions back to 0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Reset timer data</span>
+            </button>
+          )}
+        </div>
+
+        {/* Confirmation Modal */}
+        <ConfirmModal
+          isOpen={isResetConfirmOpen}
+          title="Reset Timer Study Data?"
+          message="Are you sure you want to reset all Pomodoro focus sessions for this exam? This will clear your study minutes back to 0 and cannot be undone."
+          confirmText="Yes, Reset Timer"
+          cancelText="Keep Data"
+          isDanger={true}
+          onConfirm={() => {
+            if (onResetTimerData) onResetTimerData();
+            setIsResetConfirmOpen(false);
+          }}
+          onCancel={() => setIsResetConfirmOpen(false)}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {pomodoroLogs.slice(0, 6).map(log => (

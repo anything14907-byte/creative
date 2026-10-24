@@ -223,119 +223,84 @@ export const DEFAULT_PDFS: PdfResource[] = [
 
 export const DEFAULT_TOPICS: SyllabusTopic[] = [
   // OS Topics
-  { id: 'top-os-1', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Process Scheduling (FCFS, SJF, Round Robin)', completed: true, mastery: 'strong', pyqCount: 4 },
+  { id: 'top-os-1', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Process Scheduling (FCFS, SJF, Round Robin)', completed: false, mastery: 'strong', pyqCount: 4 },
   { id: 'top-os-2', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Multilevel Queue & Feedback Queue Scheduling', completed: false, mastery: 'okay', pyqCount: 2 },
   { id: 'top-os-3', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Convoy Effect & Context Switching Overhead', completed: false, mastery: 'weak', pyqCount: 3 },
   { id: 'top-os-4', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Banker's Algorithm & Deadlock Safe Sequences", completed: false, mastery: 'weak', pyqCount: 5 },
   { id: 'top-os-5', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: 'Semaphores (Wait/Signal) & Race Conditions', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-os-6', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Peterson's Algorithm for Mutual Exclusion", completed: true, mastery: 'okay', pyqCount: 2 },
+  { id: 'top-os-6', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Peterson's Algorithm for Mutual Exclusion", completed: false, mastery: 'okay', pyqCount: 2 },
   { id: 'top-os-7', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Paging, Inverted Page Tables & TLB Hit Ratio', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-os-8', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Page Replacement Algorithms (FIFO, LRU, Optimal)', completed: true, mastery: 'strong', pyqCount: 3 },
-  { id: 'top-os-9', subjectId: 'os', unitId: 'u4', unitNumber: 4, title: 'Disk Scheduling (SSTF, SCAN, C-SCAN)', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-os-8', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Page Replacement Algorithms (FIFO, LRU, Optimal)', completed: false, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-os-9', subjectId: 'os', unitId: 'u4', unitNumber: 4, title: 'Disk Scheduling (SSTF, SCAN, C-SCAN)', completed: false, mastery: 'strong', pyqCount: 3 },
   { id: 'top-os-10', subjectId: 'os', unitId: 'u5', unitNumber: 5, title: 'Virtualization Hypervisors & Security Rings', completed: false, mastery: 'okay', pyqCount: 1 },
 
   // DBMS Topics
-  { id: 'top-db-1', subjectId: 'dbms', unitId: 'u1', unitNumber: 1, title: 'Relational Model & ER Architecture Mapping', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-db-1', subjectId: 'dbms', unitId: 'u1', unitNumber: 1, title: 'Relational Model & ER Architecture Mapping', completed: false, mastery: 'strong', pyqCount: 3 },
   { id: 'top-db-2', subjectId: 'dbms', unitId: 'u2', unitNumber: 2, title: '1NF, 2NF, 3NF & BCNF Normalization', completed: false, mastery: 'weak', pyqCount: 5 },
   { id: 'top-db-3', subjectId: 'dbms', unitId: 'u2', unitNumber: 2, title: 'Lossless Join & Functional Dependency Closure', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-db-4', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'ACID Properties & Transaction States', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-db-4', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'ACID Properties & Transaction States', completed: false, mastery: 'strong', pyqCount: 3 },
   { id: 'top-db-5', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'Conflict Serializability & Precedence Graphs', completed: false, mastery: 'weak', pyqCount: 4 },
   { id: 'top-db-6', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'Two-Phase Locking Protocol (Strict vs Rigorous 2PL)', completed: false, mastery: 'weak', pyqCount: 4 },
   { id: 'top-db-7', subjectId: 'dbms', unitId: 'u4', unitNumber: 4, title: 'B+ Tree Index Insertion & Deletion Mechanics', completed: false, mastery: 'okay', pyqCount: 3 },
   { id: 'top-db-8', subjectId: 'dbms', unitId: 'u5', unitNumber: 5, title: 'Write-Ahead Logging (WAL) & ARIES Recovery', completed: false, mastery: 'weak', pyqCount: 2 },
 
   // CN Topics
-  { id: 'top-cn-1', subjectId: 'cn', unitId: 'u1', unitNumber: 1, title: 'OSI 7-Layer vs TCP/IP Architecture', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-cn-1', subjectId: 'cn', unitId: 'u1', unitNumber: 1, title: 'OSI 7-Layer vs TCP/IP Architecture', completed: false, mastery: 'strong', pyqCount: 3 },
   { id: 'top-cn-2', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'Sliding Window (Go-Back-N vs Selective Repeat)', completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-cn-3', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'CRC Checksum & Hamming Error Detection Code', completed: true, mastery: 'okay', pyqCount: 3 },
+  { id: 'top-cn-3', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'CRC Checksum & Hamming Error Detection Code', completed: false, mastery: 'okay', pyqCount: 3 },
   { id: 'top-cn-4', subjectId: 'cn', unitId: 'u3', unitNumber: 3, title: 'IPv4 Subnetting, VLSM & CIDR Calculations', completed: false, mastery: 'weak', pyqCount: 4 },
   { id: 'top-cn-5', subjectId: 'cn', unitId: 'u3', unitNumber: 3, title: "Dijkstra's Link-State vs Distance Vector Routing", completed: false, mastery: 'weak', pyqCount: 4 },
-  { id: 'top-cn-6', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP 3-Way Handshake & Connection Termination', completed: true, mastery: 'strong', pyqCount: 4 },
+  { id: 'top-cn-6', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP 3-Way Handshake & Connection Termination', completed: false, mastery: 'strong', pyqCount: 4 },
   { id: 'top-cn-7', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP Congestion Control (Slow Start, AIMD, Fast Recovery)', completed: false, mastery: 'weak', pyqCount: 5 },
   { id: 'top-cn-8', subjectId: 'cn', unitId: 'u5', unitNumber: 5, title: 'DNS Resolution (Iterative vs Recursive) & HTTP/2', completed: false, mastery: 'okay', pyqCount: 2 },
 
   // DSA Topics
-  { id: 'top-dsa-1', subjectId: 'dsa', unitId: 'u1', unitNumber: 1, title: 'Asymptotic Complexities & Master Theorem', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-dsa-1', subjectId: 'dsa', unitId: 'u1', unitNumber: 1, title: 'Asymptotic Complexities & Master Theorem', completed: false, mastery: 'strong', pyqCount: 3 },
   { id: 'top-dsa-2', subjectId: 'dsa', unitId: 'u2', unitNumber: 2, title: 'AVL Tree 4 Rotations (LL, RR, LR, RL)', completed: false, mastery: 'weak', pyqCount: 5 },
   { id: 'top-dsa-3', subjectId: 'dsa', unitId: 'u3', unitNumber: 3, title: 'Binary Heaps, Priority Queues & HeapSort', completed: false, mastery: 'okay', pyqCount: 3 },
   { id: 'top-dsa-4', subjectId: 'dsa', unitId: 'u4', unitNumber: 4, title: "Dijkstra's Shortest Path & Prim's MST Algorithm", completed: false, mastery: 'weak', pyqCount: 4 },
   { id: 'top-dsa-5', subjectId: 'dsa', unitId: 'u5', unitNumber: 5, title: '0/1 Knapsack & Longest Common Subsequence (DP)', completed: false, mastery: 'weak', pyqCount: 4 }
 ];
 
-export const DEFAULT_FLASHCARDS: Flashcard[] = [
-  {
-    id: 'fc-1',
-    subjectId: 'os',
-    unitId: 'u2',
-    topicTitle: "Banker's Algorithm & Safe Sequences",
-    front: "What are the 4 Coffman conditions required for Deadlock to occur?",
-    back: "1. Mutual Exclusion (resources non-shareable)\n2. Hold and Wait (process holds resource while waiting for another)\n3. No Preemption (resources cannot be forcibly taken)\n4. Circular Wait (circular chain of processes waiting)\nAll 4 must hold simultaneously for deadlock.",
-    intervalStep: 0,
-    nextReviewDate: new Date().toISOString().split('T')[0],
-    createdAt: Date.now() - 86400000
-  },
-  {
-    id: 'fc-2',
-    subjectId: 'os',
-    unitId: 'u3',
-    topicTitle: "Paging & TLB Hit Ratio",
-    front: "Formula for Effective Memory Access Time (EMAT) with TLB?",
-    back: "EMAT = (TLB Hit Ratio × (TLB Access Time + Memory Access Time)) + ((1 - Hit Ratio) × (TLB Access Time + 2 × Memory Access Time))\n*Assuming 1-level paging.",
-    intervalStep: 1,
-    nextReviewDate: new Date().toISOString().split('T')[0],
-    createdAt: Date.now() - 86400000 * 2
-  },
-  {
-    id: 'fc-3',
-    subjectId: 'dbms',
-    unitId: 'u2',
-    topicTitle: "1NF, 2NF, 3NF & BCNF Normalization",
-    front: "What is the strict mathematical definition of Boyce-Codd Normal Form (BCNF)?",
-    back: "A relation schema R is in BCNF if for every non-trivial functional dependency X → Y in F+, X is a Superkey for R.",
-    intervalStep: 0,
-    nextReviewDate: new Date().toISOString().split('T')[0],
-    createdAt: Date.now() - 86400000
-  },
-  {
-    id: 'fc-4',
-    subjectId: 'dbms',
-    unitId: 'u3',
-    topicTitle: "Two-Phase Locking Protocol",
-    front: "What is the difference between Growing Phase and Shrinking Phase in 2PL?",
-    back: "• Growing Phase: Transaction may obtain locks, but cannot release any lock.\n• Shrinking Phase: Transaction may release locks, but cannot obtain any new locks.\n• Lock Point: Moment when the final lock is acquired.",
-    intervalStep: 2,
-    nextReviewDate: new Date().toISOString().split('T')[0],
-    createdAt: Date.now() - 86400000 * 3
-  },
-  {
-    id: 'fc-5',
-    subjectId: 'cn',
-    unitId: 'u4',
-    topicTitle: "TCP Congestion Control",
-    front: "What happens during TCP Fast Retransmit & Fast Recovery upon 3 duplicate ACKs?",
-    back: "1. Fast Retransmit: Immediately resends missing segment without waiting for RTO timer.\n2. ssthresh is set to cwnd / 2.\n3. cwnd is set to ssthresh + 3 MSS (Fast Recovery skips slow start back to 1 MSS).",
-    intervalStep: 0,
-    nextReviewDate: new Date().toISOString().split('T')[0],
-    createdAt: Date.now() - 86400000
-  },
-  {
-    id: 'fc-6',
-    subjectId: 'dsa',
-    unitId: 'u2',
-    topicTitle: "AVL Tree 4 Rotations",
-    front: "What are the 4 AVL Tree rotations and when is each applied?",
-    back: "• LL Rotation (Single Right): Applied when inserted into left subtree of left child.\n• RR Rotation (Single Left): Applied when inserted into right subtree of right child.\n• LR Rotation (Left-Right Double): Left rotation on child, then Right rotation on node.\n• RL Rotation (Right-Left Double): Right rotation on child, then Left rotation on node.",
-    intervalStep: 1,
-    nextReviewDate: new Date().toISOString().split('T')[0],
-    createdAt: Date.now() - 86400000 * 2
-  }
-];
+export const DEFAULT_FLASHCARDS: Flashcard[] = [];
 
 // Helper: Extract YouTube ID from various URL formats
 export function extractYoutubeId(url: string): string | null {
   if (!url) return null;
   const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
   return match ? match[1] : null;
+}
+
+export function formatUnitDisplayName(unit?: Partial<SubjectUnit> | null): string {
+  if (!unit) return 'Unit';
+  const rawLabel = (unit.unitLabel || '').trim();
+  let title = (unit.title || unit.name || '').trim();
+
+  // If no unitLabel is specified:
+  if (!rawLabel) {
+    const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+    if (match) {
+      return `${match[1].trim()}: ${match[2].trim()}`;
+    }
+    if (unit.unitNumber && String(unit.unitNumber).trim().toLowerCase().startsWith('unit')) {
+      const cleanNum = String(unit.unitNumber).trim();
+      if (title && !title.toLowerCase().startsWith(cleanNum.toLowerCase())) {
+        return `${cleanNum}: ${title}`;
+      }
+      return title || cleanNum;
+    }
+    return title || 'Unit';
+  }
+
+  // If unitLabel is specified:
+  // Strip duplicate prefix from title if present (e.g. title already has "Unit 3: Continuous...")
+  const prefixRegex = new RegExp('^(' + rawLabel.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '|unit\\s*\\d+)[:\\s\\-\\–]*', 'i');
+  const cleanTitle = title.replace(prefixRegex, '').trim();
+
+  if (cleanTitle && rawLabel) {
+    return `${rawLabel}: ${cleanTitle}`;
+  }
+  return rawLabel || cleanTitle || 'Unit';
 }
 
 /**
@@ -352,26 +317,47 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
     return raw.map((item: any, idx: number) => {
       if (typeof item === 'string') {
         const title = item.trim();
+        const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+        const label = match ? match[1].trim() : `Unit ${idx + 1}`;
+        const cleanT = match ? match[2].trim() : title;
         return {
           id: `unit-${idx + 1}-${title.replace(/\s+/g, '-').slice(0, 10)}`,
+          unitLabel: label,
           unit: idx + 1,
-          unitNumber: title,
-          title: title,
-          name: title
+          unitNumber: label,
+          title: cleanT,
+          name: cleanT
         };
       }
       if (typeof item === 'object' && item !== null) {
-        const title = (item.title || item.name || `Unit ${idx + 1}`).trim();
+        let label = (item.unitLabel || '').trim();
+        let title = (item.title || item.name || '').trim();
+
+        if (!label) {
+          const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+          if (match) {
+            label = match[1].trim();
+            title = match[2].trim();
+          } else if (item.unitNumber && String(item.unitNumber).toLowerCase().startsWith('unit')) {
+            label = String(item.unitNumber).trim();
+          }
+        } else {
+          const prefixRegex = new RegExp('^(' + label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '|unit\\s*\\d+)[:\\s\\-\\–]*', 'i');
+          title = title.replace(prefixRegex, '').trim();
+        }
+
         return {
           id: String(item.id || `unit-${idx + 1}-${Date.now()}`),
+          unitLabel: label || undefined,
           unit: item.unit !== undefined ? Number(item.unit) : (idx + 1),
-          unitNumber: item.unitNumber || item.unit || title,
-          title: title,
-          name: title
+          unitNumber: label || item.unitNumber || title,
+          title: title || label || `Unit ${idx + 1}`,
+          name: title || label || `Unit ${idx + 1}`
         };
       }
       return {
         id: `u-${idx + 1}`,
+        unitLabel: `Unit ${idx + 1}`,
         unit: idx + 1,
         unitNumber: `Unit ${idx + 1}`,
         title: `Unit ${idx + 1}`,
@@ -384,10 +370,14 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
     const lines = raw.split(/\r?\n|,/).map(l => l.trim()).filter(Boolean);
     if (lines.length > 0) {
       return lines.map((line, idx) => {
-        const cleanTitle = line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || line.trim();
+        const match = line.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+        const label = match ? match[1].trim() : `Unit ${idx + 1}`;
+        const cleanTitle = match ? match[2].trim() : line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || line.trim();
         return {
           id: `u${idx + 1}`,
+          unitLabel: label,
           unit: idx + 1,
+          unitNumber: label,
           title: cleanTitle || `Unit ${idx + 1}`,
           name: cleanTitle || `Unit ${idx + 1}`
         };
@@ -715,32 +705,52 @@ export const storageService = {
   },
 
   // UNITS: ADD, RENAME, DELETE, REORDER WITHOUT AUTO-RENUMBERING
-  addUnit(subjectId: string, unitTitle: string, examId?: string): SubjectMeta[] {
+  addUnit(subjectId: string, unitLabel: string, unitTitle?: string, examId?: string): SubjectMeta[] {
     const subjects = this.getSubjects(examId);
     const target = subjects.find(s => s.id === subjectId);
     if (!target) return subjects;
+    let label = (unitTitle !== undefined ? unitLabel : '').trim();
+    let title = (unitTitle !== undefined ? unitTitle : unitLabel).trim();
+    if (!label) {
+      const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+      if (match) {
+        label = match[1].trim();
+        title = match[2].trim();
+      }
+    }
     const newUnit: SubjectUnit = {
       id: `unit-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-      title: unitTitle.trim(),
-      name: unitTitle.trim(),
-      unitNumber: unitTitle.trim()
+      unitLabel: label || undefined,
+      title: title,
+      name: title,
+      unitNumber: label || title
     };
     target.units = [...(target.units || []), newUnit];
     this.saveSubjects(subjects, examId);
     return subjects;
   },
 
-  renameUnit(subjectId: string, unitId: string, newTitle: string, examId?: string): SubjectMeta[] {
+  renameUnit(subjectId: string, unitId: string, newLabelOrTitle: string, newTitle?: string, examId?: string): SubjectMeta[] {
     const subjects = this.getSubjects(examId);
     const target = subjects.find(s => s.id === subjectId);
     if (!target || !target.units) return subjects;
+    let label = (newTitle !== undefined ? newLabelOrTitle : '').trim();
+    let title = (newTitle !== undefined ? newTitle : newLabelOrTitle).trim();
+    if (!label) {
+      const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+      if (match) {
+        label = match[1].trim();
+        title = match[2].trim();
+      }
+    }
     target.units = target.units.map(u => {
       if (u.id === unitId) {
         return {
           ...u,
-          title: newTitle.trim(),
-          name: newTitle.trim(),
-          unitNumber: newTitle.trim()
+          unitLabel: label || u.unitLabel || undefined,
+          title: title,
+          name: title,
+          unitNumber: label || title
         };
       }
       return u;
@@ -1189,6 +1199,18 @@ export const storageService = {
     return updated;
   },
 
+  reorderTopics(topics: SyllabusTopic[], examId?: string): SyllabusTopic[] {
+    this.saveTopics(topics, examId);
+    return topics;
+  },
+
+  updateTopicTitle(topicId: string, newTitle: string, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
+    const updated = list.map(t => t.id === topicId ? { ...t, title: newTitle.trim() } : t);
+    this.saveTopics(updated, examId);
+    return updated;
+  },
+
   deleteTopic(topicId: string, examId?: string): SyllabusTopic[] {
     const list = this.getTopics(undefined, examId);
     const updated = list.filter(t => t.id !== topicId);
@@ -1262,19 +1284,19 @@ export const storageService = {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) return parsed;
       }
-      if (activeExam === 'mid-sem') {
-        const today = new Date();
-        const defaultLogs: PomodoroSession[] = [
-          { id: 'pomo-1', subjectId: 'os', subjectName: 'Operating Systems', accentColor: '#3B82F6', minutes: 50, date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 3 },
-          { id: 'pomo-2', subjectId: 'dbms', subjectName: 'Database Systems', accentColor: '#F97316', minutes: 75, date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 2 },
-          { id: 'pomo-3', subjectId: 'cn', subjectName: 'Computer Networks', accentColor: '#10B981', minutes: 50, date: new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 1 },
-          { id: 'pomo-4', subjectId: 'dsa', subjectName: 'Data Structures & Algorithms', accentColor: '#06B6D4', minutes: 25, date: today.toISOString().split('T')[0], timestamp: Date.now() }
-        ];
-        this.savePomodoroLogs(defaultLogs, 'mid-sem');
-        return defaultLogs;
-      }
     } catch (e) {
       console.warn('Error reading pomodoro logs:', e);
+    }
+    return [];
+  },
+
+  resetPomodoroLogs(examId?: string): PomodoroSession[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.POMODORO_LOGS, activeExam);
+    try {
+      localStorage.setItem(key, JSON.stringify([]));
+    } catch (e) {
+      console.error('Error resetting pomodoro logs:', e);
     }
     return [];
   },
@@ -1344,13 +1366,9 @@ export const storageService = {
       const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return subjectId ? parsed.filter(c => c.subjectId === subjectId) : parsed;
         }
-      }
-      if (activeExam === 'mid-sem') {
-        this.saveFlashcards(DEFAULT_FLASHCARDS, 'mid-sem');
-        return subjectId ? DEFAULT_FLASHCARDS.filter(c => c.subjectId === subjectId) : DEFAULT_FLASHCARDS;
       }
     } catch (e) {
       console.warn('Error reading flashcards:', e);
@@ -1371,6 +1389,13 @@ export const storageService = {
   addFlashcard(card: Flashcard, examId?: string): Flashcard[] {
     const list = this.getFlashcards(undefined, examId);
     const updated = [card, ...list];
+    this.saveFlashcards(updated, examId);
+    return updated;
+  },
+
+  updateFlashcard(card: Flashcard, examId?: string): Flashcard[] {
+    const list = this.getFlashcards(undefined, examId);
+    const updated = list.map(c => c.id === card.id ? card : c);
     this.saveFlashcards(updated, examId);
     return updated;
   },
@@ -1664,3 +1689,94 @@ export const storageService = {
     }
   }
 };
+
+export function runOneTimeStorageCleanup(): void {
+  const MIGRATION_KEY = 'pyq_v2_cleanup_done_1';
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    if (localStorage.getItem(MIGRATION_KEY)) {
+      return;
+    }
+
+    const DEMO_POMO_IDS = new Set(['pomo-1', 'pomo-2', 'pomo-3', 'pomo-4']);
+    const DEMO_FC_IDS = new Set(['fc-1', 'fc-2', 'fc-3', 'fc-4', 'fc-5', 'fc-6']);
+    const DEMO_TOPIC_IDS = new Set([
+      'top-os-1', 'top-os-6', 'top-os-8', 'top-os-9',
+      'top-db-1', 'top-db-4',
+      'top-cn-1', 'top-cn-3', 'top-cn-6',
+      'top-dsa-1'
+    ]);
+
+    // Inspect all keys in localStorage
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      // Clean demo timer logs
+      if (key.includes('pomodoro_logs') || key.includes('pomodoro')) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const logs = JSON.parse(raw);
+            if (Array.isArray(logs)) {
+              const cleaned = logs.filter((l: any) => !DEMO_POMO_IDS.has(l.id));
+              localStorage.setItem(key, JSON.stringify(cleaned));
+            }
+          }
+        } catch (e) {
+          console.warn('Error cleaning demo pomo logs for key', key, e);
+        }
+      }
+
+      // Clean demo flashcards
+      if (key.includes('flashcards')) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const cards = JSON.parse(raw);
+            if (Array.isArray(cards)) {
+              const cleaned = cards.filter((c: any) => !DEMO_FC_IDS.has(c.id));
+              localStorage.setItem(key, JSON.stringify(cleaned));
+            }
+          }
+        } catch (e) {
+          console.warn('Error cleaning demo flashcards for key', key, e);
+        }
+      }
+
+      // Reset completed: false on demo topics that were initialized as completed
+      if (key.includes('topics')) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const topics = JSON.parse(raw);
+            if (Array.isArray(topics)) {
+              let changed = false;
+              const updated = topics.map((t: any) => {
+                if (DEMO_TOPIC_IDS.has(t.id) && t.completed) {
+                  changed = true;
+                  return { ...t, completed: false };
+                }
+                return t;
+              });
+              if (changed) {
+                localStorage.setItem(key, JSON.stringify(updated));
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Error resetting demo topic completed status for key', key, e);
+        }
+      }
+    }
+
+    localStorage.setItem(MIGRATION_KEY, 'true');
+    console.log('✅ PyqRanker one-time storage cleanup executed.');
+  } catch (err) {
+    console.warn('Failed to run one-time storage cleanup:', err);
+  }
+}
+
+// Automatically execute once on script load
+runOneTimeStorageCleanup();
+

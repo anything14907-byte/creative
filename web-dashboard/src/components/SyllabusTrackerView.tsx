@@ -18,10 +18,13 @@ import {
   Calendar,
   ExternalLink,
   Tag,
-  ChevronDown
+  ChevronDown,
+  Flame,
+  GripVertical
 } from 'lucide-react';
-import { getExamUrgencyColor, extractYoutubeId } from '../utils/storageService';
+import { getExamUrgencyColor, extractYoutubeId, formatUnitDisplayName } from '../utils/storageService';
 import { indexedDbService } from '../utils/indexedDbService';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SyllabusTrackerViewProps {
   subjects: SubjectMeta[];
@@ -34,10 +37,12 @@ interface SyllabusTrackerViewProps {
   onSetTopicMastery: (topicId: string, mastery: TopicMastery) => void;
   onAddTopic: (topic: SyllabusTopic) => void;
   onDeleteTopic: (topicId: string) => void;
+  onUpdateTopicTitle?: (topicId: string, newTitle: string) => void;
+  onReorderTopics?: (topics: SyllabusTopic[]) => void;
   onAddTopicVideo?: (topicId: string, videoUrl: string) => void;
   onRemoveTopicVideo?: (topicId: string, videoUrl: string) => void;
-  onAddUnit: (subjectId: string, unitTitle: string) => void;
-  onRenameUnit?: (subjectId: string, unitId: string, newTitle: string) => void;
+  onAddUnit: (subjectId: string, unitLabel: string, unitTitle?: string) => void;
+  onRenameUnit?: (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => void;
   onDeleteUnit?: (subjectId: string, unitId: string) => void;
   onReorderUnit?: (subjectId: string, unitId: string, direction: 'up' | 'down') => void;
   onOpenAddSubject?: () => void;
@@ -56,6 +61,8 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   onSetTopicMastery,
   onAddTopic,
   onDeleteTopic,
+  onUpdateTopicTitle,
+  onReorderTopics,
   onAddTopicVideo,
   onRemoveTopicVideo,
   onAddUnit,
@@ -100,11 +107,25 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   const [newTopicMastery, setNewTopicMastery] = useState<TopicMastery>('weak');
   const [newTopicVideoUrl, setNewTopicVideoUrl] = useState('');
 
-  // Unit creation and rename form state
+  // Topic editing state (Requirement 7)
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [editingTopicTitle, setEditingTopicTitle] = useState('');
+
+  // Drag and drop state for topics (Requirement 8)
+  const [draggedTopicId, setDraggedTopicId] = useState<string | null>(null);
+
+  // Unit creation and rename form state (Requirement 5: Separate Label and Title)
   const [isAddingUnit, setIsAddingUnit] = useState(false);
+  const [newUnitLabel, setNewUnitLabel] = useState('');
   const [newUnitTitle, setNewUnitTitle] = useState('');
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [editingUnitLabel, setEditingUnitLabel] = useState('');
   const [editingUnitTitle, setEditingUnitTitle] = useState('');
+
+  // Confirm deletion modals state (Requirement 7 & 12)
+  const [topicToDelete, setTopicToDelete] = useState<SyllabusTopic | null>(null);
+  const [unitToDelete, setUnitToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [fileToDeleteId, setFileToDeleteId] = useState<string | null>(null);
 
   // Adding video link to existing topic
   const [addingVideoTopicId, setAddingVideoTopicId] = useState<string | null>(null);
@@ -195,35 +216,81 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
     setNewTopicTitle('');
     setNewTopicVideoUrl('');
     setIsAddingTopicUnitId(null);
-    onShowToast(`Added topic to ${unit.title || `Unit ${unit.unit}`}!`, 'success');
+    onShowToast(`Added topic to ${formatUnitDisplayName(unit)}!`, 'success');
   };
 
+  // Topic Edit Name (Requirement 7)
+  const handleEditTopicSubmit = (topicId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTopicTitle.trim()) return;
+    if (onUpdateTopicTitle) {
+      onUpdateTopicTitle(topicId, editingTopicTitle.trim());
+    }
+    setEditingTopicId(null);
+    setEditingTopicTitle('');
+  };
+
+  // Reorder topics with Up/Down buttons (Requirement 8)
+  const handleMoveTopic = (unitId: string, topicId: string, direction: 'up' | 'down') => {
+    const unitTopics = subjectTopics.filter(t => t.unitId === unitId);
+    const index = unitTopics.findIndex(t => t.id === topicId);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= unitTopics.length) return;
+
+    const newUnitTopics = [...unitTopics];
+    const [moved] = newUnitTopics.splice(index, 1);
+    newUnitTopics.splice(targetIndex, 0, moved);
+
+    const otherTopics = topics.filter(t => t.unitId !== unitId);
+    const reordered = [...otherTopics, ...newUnitTopics];
+    if (onReorderTopics) {
+      onReorderTopics(reordered);
+      onShowToast('Topic order updated!', 'success');
+    }
+  };
+
+  // Reorder topics with Drag & Drop (Requirement 8)
+  const handleTopicDrop = (targetTopicId: string, unitId: string) => {
+    if (!draggedTopicId || draggedTopicId === targetTopicId) return;
+    const unitTopics = subjectTopics.filter(t => t.unitId === unitId);
+    const fromIdx = unitTopics.findIndex(t => t.id === draggedTopicId);
+    const toIdx = unitTopics.findIndex(t => t.id === targetTopicId);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const newUnitTopics = [...unitTopics];
+    const [moved] = newUnitTopics.splice(fromIdx, 1);
+    newUnitTopics.splice(toIdx, 0, moved);
+
+    const otherTopics = topics.filter(t => t.unitId !== unitId);
+    const reordered = [...otherTopics, ...newUnitTopics];
+    if (onReorderTopics) {
+      onReorderTopics(reordered);
+      onShowToast('Topic order updated!', 'success');
+    }
+    setDraggedTopicId(null);
+  };
+
+  // Unit creation with separate Label and Title (Requirement 5)
   const handleCreateUnit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUnitTitle.trim()) return;
-    onAddUnit(currentSubject.id, newUnitTitle.trim());
+    onAddUnit(currentSubject.id, newUnitLabel.trim() || `Unit ${(currentSubject.units?.length || 0) + 1}`, newUnitTitle.trim());
     setNewUnitTitle('');
+    setNewUnitLabel('');
     setIsAddingUnit(false);
-    onShowToast(`Created "${newUnitTitle.trim()}"!`, 'success');
+    onShowToast(`Created unit!`, 'success');
   };
 
+  // Unit rename with separate Label and Title (Requirement 5)
   const handleRenameUnitSubmit = (unitId: string, e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUnitTitle.trim()) return;
     if (onRenameUnit) {
-      onRenameUnit(currentSubject.id, unitId, editingUnitTitle.trim());
-      onShowToast('Unit renamed successfully.', 'success');
+      onRenameUnit(currentSubject.id, unitId, editingUnitLabel.trim() || 'Unit', editingUnitTitle.trim());
+      onShowToast('Unit updated successfully.', 'success');
     }
     setEditingUnitId(null);
-  };
-
-  const handleDeleteUnitClick = (unitId: string, unitTitle: string) => {
-    if (window.confirm(`Delete "${unitTitle}" and all its topics?`)) {
-      if (onDeleteUnit) {
-        onDeleteUnit(currentSubject.id, unitId);
-        onShowToast(`Deleted "${unitTitle}".`, 'info');
-      }
-    }
   };
 
   const handleAddVideoToTopicSubmit = (topicId: string, e: React.FormEvent) => {
@@ -276,11 +343,12 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleDeleteFile = async (fileId: string) => {
-    if (window.confirm('Delete this file from IndexedDB?')) {
-      await indexedDbService.deleteFile(fileId);
-      setSubjectFiles(prev => prev.filter(f => f.id !== fileId));
+  const handleDeleteFileConfirm = async () => {
+    if (fileToDeleteId) {
+      await indexedDbService.deleteFile(fileToDeleteId);
+      setSubjectFiles(prev => prev.filter(f => f.id !== fileToDeleteId));
       onShowToast('File deleted.', 'info');
+      setFileToDeleteId(null);
     }
   };
 
@@ -300,42 +368,28 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
             <span>Syllabus Tracker & Mastery Hub</span>
           </h2>
           <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-            Manage your units, topics with Weak/Okay/Strong tags, attached YouTube videos, and subject files.
+            Organized by units. Mark completion, track Weak / Okay / Strong mastery, and reorder.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* REQUIREMENT 2: Single "+ Add Subject" button (one icon, text "Add Subject") */}
-          {onOpenAddSubject && (
-            <button
-              onClick={onOpenAddSubject}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 btn-tactile shadow-sm"
-              title="Add a new subject to this exam"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Subject</span>
-            </button>
-          )}
-
-          {/* "+ Add Syllabus Unit" button */}
+        {onOpenAddSubject && (
           <button
-            onClick={() => setIsAddingUnit(true)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated text-paper-ink dark:text-night-text flex items-center gap-1.5 btn-tactile shadow-sm"
+            onClick={onOpenAddSubject}
+            className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all btn-tactile shrink-0"
           >
-            <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Add Unit</span>
+            <Plus className="w-4 h-4" />
+            <span>Add Subject</span>
           </button>
-        </div>
+        )}
       </div>
 
       {/* Subject Selector Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-paper-border dark:border-night-border max-w-full">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {subjects.map(s => {
-          const isSelected = s.id === selectedSubjectId;
-          const subTopics = topics.filter(t => t.subjectId === s.id);
-          const percent = subTopics.length > 0 
-            ? Math.round((subTopics.filter(t => t.completed).length / subTopics.length) * 100) 
-            : 0;
+          const isSelected = s.id === currentSubject.id;
+          const sTopics = topics.filter(t => t.subjectId === s.id);
+          const sCompleted = sTopics.filter(t => t.completed).length;
+          const sPercent = sTopics.length > 0 ? Math.round((sCompleted / sTopics.length) * 100) : 0;
 
           return (
             <button
@@ -344,104 +398,87 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                 setSelectedSubjectId(s.id);
                 onSelectSubject(s.id);
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 btn-tactile whitespace-nowrap transition-all ${
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 shrink-0 btn-tactile ${
                 isSelected
-                  ? 'text-white shadow-sm'
-                  : 'text-paper-body dark:text-night-text bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
               }`}
-              style={{
-                backgroundColor: isSelected ? s.accentColor : undefined
-              }}
             >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? '#FFFFFF' : s.accentColor }} />
               <span>{s.name}</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${isSelected ? 'bg-black/20 text-white' : 'bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted dark:text-night-muted'}`}>
-                {percent}%
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${isSelected ? 'bg-white/20 text-white' : 'bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted'}`}>
+                {sPercent}%
               </span>
             </button>
           );
         })}
       </div>
 
-      {/* Subject Overview Banner with Edit Subject Button & % Progress */}
+      {/* Selected Subject Banner with Progress */}
       <div 
-        className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-5"
-        style={{ borderLeft: `6px solid ${currentSubject.accentColor}` }}
+        className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4"
+        style={{ borderTop: `5px solid ${currentSubject.accentColor}` }}
       >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span 
-                className="px-2.5 py-0.5 rounded-md text-[11px] font-bold font-mono uppercase"
-                style={{ backgroundColor: `${currentSubject.accentColor}18`, color: currentSubject.accentColor }}
-              >
-                {currentSubject.name}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-paper-muted dark:text-night-muted">
+                {currentSubject.code}
               </span>
-
-              {/* Countdown badge */}
-              <span 
-                className="text-[10px] font-bold px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1"
-                style={{ color: urgency.hslColor, backgroundColor: `${urgency.hslColor}16` }}
-              >
-                <Calendar className="w-3 h-3" />
-                <span>{urgency.fractionalDays > 0 ? `${urgency.days}d ${urgency.hours}h left` : 'Completed'}</span>
-              </span>
-
-              {/* REQUIREMENT 4: Edit Subject's Name and Exam Date */}
-              {onEditSubject && (
-                <button
-                  onClick={() => onEditSubject(currentSubject)}
-                  className="px-2.5 py-0.5 rounded-md border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-[11px] font-semibold text-paper-ink dark:text-night-text hover:border-emerald-500 flex items-center gap-1 btn-tactile"
-                  title="Edit Subject Name & Exam Date"
-                >
-                  <Edit2 className="w-3 h-3 text-emerald-500" />
-                  <span>Edit Subject</span>
-                </button>
+              {currentSubject.semester && (
+                <span className="text-[11px] px-2 py-0.5 rounded-md font-mono bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted">
+                  {currentSubject.semester}
+                </span>
               )}
             </div>
-
-            <h3 className="text-xl font-extrabold text-paper-ink dark:text-night-text">
-              Syllabus Completion: {progressPercent}%
+            <h3 className="text-xl sm:text-2xl font-bold text-paper-ink dark:text-night-text">
+              {currentSubject.name}
             </h3>
           </div>
 
-          {/* Mastery Breakdown Stats */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <div className="px-3.5 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
-              <div className="text-xs font-bold text-rose-600 dark:text-rose-400">{weakCount} Topics</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Weak</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="px-3 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-bold text-paper-ink dark:text-night-text">{urgency.formattedExamDate}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold" style={{ backgroundColor: `${urgency.hslColor}20`, color: urgency.hslColor }}>
+                {urgency.formattedCountdown}
+              </span>
             </div>
 
-            <div className="px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
-              <div className="text-xs font-bold text-amber-600 dark:text-amber-400">{okayCount} Topics</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Okay</div>
-            </div>
-
-            <div className="px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-              <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{strongCount} Topics</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Strong</div>
-            </div>
+            <button
+              onClick={() => setIsAddingUnit(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 btn-tactile shadow-sm shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Add Unit</span>
+            </button>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="space-y-1">
-          <div className="w-full h-3 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border overflow-hidden">
-            <div 
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%`, backgroundColor: currentSubject.accentColor }}
-            />
+        {/* Progress Bar & Mastery Stats */}
+        <div className="space-y-2 pt-2 border-t border-paper-border dark:border-night-border">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-paper-ink dark:text-night-text">
+              Syllabus Completion: {completedTopics} of {totalTopics} topics ({progressPercent}%)
+            </span>
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="text-rose-600 font-semibold">{weakCount} Weak</span>
+              <span className="text-amber-600 font-semibold">{okayCount} Okay</span>
+              <span className="text-emerald-600 font-semibold">{strongCount} Strong</span>
+            </div>
           </div>
-          <div className="flex justify-between text-[11px] text-paper-muted dark:text-night-muted font-mono">
-            <span>{completedTopics} of {totalTopics} topics studied</span>
-            <span>{totalTopics - completedTopics} topics remaining</span>
+
+          <div className="w-full h-2.5 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated overflow-hidden border border-paper-border dark:border-night-border">
+            <div 
+              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
       </div>
 
-      {/* REQUIREMENT 5: Add Unit Form (User types unit number or name freely, never auto-renamed or renumbered) */}
+      {/* Add Unit Form with Separate Label and Title (Requirement 5) */}
       {isAddingUnit && (
-        <form onSubmit={handleCreateUnit} className="p-4 rounded-2xl bg-paper-card dark:bg-night-card border border-emerald-500/40 space-y-3 animate-fade-slide-up shadow-md">
+        <form onSubmit={handleCreateUnit} className="p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-emerald-500/40 space-y-3 animate-fade-slide-up shadow-md">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -451,27 +488,59 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
-              required
-              placeholder="Type unit number or name (e.g. Unit 3, Unit 4, or Thermodynamics)..."
-              value={newUnitTitle}
-              onChange={e => setNewUnitTitle(e.target.value)}
-              className="flex-1 px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 font-medium"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm shrink-0"
-            >
-              Add Unit
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-bold text-paper-muted dark:text-night-muted mb-1">Unit Label</label>
+              <input
+                type="text"
+                placeholder="e.g. Unit 3 or Module 1"
+                value={newUnitLabel}
+                onChange={e => setNewUnitLabel(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 font-medium"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold text-paper-muted dark:text-night-muted mb-1">Unit Title</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Continuous Distribution, Central Limit Theorem..."
+                  value={newUnitTitle}
+                  onChange={e => setNewUnitTitle(e.target.value)}
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm shrink-0"
+                >
+                  Add Unit
+                </button>
+              </div>
+            </div>
           </div>
         </form>
       )}
 
-      {/* REQUIREMENT 7: Each unit is its own card/box with name, progress %, and topics listed inside in consistent order */}
+      {/* Units List */}
       <div className="space-y-6">
+        {(currentSubject.units || []).length === 0 && (
+          <div className="p-8 rounded-3xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-center space-y-3">
+            <BookOpen className="w-8 h-8 text-paper-muted dark:text-night-muted mx-auto opacity-50" />
+            <h4 className="text-base font-bold text-paper-ink dark:text-night-text">No units yet</h4>
+            <p className="text-xs text-paper-muted dark:text-night-muted max-w-sm mx-auto">
+              Add your first unit to begin organizing syllabus topics, lecture videos, and notes.
+            </p>
+            <button
+              onClick={() => setIsAddingUnit(true)}
+              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile inline-flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Your First Unit</span>
+            </button>
+          </div>
+        )}
+
         {(currentSubject.units || []).map((unit, unitIdx) => {
           const unitTopics = subjectTopics.filter(t => t.unitId === unit.id || t.unitNumber === unit.unit || t.unitNumber === unit.title || t.unitNumber === unit.name);
           const unitCompleted = unitTopics.filter(t => t.completed).length;
@@ -479,7 +548,8 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
           const isAddingToThisUnit = isAddingTopicUnitId === unit.id;
           const isEditingThisUnit = editingUnitId === unit.id;
 
-          const unitDisplayName = unit.title || unit.name || (unit.unitNumber ? String(unit.unitNumber) : `Unit ${unit.unit || unitIdx + 1}`);
+          const unitDisplayName = formatUnitDisplayName(unit);
+          const unitNotesCount = subjectFiles.filter(f => f.unitId === unit.id).length;
 
           return (
             <div 
@@ -491,14 +561,22 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-paper-border dark:border-night-border">
                 
                 {isEditingThisUnit ? (
-                  <form onSubmit={(e) => handleRenameUnitSubmit(unit.id, e)} className="flex items-center gap-2 flex-1">
+                  <form onSubmit={(e) => handleRenameUnitSubmit(unit.id, e)} className="flex items-center gap-2 flex-1 flex-wrap">
                     <input
                       type="text"
+                      placeholder="Unit Label"
+                      value={editingUnitLabel}
+                      onChange={(e) => setEditingUnitLabel(e.target.value)}
+                      className="w-24 px-3 py-1.5 text-xs font-bold rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500 text-paper-ink dark:text-night-text focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Unit Title"
                       value={editingUnitTitle}
                       onChange={(e) => setEditingUnitTitle(e.target.value)}
                       autoFocus
                       required
-                      className="flex-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500 text-paper-ink dark:text-night-text focus:outline-none"
+                      className="flex-1 min-w-[200px] px-3 py-1.5 text-xs font-bold rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500 text-paper-ink dark:text-night-text focus:outline-none"
                     />
                     <button type="submit" className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg">Save</button>
                     <button type="button" onClick={() => setEditingUnitId(null)} className="px-2 py-1.5 text-xs text-paper-muted">Cancel</button>
@@ -506,8 +584,8 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                 ) : (
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-base font-bold text-paper-ink dark:text-night-text truncate">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-base font-bold text-paper-ink dark:text-night-text">
                           {unitDisplayName}
                         </h4>
                         
@@ -516,7 +594,8 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                           <button
                             onClick={() => {
                               setEditingUnitId(unit.id);
-                              setEditingUnitTitle(unitDisplayName);
+                              setEditingUnitLabel(unit.unitLabel || `Unit ${unit.unit || unitIdx + 1}`);
+                              setEditingUnitTitle(unit.title || '');
                             }}
                             className="p-1 rounded text-paper-muted hover:text-paper-ink dark:text-night-muted"
                             title="Rename unit"
@@ -525,7 +604,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                           </button>
                         )}
 
-                        {/* Reorder Up / Down Controls (Requirement 5) */}
+                        {/* Reorder Up / Down Controls (Mobile friendly) */}
                         {onReorderUnit && (
                           <div className="flex items-center gap-0.5">
                             <button
@@ -550,7 +629,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                         {/* Delete Unit */}
                         {onDeleteUnit && (
                           <button
-                            onClick={() => handleDeleteUnitClick(unit.id, unitDisplayName)}
+                            onClick={() => setUnitToDelete({ id: unit.id, name: unitDisplayName })}
                             className="p-1 rounded text-paper-muted hover:text-rose-500"
                             title="Delete unit"
                           >
@@ -576,7 +655,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                 </button>
               </div>
 
-              {/* REQUIREMENT 6: Inline Form to Add Topic with title, mastery & YouTube video link */}
+              {/* Inline Form to Add Topic */}
               {isAddingToThisUnit && (
                 <form onSubmit={e => handleCreateTopic(unit, e)} className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500/30 space-y-3 animate-fade-slide-up">
                   <div className="flex items-center justify-between">
@@ -625,7 +704,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Optional YouTube Video link right in topic creation */}
+                    {/* Optional YouTube Video link */}
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Video className="w-3.5 h-3.5 text-paper-muted absolute left-3 top-2.5" />
@@ -648,18 +727,28 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                 </form>
               )}
 
-              {/* REQUIREMENT 6: Topics List with Checkbox (done), Weak/Okay/Strong tags, and YouTube video links */}
+              {/* Topics List with Reordering (Drag and drop + Up/Down) & Edit (Requirement 7 & 8) */}
               <div className="space-y-2.5">
-                {unitTopics.map(topic => {
+                {unitTopics.map((topic, tIdx) => {
                   const videosList = topic.videoUrls || [];
                   const isAddingVideo = addingVideoTopicId === topic.id;
                   const isHighlighted = highlightedTopicId === topic.id;
-                  const isExpanded = expandedTopicIds.has(topic.id);
+                  const isEditingThisTopic = editingTopicId === topic.id;
 
                   return (
                     <div 
                       key={topic.id}
                       id={`topic-${topic.id}`}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', topic.id);
+                        setDraggedTopicId(topic.id);
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        handleTopicDrop(topic.id, unit.id);
+                      }}
                       className={`p-3.5 rounded-2xl border transition-all flex flex-col gap-2 group ${
                         isHighlighted
                           ? 'ring-2 ring-emerald-500 bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20'
@@ -669,8 +758,34 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        {/* Checkbox + Title */}
-                        <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                        {/* Checkbox + Title / Edit Form */}
+                        <div className="flex items-start sm:items-center gap-2.5 flex-1 min-w-0">
+                          {/* Drag Handle & Reorder Up / Down buttons (Requirement 8) */}
+                          <div className="flex items-center gap-0.5 text-paper-muted shrink-0 mt-0.5 sm:mt-0">
+                            <span className="cursor-grab active:cursor-grabbing p-1 hover:text-paper-ink hidden sm:inline" title="Drag to reorder">
+                              <GripVertical className="w-3.5 h-3.5" />
+                            </span>
+                            <button
+                              type="button"
+                              disabled={tIdx === 0}
+                              onClick={() => handleMoveTopic(unit.id, topic.id, 'up')}
+                              className="p-1 rounded text-paper-muted hover:text-paper-ink disabled:opacity-20 disabled:cursor-not-allowed"
+                              title="Move topic up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={tIdx === unitTopics.length - 1}
+                              onClick={() => handleMoveTopic(unit.id, topic.id, 'down')}
+                              className="p-1 rounded text-paper-muted hover:text-paper-ink disabled:opacity-20 disabled:cursor-not-allowed"
+                              title="Move topic down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Checkbox */}
                           <button
                             onClick={() => onToggleTopicCompleted(topic.id)}
                             className="p-1 mt-0.5 sm:mt-0 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 transition-colors btn-tactile shrink-0"
@@ -683,40 +798,54 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             )}
                           </button>
 
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                            <span 
-                              title={topic.title}
-                              className={`text-xs font-bold break-words select-text ${
-                                isExpanded ? '' : 'line-clamp-2 sm:line-clamp-3'
-                              } ${
-                                topic.completed 
-                                  ? 'line-through text-paper-muted dark:text-night-muted' 
-                                  : 'text-paper-ink dark:text-night-text'
-                              }`}
-                            >
-                              {topic.title}
-                            </span>
-                            
-                            {/* Expand / Show Full Name Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTopicExpand(topic.id);
-                              }}
-                              className={`p-1 rounded-md text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 hover:bg-paper-card dark:hover:bg-night-card transition-colors shrink-0 ${
-                                isExpanded ? 'text-emerald-600 dark:text-emerald-400' : ''
-                              }`}
-                              title={isExpanded ? 'Collapse topic name' : 'Show full topic name'}
-                              aria-label={isExpanded ? 'Collapse topic name' : 'Show full topic name'}
-                            >
-                              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-emerald-500' : ''}`} />
-                            </button>
-                          </div>
+                          {/* Inline Edit Form OR Wrapped Topic Title (Requirement 7 & 9) */}
+                          {isEditingThisTopic ? (
+                            <form onSubmit={(e) => handleEditTopicSubmit(topic.id, e)} className="flex items-center gap-2 flex-1 min-w-0">
+                              <input
+                                type="text"
+                                value={editingTopicTitle}
+                                onChange={(e) => setEditingTopicTitle(e.target.value)}
+                                autoFocus
+                                required
+                                className="flex-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-paper-card dark:bg-night-card border border-emerald-500 text-paper-ink dark:text-night-text focus:outline-none"
+                              />
+                              <button type="submit" className="px-3 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-lg shadow-sm">Save</button>
+                              <button type="button" onClick={() => setEditingTopicId(null)} className="px-2 py-1.5 text-xs text-paper-muted">Cancel</button>
+                            </form>
+                          ) : (
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <span 
+                                title={topic.title}
+                                className={`text-xs font-bold whitespace-normal break-words select-text leading-snug ${
+                                  topic.completed 
+                                    ? 'line-through text-paper-muted dark:text-night-muted' 
+                                    : 'text-paper-ink dark:text-night-text'
+                                }`}
+                              >
+                                {topic.title}
+                              </span>
+
+                              {/* Topic Row Resource Icons (Requirement 14: Videos, Notes/Files, PYQs) */}
+                              <div className="flex items-center gap-3 mt-1 text-[10px] text-paper-muted dark:text-night-muted">
+                                <span className="flex items-center gap-1" title={`${videosList.length} Video(s)`}>
+                                  <Video className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                                  <span>{videosList.length}</span>
+                                </span>
+                                <span className="flex items-center gap-1" title={`${unitNotesCount} Notes & Files in unit`}>
+                                  <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                  <span>{unitNotesCount}</span>
+                                </span>
+                                <span className="flex items-center gap-1" title={`${topic.pyqCount || 0} PYQ(s)`}>
+                                  <Flame className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                  <span>{topic.pyqCount || 0}</span>
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Mastery Tags & Actions */}
-                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
                           
                           {/* Weak / Okay / Strong Pills */}
                           <div className="flex items-center gap-1 p-1 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-[10px] font-bold">
@@ -757,6 +886,18 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             </button>
                           </div>
 
+                          {/* Edit Topic Name Button (Requirement 7) */}
+                          <button
+                            onClick={() => {
+                              setEditingTopicId(topic.id);
+                              setEditingTopicTitle(topic.title);
+                            }}
+                            className="p-1.5 text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text rounded-lg hover:bg-paper-card dark:hover:bg-night-card transition-colors"
+                            title="Edit topic name"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
                           {/* + Attach Video Button */}
                           <button
                             onClick={() => setAddingVideoTopicId(isAddingVideo ? null : topic.id)}
@@ -767,9 +908,9 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             <span className="hidden sm:inline">+ Video</span>
                           </button>
 
-                          {/* Delete Topic Button */}
+                          {/* Delete Topic Button with Confirmation (Requirement 7 & 12) */}
                           <button
-                            onClick={() => onDeleteTopic(topic.id)}
+                            onClick={() => setTopicToDelete(topic)}
                             className="p-1.5 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 rounded-lg hover:bg-paper-card dark:hover:bg-night-card transition-colors opacity-70 group-hover:opacity-100"
                             title="Delete topic"
                           >
@@ -860,8 +1001,8 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                 })}
 
                 {unitTopics.length === 0 && (
-                  <div className="text-center py-4 text-xs text-paper-muted dark:text-night-muted italic">
-                    No topics added to {unitDisplayName} yet. Click "+ Add Topic" above to get started.
+                  <div className="text-center py-6 text-xs text-paper-muted dark:text-night-muted italic border border-dashed border-paper-border dark:border-night-border rounded-2xl">
+                    No topics yet. Add your first topic using "+ Add Topic" above.
                   </div>
                 )}
               </div>
@@ -870,164 +1011,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
         })}
       </div>
 
-      {/* REQUIREMENT 8: FILES (PYQ Papers, Teacher PDFs and Images stored in IndexedDB, separated by exam) */}
-      <div className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-paper-border dark:border-night-border">
-          <div>
-            <h3 className="text-lg font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
-              <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              <span>{currentSubject.name} — Files & Study Materials</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted font-bold font-mono">
-                {filteredFiles.length} Stored in IndexedDB
-              </span>
-            </h3>
-            <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-              Upload past-year papers, teacher lecture notes, and whiteboard photos. Separated per exam session.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsUploadingFile(!isUploadingFile)}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 btn-tactile shadow-sm"
-            >
-              <Upload className="w-4 h-4" />
-              <span>+ Upload Material</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Upload Form */}
-        {isUploadingFile && (
-          <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500/30 space-y-3 animate-fade-slide-up">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-paper-ink dark:text-night-text">
-                Upload to {currentSubject.name} (Exam: {activeExamId})
-              </span>
-              <button onClick={() => setIsUploadingFile(false)} className="text-paper-muted hover:text-paper-ink">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-paper-muted mb-1">Category</label>
-                <select
-                  value={uploadCategory}
-                  onChange={(e) => setUploadCategory(e.target.value as FileCategory)}
-                  className="w-full px-3 py-1.5 text-xs rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text"
-                >
-                  <option value="pyq">PYQ Exam Paper (PDF)</option>
-                  <option value="notes">Teacher Notes (PDF/Text)</option>
-                  <option value="images">Diagrams & Whiteboard (Image)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-paper-muted mb-1">Title / Label</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 2024 End Sem Paper..."
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-paper-muted mb-1">Select File (PDF / Image)</label>
-                <input
-                  type="file"
-                  accept="application/pdf,image/*"
-                  onChange={handleFileUpload}
-                  className="w-full text-xs text-paper-ink dark:text-night-text file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Filter Chips */}
-        <div className="flex items-center gap-2">
-          {(['all', 'pyq', 'notes', 'images'] as const).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFileFilter(cat)}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                fileFilter === cat
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted hover:text-paper-ink border border-paper-border dark:border-night-border'
-              }`}
-            >
-              {cat === 'all' ? 'All Files' : cat === 'pyq' ? 'PYQ Papers' : cat === 'notes' ? 'Teacher Notes' : 'Images'}
-            </button>
-          ))}
-        </div>
-
-        {/* Files Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {filteredFiles.map(file => {
-            const isImg = file.fileType === 'image';
-
-            return (
-              <div
-                key={file.id}
-                className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500/50 transition-all flex flex-col justify-between gap-3 group"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-center shrink-0">
-                    {isImg ? (
-                      <Image className="w-5 h-5 text-amber-500" />
-                    ) : (
-                      <FileText className="w-5 h-5 text-emerald-500" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h5 className="text-xs font-bold text-paper-ink dark:text-night-text truncate" title={file.name}>
-                      {file.name}
-                    </h5>
-                    <div className="text-[10px] text-paper-muted flex items-center gap-1.5 mt-0.5">
-                      <span className="uppercase font-mono">{file.category}</span>
-                      {file.year && <span>• {file.year}</span>}
-                      {file.examType && <span>• {file.examType}</span>}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-paper-border dark:border-night-border">
-                  <a
-                    href={file.dataUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
-                  >
-                    <span>Open / Preview</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-
-                  <button
-                    onClick={() => handleDeleteFile(file.id)}
-                    className="p-1 text-paper-muted hover:text-rose-500 opacity-60 group-hover:opacity-100 transition-opacity"
-                    title="Delete file"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredFiles.length === 0 && (
-            <div className="col-span-full py-8 text-center text-xs text-paper-muted dark:text-night-muted italic border border-dashed border-paper-border dark:border-night-border rounded-2xl">
-              No files uploaded yet for this subject. Click "+ Upload Material" above to add your PYQs, PDFs, or photos.
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* Embedded YouTube Video Modal (Requirement 6: Videos should open or embed from the topic) */}
+      {/* Embedded YouTube Video Modal */}
       {activeVideoModalUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-slide-up">
           <div className="w-full max-w-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl overflow-hidden shadow-2xl relative space-y-3 p-4">
@@ -1071,6 +1055,50 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Delete Topic Confirmation Modal (Requirement 7 & 12) */}
+      <ConfirmModal
+        isOpen={!!topicToDelete}
+        title="Delete Topic?"
+        message={`Are you sure you want to delete topic "${topicToDelete?.title}"? This action cannot be undone.`}
+        confirmLabel="Delete Topic"
+        isDanger={true}
+        onCancel={() => setTopicToDelete(null)}
+        onConfirm={() => {
+          if (topicToDelete) {
+            onDeleteTopic(topicToDelete.id);
+            setTopicToDelete(null);
+          }
+        }}
+      />
+
+      {/* Delete Unit Confirmation Modal (Requirement 12) */}
+      <ConfirmModal
+        isOpen={!!unitToDelete}
+        title="Delete Unit?"
+        message={`Are you sure you want to delete "${unitToDelete?.name}"? All topics inside this unit will be removed.`}
+        confirmLabel="Delete Unit"
+        isDanger={true}
+        onCancel={() => setUnitToDelete(null)}
+        onConfirm={() => {
+          if (unitToDelete && onDeleteUnit) {
+            onDeleteUnit(currentSubject.id, unitToDelete.id);
+            onShowToast(`Deleted "${unitToDelete.name}".`, 'info');
+            setUnitToDelete(null);
+          }
+        }}
+      />
+
+      {/* Delete File Confirmation Modal (Requirement 12) */}
+      <ConfirmModal
+        isOpen={!!fileToDeleteId}
+        title="Delete File?"
+        message="Are you sure you want to delete this file from IndexedDB? This action cannot be undone."
+        confirmLabel="Delete File"
+        isDanger={true}
+        onCancel={() => setFileToDeleteId(null)}
+        onConfirm={handleDeleteFileConfirm}
+      />
 
     </div>
   );

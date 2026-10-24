@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { SubjectMeta, SubjectUnit, PYQQuestion, StudyTask, VideoResource, PdfResource } from '../types';
-import { getExamUrgencyColor, ACCENT_PALETTE, extractYoutubeId } from '../utils/storageService';
+import { SubjectMeta, SubjectUnit, PYQQuestion, StudyTask, VideoResource, PdfResource, SubjectFile } from '../types';
+import { getExamUrgencyColor, ACCENT_PALETTE, extractYoutubeId, formatUnitDisplayName } from '../utils/storageService';
+import { indexedDbService } from '../utils/indexedDbService';
 import { EditExamDateModal } from './EditExamDateModal';
 import { EditUnitsModal } from './EditUnitsModal';
 import { QuestionCard } from './QuestionCard';
 import { AddCustomPyqModal } from './AddCustomPyqModal';
+import { PdfViewerModal } from './PdfViewerModal';
+import { ImageViewerModal } from './ImageViewerModal';
+import { ConfirmModal } from './ConfirmModal';
 import { 
   Clock, Calendar, ArrowLeft, Trash2, Cpu, Database, Network, 
   Code, BookOpen, Layers, Plus, Video, FileText, CheckCircle2, 
   Circle, Play, ExternalLink, FileEdit, Eye, AlertCircle, Palette, 
-  MoveRight, Flame, X, UploadCloud, Check
+  MoveRight, Flame, X, UploadCloud, Check, Download, Image, Edit2, Upload, Copy
 } from 'lucide-react';
 
 interface SubjectWorkspaceProps {
   subject: SubjectMeta;
   initialUnitId?: string;
+  activeExamId?: string;
   questions: PYQQuestion[];
   tasks: StudyTask[];
   videos: VideoResource[];
@@ -43,6 +48,7 @@ type UnitResourceType = 'all' | 'videos' | 'pdfs' | 'tasks' | 'pyqs';
 export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
   subject,
   initialUnitId,
+  activeExamId,
   questions,
   tasks,
   videos,
@@ -73,12 +79,29 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
     setSelectedUnitId(initialUnitId || 'all');
   }, [initialUnitId, subject.id]);
 
-  // Modals
+  // IndexedDB Files State
+  const [dbFiles, setDbFiles] = useState<SubjectFile[]>([]);
+  const [noteFormMode, setNoteFormMode] = useState<'write' | 'upload'>('write');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDesc, setUploadDesc] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Modals & Preview State
   const [isEditDateOpen, setIsEditDateOpen] = useState(false);
   const [isEditUnitsOpen, setIsEditUnitsOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isAddPyqOpen, setIsAddPyqOpen] = useState(false);
   const [activeColorPicker, setActiveColorPicker] = useState(false);
+
+  // File Viewers & Actions
+  const [previewPdfFile, setPreviewPdfFile] = useState<SubjectFile | null>(null);
+  const [previewImageFile, setPreviewImageFile] = useState<SubjectFile | null>(null);
+  const [previewNoteFile, setPreviewNoteFile] = useState<SubjectFile | null>(null);
+  const [renamingFile, setRenamingFile] = useState<SubjectFile | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [fileToDelete, setFileToDelete] = useState<SubjectFile | null>(null);
+  const [legacyPdfToDelete, setLegacyPdfToDelete] = useState<string | null>(null);
 
   // Forms state for adding resources
   const [addingResourceType, setAddingResourceType] = useState<{ unitId: string; type: 'video' | 'pdf' | 'task' } | null>(null);
@@ -90,6 +113,20 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
   const [activePdfModal, setActivePdfModal] = useState<PdfResource | null>(null);
   const [activeVideoId, setActiveVideoId] = useState<string>('');
 
+  // Load files from IndexedDB
+  const loadDbFiles = async () => {
+    try {
+      const allFiles = await indexedDbService.getFiles(subject.id, activeExamId);
+      setDbFiles(allFiles);
+    } catch (err) {
+      console.error('Error loading files from IndexedDB:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadDbFiles();
+  }, [subject.id, activeExamId]);
+
   // Urgency calculations
   const urgency = getExamUrgencyColor(subject.examDate);
 
@@ -99,7 +136,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
   const subjectPdfs = pdfs.filter(p => p.subjectId === subject.id);
   const subjectTasks = tasks.filter(t => t.subjectId === subject.id);
 
-  // Identify unassigned items (items not matching any defined subject unit)
+  // Identify unassigned items
   const unitIds = new Set(subject.units.map(u => u.id));
   const unitNumbers = new Set(subject.units.map(u => u.unit));
 
@@ -162,31 +199,167 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
     setNewVideoTitle('');
     setNewVideoUrl('');
     setAddingResourceType(null);
-    onShowToast(`Added video to Unit ${unitNum || 1}! 🎬`, 'success');
+    onShowToast(`Added video to ${formatUnitDisplayName(subject.units.find(u => u.id === unitId) || { id: unitId, unit: unitNum || 1, title: '' })}! 🎬`, 'success');
   };
 
-  const handleAddNoteSubmit = (unitId: string, unitNum: number | undefined, e: React.FormEvent) => {
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Add text note (saved to IndexedDB + backwards compatible)
+  const handleAddNoteSubmit = async (unitId: string, unitNum: number | undefined, e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
 
-    const newNote: PdfResource = {
-      id: `note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    const noteId = `note-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+    const noteFile: SubjectFile = {
+      id: noteId,
+      examId: activeExamId,
       subjectId: subject.id,
       unitId,
-      unit: unitNum,
-      fileName: `${newNoteTitle.trim()}.txt`,
-      uploadDate: new Date().toLocaleDateString(),
-      fileSize: `${(newNoteContent.length / 1024).toFixed(1)} KB`,
-      extractedText: newNoteContent.trim(),
-      summary: newNoteContent.slice(0, 250).trim() + '...',
-      extractedQuestions: [`Review key points from ${newNoteTitle.trim()}`]
+      name: newNoteTitle.trim(),
+      description: newNoteContent.slice(0, 150).trim(),
+      category: 'notes',
+      fileType: 'note',
+      dataUrl: `data:text/plain;charset=utf-8,${encodeURIComponent(newNoteContent.trim())}`,
+      size: newNoteContent.length,
+      date: new Date().toLocaleDateString(),
+      isImportant: false,
+      isDone: false,
+      createdAt: Date.now()
     };
 
-    onAddPdf(newNote);
-    setNewNoteTitle('');
-    setNewNoteContent('');
-    setAddingResourceType(null);
-    onShowToast(`Saved study note under Unit ${unitNum || 1}! 📄`, 'success');
+    try {
+      await indexedDbService.addFile(noteFile);
+      await loadDbFiles();
+
+      const newLegacyNote: PdfResource = {
+        id: noteId,
+        subjectId: subject.id,
+        unitId,
+        unit: unitNum,
+        fileName: `${newNoteTitle.trim()}.txt`,
+        uploadDate: new Date().toLocaleDateString(),
+        fileSize: `${(newNoteContent.length / 1024).toFixed(1)} KB`,
+        extractedText: newNoteContent.trim(),
+        summary: newNoteContent.slice(0, 250).trim() + '...',
+        extractedQuestions: [`Review key points from ${newNoteTitle.trim()}`]
+      };
+      onAddPdf(newLegacyNote);
+
+      setNewNoteTitle('');
+      setNewNoteContent('');
+      setAddingResourceType(null);
+      onShowToast(`Saved study note in IndexedDB! 📄`, 'success');
+    } catch (err) {
+      console.error(err);
+      onShowToast('Could not save note to IndexedDB', 'error');
+    }
+  };
+
+  // Upload multiple PDFs/images to IndexedDB
+  const handleUploadFilesSubmit = async (unitId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedFiles.length === 0) {
+      onShowToast('Please select at least one PDF or Image file', 'info');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const f = selectedFiles[i];
+        const dataUrl = await readFileAsDataUrl(f);
+        const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+        const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(f.name);
+        
+        let fileDisplayName = f.name;
+        if (selectedFiles.length === 1 && uploadTitle.trim()) {
+          fileDisplayName = uploadTitle.trim();
+        } else if (selectedFiles.length > 1 && uploadTitle.trim()) {
+          fileDisplayName = `${uploadTitle.trim()} (${i + 1}) - ${f.name}`;
+        }
+
+        const newFile: SubjectFile = {
+          id: `file-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          examId: activeExamId,
+          subjectId: subject.id,
+          unitId,
+          name: fileDisplayName,
+          description: uploadDesc.trim() || undefined,
+          category: isPdf ? 'notes' : (isImg ? 'images' : 'notes'),
+          fileType: isPdf ? 'pdf' : (isImg ? 'image' : 'note'),
+          dataUrl,
+          size: f.size,
+          date: new Date().toLocaleDateString(),
+          isImportant: false,
+          isDone: false,
+          createdAt: Date.now()
+        };
+
+        await indexedDbService.addFile(newFile);
+      }
+
+      await loadDbFiles();
+      setSelectedFiles([]);
+      setUploadTitle('');
+      setUploadDesc('');
+      setAddingResourceType(null);
+      onShowToast(`Uploaded ${selectedFiles.length} file(s) to IndexedDB! 📁`, 'success');
+    } catch (err) {
+      console.error('File upload error:', err);
+      onShowToast('Failed to upload files. Please try again.', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDownloadFile = (file: SubjectFile) => {
+    const link = document.createElement('a');
+    link.href = file.dataUrl;
+    link.download = file.name || 'document';
+    link.click();
+  };
+
+  const handleRenameFileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renamingFile || !renameValue.trim()) return;
+    try {
+      await indexedDbService.renameFile(renamingFile.id, renameValue.trim());
+      await loadDbFiles();
+      setRenamingFile(null);
+      setRenameValue('');
+      onShowToast('File renamed successfully!', 'success');
+    } catch (err) {
+      console.error('Rename failed:', err);
+      onShowToast('Failed to rename file', 'error');
+    }
+  };
+
+  const handleDeleteFileConfirm = async () => {
+    if (fileToDelete) {
+      try {
+        await indexedDbService.deleteFile(fileToDelete.id);
+        await loadDbFiles();
+        onShowToast(`Deleted "${fileToDelete.name}"`, 'info');
+      } catch (err) {
+        console.error('Delete failed:', err);
+      }
+      setFileToDelete(null);
+    }
+  };
+
+  const handleDeleteLegacyPdfConfirm = () => {
+    if (legacyPdfToDelete) {
+      onDeletePdf(legacyPdfToDelete);
+      onShowToast('Deleted note', 'info');
+      setLegacyPdfToDelete(null);
+    }
   };
 
   const handleAddTaskSubmit = (unitId: string, unitNum: number | undefined, e: React.FormEvent) => {
@@ -196,13 +369,13 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
     onAddTask(newTaskText.trim(), unitId, unitNum);
     setNewTaskText('');
     setAddingResourceType(null);
-    onShowToast(`Task added to Unit ${unitNum || 1}! 📋`, 'success');
+    onShowToast(`Task added to Unit! 📋`, 'success');
   };
 
   const handleMove = (type: 'task' | 'video' | 'pdf' | 'question', itemId: string, targetUnitId: string) => {
     const targetUnit = subject.units.find(u => u.id === targetUnitId);
     onMoveItemToUnit(type, itemId, targetUnitId, targetUnit?.unit);
-    onShowToast(`Moved to Unit ${targetUnit?.unit || targetUnitId}!`, 'success');
+    onShowToast(`Moved to ${targetUnit ? formatUnitDisplayName(targetUnit) : targetUnitId}!`, 'success');
   };
 
   return (
@@ -228,100 +401,83 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
             <div 
               className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
               style={{ 
-                backgroundColor: `${subject.accentColor}18`, 
-                color: subject.accentColor
+                backgroundColor: `${subject.accentColor}15`, 
+                color: subject.accentColor,
+                border: `1px solid ${subject.accentColor}30`
               }}
             >
-              {getSubjectIcon(subject.iconName)}
+              {getSubjectIcon(subject.iconName || 'BookOpen')}
             </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <span 
-                  className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md font-mono"
-                  style={{ 
-                    color: urgency.hslColor,
-                    backgroundColor: `${urgency.hslColor}18`
-                  }}
-                >
-                  {urgency.statusLabel}
+                <span className="text-[11px] font-mono font-bold tracking-widest uppercase text-paper-muted dark:text-night-muted">
+                  {subject.code}
                 </span>
-                <span className="text-xs text-paper-muted dark:text-night-muted font-medium">
-                  {subject.units.length} Units • {subjectQuestions.length} PYQs • {subjectVideos.length} Videos
-                </span>
+                {subject.semester && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-md font-mono bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted">
+                    {subject.semester}
+                  </span>
+                )}
               </div>
-              <h2 className="text-2xl font-extrabold text-paper-ink dark:text-night-text mt-0.5 tracking-tight">
+              <h2 className="text-xl md:text-2xl font-bold tracking-tight text-paper-ink dark:text-night-text">
                 {subject.name}
               </h2>
             </div>
           </div>
 
-          {/* Right: Quick Controls */}
+          {/* Right: Exam Date & Controls */}
           <div className="flex items-center gap-3 flex-wrap">
             
-            {/* 1-Click Change Date Picker Pill */}
-            <div 
+            {/* Exam Date Badge (Click to edit) */}
+            <button
               onClick={() => setIsEditDateOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer flex items-center gap-2 select-none btn-tactile shadow-sm"
-              title="Click to edit exam date & time"
+              className="px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500/50 flex items-center gap-2.5 transition-all btn-tactile text-left"
+              title="Click to change target exam date"
             >
               <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <div>
-                <div className="text-[10px] text-paper-muted dark:text-night-muted font-bold uppercase tracking-wider">
-                  Exam Date
-                </div>
-                <div className="text-xs font-bold text-paper-ink dark:text-night-text">
+                <span className="text-[10px] uppercase font-bold text-paper-muted dark:text-night-muted block leading-none">Exam Date</span>
+                <span className="text-xs font-bold text-paper-ink dark:text-night-text">
                   {urgency.formattedExamDate}
-                </div>
+                </span>
               </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-1">
-                Change
-              </span>
-            </div>
-
-            {/* Live Countdown Badge with Urgency Shift */}
-            <div 
-              className="px-4 py-2 rounded-xl border text-center transition-all duration-600 shadow-sm"
-              style={{ 
-                backgroundColor: `${urgency.hslColor}10`,
-                borderColor: `${urgency.hslColor}35`
-              }}
-            >
-              <div className="text-[10px] text-paper-muted dark:text-night-muted font-bold uppercase tracking-wider flex items-center justify-center gap-1">
-                <Clock className="w-3 h-3" style={{ color: urgency.hslColor }} />
-                <span>Time Remaining</span>
-              </div>
-              <div 
-                className="text-sm sm:text-base font-extrabold countdown-digit"
-                style={{ color: urgency.hslColor }}
+              <span 
+                className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold"
+                style={{ 
+                  backgroundColor: `${urgency.hslColor}20`,
+                  color: urgency.hslColor
+                }}
               >
                 {urgency.formattedCountdown}
-              </div>
-            </div>
+              </span>
+            </button>
 
-            {/* Quick Palette Swatch Popover */}
+            {/* Accent Color Palette Picker */}
             <div className="relative">
               <button
                 onClick={() => setActiveColorPicker(!activeColorPicker)}
-                className="p-2.5 rounded-xl border border-paper-border dark:border-night-border text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile"
-                title="Change subject accent theme color"
+                className="p-2.5 rounded-xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated hover:border-emerald-500 text-paper-ink dark:text-night-text btn-tactile"
+                title="Change Subject Accent Color"
               >
                 <Palette className="w-4 h-4" style={{ color: subject.accentColor }} />
               </button>
 
               {activeColorPicker && (
-                <div className="absolute right-0 top-11 z-30 p-2.5 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl grid grid-cols-5 gap-1.5 w-44 animate-fade-slide-up">
-                  {ACCENT_PALETTE.map(c => (
+                <div className="absolute right-0 mt-2 p-3 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-2xl shadow-xl z-20 flex gap-2">
+                  {ACCENT_PALETTE.map(color => (
                     <button
-                      key={c.hex}
+                      key={color.hex}
                       onClick={() => {
-                        onUpdateSubject({ ...subject, accentColor: c.hex });
+                        onUpdateSubject({ ...subject, accentColor: color.hex });
                         setActiveColorPicker(false);
-                        onShowToast(`Accent color updated to ${c.name}!`, 'success');
+                        onShowToast('Accent theme updated!', 'success');
                       }}
-                      title={c.name}
-                      className={`w-6 h-6 rounded-full transition-transform btn-tactile ${subject.accentColor === c.hex ? 'scale-125 ring-2 ring-emerald-500' : 'opacity-80 hover:opacity-100'}`}
-                      style={{ backgroundColor: c.hex }}
+                      className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-125"
+                      style={{ 
+                        backgroundColor: color.hex,
+                        borderColor: subject.accentColor === color.hex ? '#FFFFFF' : 'transparent'
+                      }}
                     />
                   ))}
                 </div>
@@ -331,7 +487,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
             {/* Delete Subject Button */}
             <button
               onClick={() => setIsDeleteConfirmOpen(true)}
-              className="p-2.5 rounded-xl border border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted hover:text-rose-600 dark:hover:text-rose-400 hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile"
+              className="p-2.5 rounded-xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-900 transition-colors btn-tactile"
               title="Delete Subject"
             >
               <Trash2 className="w-4 h-4" />
@@ -340,31 +496,32 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
           </div>
 
         </div>
+      </div>
 
-        {/* 2. PROMINENT UNIT NAVIGATION BAR */}
-        <div className="mt-6 pt-4 border-t border-paper-border dark:border-night-border flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+      {/* 2. UNIT SELECTOR & NAVIGATION TABS */}
+      <div className="p-4 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
             
-            {/* All Units Button */}
+            {/* View All Units Pill */}
             <button
               onClick={() => setSelectedUnitId('all')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 btn-tactile transition-all whitespace-nowrap ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile transition-all shrink-0 ${
                 selectedUnitId === 'all'
-                  ? 'text-white shadow-sm'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-paper-body dark:text-night-text bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:bg-paper-card dark:hover:bg-night-card'
               }`}
-              style={{ 
-                backgroundColor: selectedUnitId === 'all' ? subject.accentColor : undefined 
-              }}
             >
-              <Layers className="w-4 h-4" />
-              <span>📚 All Units (Grouped View)</span>
+              <Layers className="w-3.5 h-3.5" />
+              <span>All Units ({subject.units.length})</span>
             </button>
 
-            {/* Unit Buttons */}
+            {/* Individual Unit Pills */}
             {subject.units.map(u => {
               const { uTasks, uVideos, uPdfs, uQuestions } = getUnitItems(u);
-              const totalItems = uTasks.length + uVideos.length + uPdfs.length + uQuestions.length;
+              const unitFileCount = dbFiles.filter(f => f.unitId === u.id).length;
+              const totalItems = uTasks.length + uVideos.length + unitFileCount + uPdfs.length + uQuestions.length;
               const isSelected = selectedUnitId === u.id;
 
               return (
@@ -380,7 +537,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                     backgroundColor: isSelected ? subject.accentColor : undefined
                   }}
                 >
-                  <span>Unit {u.unit}: {u.title}</span>
+                  <span>{formatUnitDisplayName(u)}</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${isSelected ? 'bg-black/20 text-white' : 'bg-paper-border dark:bg-night-border text-paper-muted dark:text-night-muted'}`}>
                     {totalItems}
                   </span>
@@ -402,7 +559,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
       </div>
 
-      {/* 3. UNASSIGNED / PREVIOUSLY SAVED ITEMS SECTION (1-CLICK MOVE TO UNIT) */}
+      {/* 3. UNASSIGNED / PREVIOUSLY SAVED ITEMS SECTION */}
       {hasUnassignedItems && (
         <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-paper-ink dark:text-night-text space-y-3">
           <div className="flex items-center justify-between">
@@ -413,14 +570,13 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                   📦 General / Unassigned Items ({unassignedTasks.length + unassignedVideos.length + unassignedPdfs.length + unassignedQuestions.length})
                 </h4>
                 <p className="text-xs text-paper-muted dark:text-night-muted">
-                  These items were saved before unit organization. Use the <strong>"Move to Unit ▾"</strong> dropdown to easily assign them to any unit:
+                  These items were saved before unit organization. Use the <strong>"Move to Unit ▾"</strong> dropdown to assign them:
                 </p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            {/* Unassigned Tasks */}
             {unassignedTasks.map(t => (
               <div key={t.id} className="p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-between gap-3 text-xs">
                 <span className="font-medium line-clamp-1 flex-1">📋 Task: {t.text}</span>
@@ -431,13 +587,12 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                 >
                   <option value="" disabled>Move to Unit ▾</option>
                   {subject.units.map(u => (
-                    <option key={u.id} value={u.id}>Unit {u.unit}: {u.title}</option>
+                    <option key={u.id} value={u.id}>{formatUnitDisplayName(u)}</option>
                   ))}
                 </select>
               </div>
             ))}
 
-            {/* Unassigned Videos */}
             {unassignedVideos.map(v => (
               <div key={v.id} className="p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-between gap-3 text-xs">
                 <span className="font-medium line-clamp-1 flex-1">🎬 Video: {v.title}</span>
@@ -448,13 +603,12 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                 >
                   <option value="" disabled>Move to Unit ▾</option>
                   {subject.units.map(u => (
-                    <option key={u.id} value={u.id}>Unit {u.unit}: {u.title}</option>
+                    <option key={u.id} value={u.id}>{formatUnitDisplayName(u)}</option>
                   ))}
                 </select>
               </div>
             ))}
 
-            {/* Unassigned PDFs */}
             {unassignedPdfs.map(p => (
               <div key={p.id} className="p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-between gap-3 text-xs">
                 <span className="font-medium line-clamp-1 flex-1">📄 Note: {p.fileName}</span>
@@ -465,13 +619,12 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                 >
                   <option value="" disabled>Move to Unit ▾</option>
                   {subject.units.map(u => (
-                    <option key={u.id} value={u.id}>Unit {u.unit}: {u.title}</option>
+                    <option key={u.id} value={u.id}>{formatUnitDisplayName(u)}</option>
                   ))}
                 </select>
               </div>
             ))}
 
-            {/* Unassigned Questions */}
             {unassignedQuestions.map(q => (
               <div key={q.id} className="p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-between gap-3 text-xs">
                 <span className="font-medium line-clamp-1 flex-1">🔥 PYQ: {q.question}</span>
@@ -482,7 +635,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                 >
                   <option value="" disabled>Move to Unit ▾</option>
                   {subject.units.map(u => (
-                    <option key={u.id} value={u.id}>Unit {u.unit}: {u.title}</option>
+                    <option key={u.id} value={u.id}>{formatUnitDisplayName(u)}</option>
                   ))}
                 </select>
               </div>
@@ -494,11 +647,31 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
       {/* 4. MAIN UNIT WORKSPACE VIEW */}
       <div className="space-y-6">
         
-        {/* Render units (either all units or the single selected unit) */}
+        {subject.units.length === 0 && (
+          <div className="p-8 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-center space-y-3">
+            <Layers className="w-10 h-10 text-paper-muted dark:text-night-muted mx-auto opacity-50" />
+            <h4 className="text-base font-bold text-paper-ink dark:text-night-text">No Units Created Yet</h4>
+            <p className="text-xs text-paper-muted dark:text-night-muted max-w-sm mx-auto">
+              Organize this subject into units to track syllabus, upload PDFs, and practice PYQs.
+            </p>
+            <button
+              onClick={() => setIsEditUnitsOpen(true)}
+              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile inline-flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Your First Unit</span>
+            </button>
+          </div>
+        )}
+
         {subject.units
           .filter(u => selectedUnitId === 'all' || u.id === selectedUnitId)
           .map(unit => {
             const { uTasks, uVideos, uPdfs, uQuestions } = getUnitItems(unit);
+            const unitDbFiles = dbFiles.filter(f => f.unitId === unit.id || (!f.unitId && selectedUnitId === unit.id));
+            const existingDbIds = new Set(unitDbFiles.map(f => f.id));
+            const filteredLegacyPdfs = uPdfs.filter(p => !existingDbIds.has(p.id));
+            const totalNotesAndFilesCount = unitDbFiles.length + filteredLegacyPdfs.length;
             const isAdding = addingResourceType?.unitId === unit.id;
 
             return (
@@ -518,15 +691,15 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                           color: subject.accentColor
                         }}
                       >
-                        Unit {unit.unit}
+                        {unit.unitLabel || `Unit ${unit.unit}`}
                       </span>
                       <span className="text-xs text-paper-muted dark:text-night-muted font-medium">
-                        {uTasks.length} Tasks • {uVideos.length} Videos • {uPdfs.length} Notes • {uQuestions.length} PYQs
+                        {uTasks.length} Tasks • {uVideos.length} Videos • {totalNotesAndFilesCount} Notes & Files • {uQuestions.length} PYQs
                       </span>
                     </div>
 
                     <h3 className="text-xl font-bold text-paper-ink dark:text-night-text">
-                      {unit.title}
+                      {formatUnitDisplayName(unit)}
                     </h3>
                   </div>
 
@@ -566,26 +739,26 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                   </div>
                 </div>
 
-                {/* Inline Resource Creation Form for Unit */}
+                {/* Inline Forms for adding items */}
                 {isAdding && addingResourceType.type === 'video' && (
                   <form onSubmit={e => handleAddVideoSubmit(unit.id, unit.unit, e)} className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-cyan-500/40 space-y-3 animate-fade-slide-up">
                     <h5 className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
                       <Video className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                      <span>Add YouTube Video for Unit {unit.unit}: {unit.title}</span>
+                      <span>Add Video Lecture for {formatUnitDisplayName(unit)}</span>
                     </h5>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <input
                         type="text"
                         required
-                        placeholder="Video Title (e.g. CPU Scheduling Gantt Charts)"
+                        placeholder="Video Title (e.g. Page Replacement Algorithms Explained)"
                         value={newVideoTitle}
                         onChange={e => setNewVideoTitle(e.target.value)}
                         className="px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500"
                       />
                       <input
-                        type="text"
+                        type="url"
                         required
-                        placeholder="YouTube Link (https://www.youtube.com/watch?v=...)"
+                        placeholder="YouTube Video Link (e.g. https://youtu.be/...)"
                         value={newVideoUrl}
                         onChange={e => setNewVideoUrl(e.target.value)}
                         className="px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500"
@@ -598,40 +771,150 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                   </form>
                 )}
 
+                {/* Two-Option Form: Write Note OR Upload PDF / Image */}
                 {isAdding && addingResourceType.type === 'pdf' && (
-                  <form onSubmit={e => handleAddNoteSubmit(unit.id, unit.unit, e)} className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500/40 space-y-3 animate-fade-slide-up">
-                    <h5 className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Write Study Notes for Unit {unit.unit}: {unit.title}</span>
-                    </h5>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Note Title (e.g. Important Formulas & Definitions)"
-                      value={newNoteTitle}
-                      onChange={e => setNewNoteTitle(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
-                    />
-                    <textarea
-                      rows={4}
-                      required
-                      placeholder="Type formulas, algorithm steps, or exam points here..."
-                      value={newNoteContent}
-                      onChange={e => setNewNoteContent(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-mono text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 resize-none"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setAddingResourceType(null)} className="px-3 py-1.5 rounded-lg border border-paper-border dark:border-night-border text-xs btn-tactile">Cancel</button>
-                      <button type="submit" className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm">Save Note</button>
+                  <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-emerald-500/40 space-y-4 animate-fade-slide-up">
+                    {/* Mode Selector */}
+                    <div className="flex items-center justify-between border-b border-paper-border dark:border-night-border pb-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNoteFormMode('write')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            noteFormMode === 'write'
+                              ? 'bg-emerald-600 text-white shadow-sm'
+                              : 'text-paper-muted dark:text-night-muted hover:text-paper-ink dark:hover:text-night-text'
+                          }`}
+                        >
+                          <FileEdit className="w-3.5 h-3.5" />
+                          <span>Write Note</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNoteFormMode('upload')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            noteFormMode === 'upload'
+                              ? 'bg-emerald-600 text-white shadow-sm'
+                              : 'text-paper-muted dark:text-night-muted hover:text-paper-ink dark:hover:text-night-text'
+                          }`}
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload PDF / Image</span>
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setAddingResourceType(null)}
+                        className="p-1.5 rounded-lg text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                  </form>
+
+                    {noteFormMode === 'write' ? (
+                      <form onSubmit={e => handleAddNoteSubmit(unit.id, unit.unit, e)} className="space-y-3">
+                        <h5 className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>Write Study Note for {formatUnitDisplayName(unit)}</span>
+                        </h5>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Note Title (e.g. Important Formulas & Definitions)"
+                          value={newNoteTitle}
+                          onChange={e => setNewNoteTitle(e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                        />
+                        <textarea
+                          rows={4}
+                          required
+                          placeholder="Type formulas, algorithm steps, or exam points here..."
+                          value={newNoteContent}
+                          onChange={e => setNewNoteContent(e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-mono text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 resize-none"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => setAddingResourceType(null)} className="px-3 py-1.5 rounded-lg border border-paper-border dark:border-night-border text-xs btn-tactile">Cancel</button>
+                          <button type="submit" className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm">Save Note</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <form onSubmit={e => handleUploadFilesSubmit(unit.id, e)} className="space-y-3">
+                        <h5 className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
+                          <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>Upload PDF or Images for {formatUnitDisplayName(unit)}</span>
+                        </h5>
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Title (optional, defaults to file name)"
+                            value={uploadTitle}
+                            onChange={e => setUploadTitle(e.target.value)}
+                            className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Description (optional, e.g. Teacher lecture notes or formula sheet)"
+                            value={uploadDesc}
+                            onChange={e => setUploadDesc(e.target.value)}
+                            className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+                          />
+                          <div className="p-4 border-2 border-dashed border-paper-border dark:border-night-border rounded-xl text-center hover:border-emerald-500 transition-colors">
+                            <input
+                              type="file"
+                              id={`file-upload-${unit.id}`}
+                              multiple
+                              accept=".pdf,image/png,image/jpeg,image/jpg"
+                              onChange={e => {
+                                if (e.target.files) {
+                                  setSelectedFiles(Array.from(e.target.files));
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <label htmlFor={`file-upload-${unit.id}`} className="cursor-pointer flex flex-col items-center gap-1.5">
+                              <UploadCloud className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-xs font-bold text-paper-ink dark:text-night-text">
+                                Choose PDFs or Images (PNG, JPG)
+                              </span>
+                              <span className="text-[11px] text-paper-muted dark:text-night-muted">
+                                Multiple files supported • Saved in IndexedDB
+                              </span>
+                            </label>
+                            {selectedFiles.length > 0 && (
+                              <div className="mt-3 text-left space-y-1 max-h-24 overflow-y-auto">
+                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block">Selected ({selectedFiles.length}):</span>
+                                {selectedFiles.map((sf, idx) => (
+                                  <div key={idx} className="text-[11px] text-paper-body dark:text-night-text flex items-center justify-between bg-paper-card dark:bg-night-card p-1.5 rounded border border-paper-border dark:border-night-border">
+                                    <span className="truncate">{sf.name}</span>
+                                    <span className="text-paper-muted dark:text-night-muted ml-2 text-[10px]">{(sf.size / 1024).toFixed(1)} KB</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-1">
+                          <button type="button" onClick={() => setAddingResourceType(null)} className="px-3 py-1.5 rounded-lg border border-paper-border dark:border-night-border text-xs btn-tactile">Cancel</button>
+                          <button 
+                            type="submit" 
+                            disabled={selectedFiles.length === 0 || isUploading}
+                            className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            {isUploading ? 'Uploading...' : `Upload ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 )}
 
                 {isAdding && addingResourceType.type === 'task' && (
                   <form onSubmit={e => handleAddTaskSubmit(unit.id, unit.unit, e)} className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-amber-500/40 space-y-3 animate-fade-slide-up">
                     <h5 className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                      <span>Add Checklist Task for Unit {unit.unit}</span>
+                      <span>Add Checklist Task for {formatUnitDisplayName(unit)}</span>
                     </h5>
                     <div className="flex gap-2">
                       <input
@@ -648,7 +931,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                   </form>
                 )}
 
-                {/* Unit Content Grid (Videos, PDFs, Tasks, PYQs) */}
+                {/* Unit Content Grid (Tasks, Videos, Notes & Files, PYQs) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
                   {/* Left Column: Tasks & Videos */}
@@ -692,7 +975,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                               >
                                 <option value="" disabled>Move ▾</option>
                                 {subject.units.map(otherU => (
-                                  <option key={otherU.id} value={otherU.id}>Unit {otherU.unit}</option>
+                                  <option key={otherU.id} value={otherU.id}>{formatUnitDisplayName(otherU)}</option>
                                 ))}
                               </select>
 
@@ -705,7 +988,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
                         {uTasks.length === 0 && (
                           <div className="text-center py-4 text-xs text-paper-muted dark:text-night-muted italic">
-                            No tasks for Unit {unit.unit} yet. Click "+ Add Task" to create one.
+                            No tasks for {formatUnitDisplayName(unit)} yet. Click "+ Add Task" to create one.
                           </div>
                         )}
                       </div>
@@ -750,7 +1033,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                                   >
                                     <option value="" disabled>Move ▾</option>
                                     {subject.units.map(otherU => (
-                                      <option key={otherU.id} value={otherU.id}>Unit {otherU.unit}</option>
+                                      <option key={otherU.id} value={otherU.id}>{formatUnitDisplayName(otherU)}</option>
                                     ))}
                                   </select>
 
@@ -760,7 +1043,6 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                                 </div>
                               </div>
 
-                              {/* Embedded player if active */}
                               {isPlaying && (
                                 <div className="aspect-video w-full rounded-xl overflow-hidden bg-black mt-2">
                                   <iframe
@@ -773,7 +1055,6 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                                 </div>
                               )}
 
-                              {/* Persistent Notes Box */}
                               <div className="pt-2 border-t border-paper-border dark:border-night-border">
                                 <textarea
                                   rows={2}
@@ -789,7 +1070,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
                         {uVideos.length === 0 && (
                           <div className="text-center py-4 text-xs text-paper-muted dark:text-night-muted italic">
-                            No videos added for Unit {unit.unit} yet. Click "+ Add Video" above.
+                            No videos added for {formatUnitDisplayName(unit)} yet. Click "+ Add Video" above.
                           </div>
                         )}
                       </div>
@@ -797,20 +1078,112 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
                   </div>
 
-                  {/* Right Column: PDFs/Notes & PYQs */}
+                  {/* Right Column: Notes & Files (IndexedDB) & PYQs */}
                   <div className="space-y-6">
                     
-                    {/* Unit PDFs & Study Notes */}
+                    {/* Unit Notes & Files list */}
                     <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold uppercase tracking-wider text-paper-ink dark:text-night-text flex items-center gap-1.5">
                           <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                          <span>PDFs & Notes ({uPdfs.length})</span>
+                          <span>Notes & Files ({totalNotesAndFilesCount})</span>
+                        </span>
+                        <span className="text-[10px] text-paper-muted dark:text-night-muted">
+                          Stored in IndexedDB
                         </span>
                       </div>
 
                       <div className="space-y-2.5">
-                        {uPdfs.map(pdf => (
+                        {/* 1. IndexedDB Files (PDFs, Images, Notes) */}
+                        {unitDbFiles.map(file => {
+                          const isPdf = file.fileType === 'pdf' || file.name.toLowerCase().endsWith('.pdf');
+                          const isImg = file.fileType === 'image' || file.dataUrl?.startsWith('data:image/');
+
+                          return (
+                            <div key={file.id} className="p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex flex-col justify-between gap-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2.5">
+                                  <div className="p-2 rounded-lg bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border shrink-0 mt-0.5">
+                                    {isPdf ? (
+                                      <FileText className="w-4 h-4 text-rose-500" />
+                                    ) : isImg ? (
+                                      <Image className="w-4 h-4 text-blue-500" />
+                                    ) : (
+                                      <FileEdit className="w-4 h-4 text-emerald-500" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h6 className="text-xs font-bold text-paper-ink dark:text-night-text line-clamp-1">{file.name}</h6>
+                                    <div className="flex items-center gap-2 text-[10px] text-paper-muted dark:text-night-muted mt-0.5">
+                                      <span>{file.date || new Date(file.createdAt).toLocaleDateString()}</span>
+                                      <span>•</span>
+                                      <span>{(file.size / 1024).toFixed(1)} KB</span>
+                                      {file.description && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="line-clamp-1 italic">{file.description}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {/* Open / Preview Button */}
+                                  <button
+                                    onClick={() => {
+                                      if (isPdf) {
+                                        setPreviewPdfFile(file);
+                                      } else if (isImg) {
+                                        setPreviewImageFile(file);
+                                      } else {
+                                        setPreviewNoteFile(file);
+                                      }
+                                    }}
+                                    className="px-2 py-1 rounded-lg bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-[11px] font-semibold text-paper-ink dark:text-night-text hover:border-emerald-500 btn-tactile flex items-center gap-1"
+                                    title="Open and preview in app"
+                                  >
+                                    <Eye className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span>Preview</span>
+                                  </button>
+
+                                  {/* Download Button */}
+                                  <button
+                                    onClick={() => handleDownloadFile(file)}
+                                    className="p-1.5 rounded-lg bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
+                                    title="Download File"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Rename Button */}
+                                  <button
+                                    onClick={() => {
+                                      setRenamingFile(file);
+                                      setRenameValue(file.name);
+                                    }}
+                                    className="p-1.5 rounded-lg bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
+                                    title="Rename File"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Delete Button */}
+                                  <button 
+                                    onClick={() => setFileToDelete(file)} 
+                                    className="p-1.5 rounded-lg text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 btn-tactile"
+                                    title="Delete File"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* 2. Legacy PDFs / Notes if present */}
+                        {filteredLegacyPdfs.map(pdf => (
                           <div key={pdf.id} className="p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex flex-col justify-between gap-2">
                             <div className="flex items-start justify-between gap-2">
                               <div>
@@ -827,18 +1200,11 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                                   <span>Read</span>
                                 </button>
 
-                                <select
-                                  onChange={e => e.target.value && handleMove('pdf', pdf.id, e.target.value)}
-                                  defaultValue=""
-                                  className="px-1.5 py-1 rounded text-[10px] bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted outline-none"
+                                <button 
+                                  onClick={() => setLegacyPdfToDelete(pdf.id)} 
+                                  className="p-1 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400"
+                                  title="Delete Note"
                                 >
-                                  <option value="" disabled>Move ▾</option>
-                                  {subject.units.map(otherU => (
-                                    <option key={otherU.id} value={otherU.id}>Unit {otherU.unit}</option>
-                                  ))}
-                                </select>
-
-                                <button onClick={() => onDeletePdf(pdf.id)} className="p-1 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -850,9 +1216,9 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                           </div>
                         ))}
 
-                        {uPdfs.length === 0 && (
-                          <div className="text-center py-4 text-xs text-paper-muted dark:text-night-muted italic">
-                            No study notes or PDFs for Unit {unit.unit} yet.
+                        {totalNotesAndFilesCount === 0 && (
+                          <div className="text-center py-5 text-xs text-paper-muted dark:text-night-muted italic">
+                            No notes or files yet. Click "+ Add Note / PDF" to write notes or upload PDFs and images.
                           </div>
                         )}
                       </div>
@@ -862,19 +1228,13 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
                     <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold uppercase tracking-wider text-paper-ink dark:text-night-text flex items-center gap-1.5">
-                          <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                          <span>Unit Past Questions ({uQuestions.length})</span>
+                          <Flame className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <span>Unit Exam Questions ({uQuestions.length})</span>
                         </span>
-                        <button
-                          onClick={() => setIsAddPyqOpen(true)}
-                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline btn-tactile"
-                        >
-                          + Add Question
-                        </button>
                       </div>
 
                       <div className="space-y-3">
-                        {uQuestions.map(q => (
+                        {uQuestions.map((q) => (
                           <QuestionCard
                             key={q.id}
                             question={q}
@@ -886,7 +1246,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
                         {uQuestions.length === 0 && (
                           <div className="text-center py-4 text-xs text-paper-muted dark:text-night-muted italic">
-                            No past exam questions added for Unit {unit.unit} yet.
+                            No questions logged for {formatUnitDisplayName(unit)} yet. Click "+ Add PYQ" above.
                           </div>
                         )}
                       </div>
@@ -902,7 +1262,132 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
 
       </div>
 
-      {/* Full Content Reader Modal for Notes/PDF */}
+      {/* PDF Viewer Modal */}
+      <PdfViewerModal
+        file={previewPdfFile}
+        onClose={() => setPreviewPdfFile(null)}
+      />
+
+      {/* Image Viewer Modal with Zoom */}
+      <ImageViewerModal
+        file={previewImageFile}
+        onClose={() => setPreviewImageFile(null)}
+      />
+
+      {/* Note Text Reader Modal */}
+      {previewNoteFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-slide-up">
+          <div className="w-full max-w-2xl p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative my-8 max-h-[85vh] flex flex-col">
+            <button
+              onClick={() => setPreviewNoteFile(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-4">
+              <FileEdit className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <h3 className="text-base font-bold text-paper-ink dark:text-night-text">{previewNoteFile.name}</h3>
+                <span className="text-xs text-paper-muted dark:text-night-muted">
+                  Saved Note • {previewNoteFile.date || 'Today'} • {(previewNoteFile.size / 1024).toFixed(1)} KB
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+              <div className="p-4 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-body dark:text-night-text leading-relaxed font-mono whitespace-pre-wrap">
+                {previewNoteFile.dataUrl?.startsWith('data:text/plain;charset=utf-8,')
+                  ? decodeURIComponent(previewNoteFile.dataUrl.replace('data:text/plain;charset=utf-8,', ''))
+                  : (previewNoteFile.description || 'Note content empty')}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-paper-border dark:border-night-border flex items-center justify-between">
+              <button
+                onClick={() => {
+                  const content = previewNoteFile.dataUrl?.startsWith('data:text/plain;charset=utf-8,')
+                    ? decodeURIComponent(previewNoteFile.dataUrl.replace('data:text/plain;charset=utf-8,', ''))
+                    : (previewNoteFile.description || '');
+                  navigator.clipboard.writeText(content);
+                  onShowToast('Note copied to clipboard!', 'success');
+                }}
+                className="px-3 py-1.5 rounded-xl border border-paper-border dark:border-night-border text-xs font-semibold text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile flex items-center gap-1.5"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Text</span>
+              </button>
+
+              <button
+                onClick={() => setPreviewNoteFile(null)}
+                className="px-4 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text btn-tactile"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename File Modal */}
+      {renamingFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+          <form onSubmit={handleRenameFileSubmit} className="w-full max-w-sm p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-xl space-y-4">
+            <div className="flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="text-base font-bold">Rename File</h3>
+            </div>
+            <input
+              type="text"
+              required
+              value={renameValue}
+              onChange={e => setRenameValue(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500"
+              placeholder="Enter new file name"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRenamingFile(null)}
+                className="px-3.5 py-1.5 rounded-xl border border-paper-border dark:border-night-border text-xs btn-tactile text-paper-body dark:text-night-text"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile shadow-sm"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Delete File Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!fileToDelete}
+        title="Delete File / Note?"
+        message={`Are you sure you want to delete "${fileToDelete?.name}"? This file will be permanently removed from IndexedDB.`}
+        confirmLabel="Delete"
+        isDanger={true}
+        onCancel={() => setFileToDelete(null)}
+        onConfirm={handleDeleteFileConfirm}
+      />
+
+      {/* Delete Legacy Note Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!legacyPdfToDelete}
+        title="Delete Study Note?"
+        message="Are you sure you want to delete this study note? This action cannot be undone."
+        confirmLabel="Delete"
+        isDanger={true}
+        onCancel={() => setLegacyPdfToDelete(null)}
+        onConfirm={handleDeleteLegacyPdfConfirm}
+      />
+
+      {/* Full Content Reader Modal for Legacy Notes */}
       {activePdfModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fade-slide-up">
           <div className="w-full max-w-2xl p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative my-8 max-h-[85vh] flex flex-col">
@@ -972,37 +1457,20 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
       />
 
       {/* Delete Subject Confirmation Modal */}
-      {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
-          <div className="w-full max-w-sm p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-xl">
-            <div className="flex items-center gap-3 mb-3 text-rose-600 dark:text-rose-400">
-              <AlertCircle className="w-6 h-6" />
-              <h3 className="text-base font-bold">Delete Subject?</h3>
-            </div>
-            <p className="text-xs text-paper-muted dark:text-night-muted mb-5 leading-relaxed">
-              Are you sure you want to delete <strong className="text-paper-ink dark:text-night-text">{subject.name}</strong>? All associated study tasks, questions, and videos will be removed.
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => setIsDeleteConfirmOpen(false)}
-                className="flex-1 py-2 rounded-xl border border-paper-border dark:border-night-border text-xs font-semibold text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  onDeleteSubject(subject.id);
-                  onBackToOverview();
-                  onShowToast(`Removed ${subject.name} from subjects.`, 'info');
-                }}
-                className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 btn-tactile"
-              >
-                Delete Subject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        title="Delete Subject?"
+        message={`Are you sure you want to delete ${subject.name}? All associated study tasks, questions, notes, and videos will be removed.`}
+        confirmLabel="Delete Subject"
+        isDanger={true}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={() => {
+          setIsDeleteConfirmOpen(false);
+          onDeleteSubject(subject.id);
+          onBackToOverview();
+          onShowToast(`Removed ${subject.name} from subjects.`, 'info');
+        }}
+      />
 
     </div>
   );

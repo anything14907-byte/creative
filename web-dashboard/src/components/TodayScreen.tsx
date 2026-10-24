@@ -17,7 +17,10 @@ import {
   Timer, 
   Brain,
   Plus,
-  Edit3
+  Edit3,
+  Database,
+  Download,
+  X
 } from 'lucide-react';
 
 interface TodayScreenProps {
@@ -33,6 +36,7 @@ interface TodayScreenProps {
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
   onOpenAddSubject?: () => void;
   onEditSubject?: (subject: SubjectMeta) => void;
+  onOpenBackup?: () => void;
 }
 
 export const TodayScreen: React.FC<TodayScreenProps> = ({
@@ -47,8 +51,14 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   onNavigateView,
   onShowToast,
   onOpenAddSubject,
-  onEditSubject
+  onEditSubject,
+  onOpenBackup
 }) => {
+  const [dismissedBackupReminder, setDismissedBackupReminder] = React.useState(false);
+  const lastBackupTs = Number(localStorage.getItem('pyq_last_backup_export_ts') || 0);
+  const daysSinceBackup = lastBackupTs > 0 ? (Date.now() - lastBackupTs) / (1000 * 60 * 60 * 24) : 999;
+  const showBackupReminder = !dismissedBackupReminder && daysSinceBackup >= 7;
+
   const sortedSubjects = React.useMemo(() => sortSubjectsByExamUrgency(subjects), [subjects]);
   const nextSubject = sortedSubjects.find(s => {
     const u = getExamUrgencyColor(s.examDate);
@@ -73,6 +83,44 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
 
   return (
     <div className="space-y-8 animate-fade-slide-up pb-16">
+
+      {/* 0. BACKUP REMINDER BANNER (Requirement 13: 7 days without export) */}
+      {showBackupReminder && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-paper-ink dark:text-night-text flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-slide-up">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                Backup Reminder {lastBackupTs > 0 ? `(Last exported ${Math.floor(daysSinceBackup)} days ago)` : '(No backup exported yet)'}
+              </div>
+              <div className="text-[11px] text-paper-muted dark:text-night-muted">
+                Keep your study notes, syllabus units, and revision files safe with a local single-file backup.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            {onOpenBackup && (
+              <button
+                onClick={onOpenBackup}
+                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold btn-tactile shadow-sm flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Backup</span>
+              </button>
+            )}
+            <button
+              onClick={() => setDismissedBackupReminder(true)}
+              className="p-1.5 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text"
+              title="Dismiss reminder"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* 1. NEXT EXAM COUNTDOWN HERO BANNER */}
       {nextSubject && nextUrgency && (

@@ -22,6 +22,8 @@ import {
   Search,
   ExternalLink
 } from 'lucide-react';
+import { ConfirmModal } from './ConfirmModal';
+import { formatUnitDisplayName } from '../utils/storageService';
 
 export type MainNavView = 
   | 'today' 
@@ -80,6 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const [examToDelete, setExamToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const activeExam = examSessions.find(e => e.id === activeExamId) || examSessions[0] || { id: 'mid-sem', name: 'Mid Sem' };
 
@@ -140,9 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       alert('You must keep at least one exam.');
       return;
     }
-    if (window.confirm(`Delete "${name}" and all its subjects, units and files? This cannot be undone.`)) {
-      onDeleteExam(examId);
-    }
+    setExamToDelete({ id: examId, name });
   };
 
   const handleTopicClick = (topic: SyllabusTopic) => {
@@ -389,7 +390,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {matchedTopics.map(topic => {
                         const sub = subjects.find(s => s.id === topic.subjectId);
                         const unit = sub?.units?.find(u => u.id === topic.unitId);
-                        const unitLabel = unit?.title || (unit?.unitNumber ? `Unit ${unit.unitNumber}` : 'Unit');
+                        const unitLabel = unit ? formatUnitDisplayName(unit) : (topic.unitNumber ? `Unit ${topic.unitNumber}` : 'Unit');
 
                         return (
                           <div
@@ -555,7 +556,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {matchedTopics.map(topic => {
                         const sub = subjects.find(s => s.id === topic.subjectId);
                         const unit = sub?.units?.find(u => u.id === topic.unitId);
-                        const unitLabel = unit?.title || (unit?.unitNumber ? `Unit ${unit.unitNumber}` : 'Unit');
+                        const unitLabel = unit ? formatUnitDisplayName(unit) : (topic.unitNumber ? `Unit ${topic.unitNumber}` : 'Unit');
 
                         return (
                           <div
@@ -633,6 +634,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
       </div>
+
+      {/* Delete Exam Confirmation Modal (Requirement 12) */}
+      <ConfirmModal
+        isOpen={!!examToDelete}
+        title="Delete Exam?"
+        message={`Are you sure you want to delete "${examToDelete?.name}"? All its subjects, units, topics, notes, and files will be removed. This action cannot be undone.`}
+        confirmLabel="Delete Exam"
+        isDanger={true}
+        onCancel={() => setExamToDelete(null)}
+        onConfirm={() => {
+          if (examToDelete) {
+            onDeleteExam(examToDelete.id);
+            setExamToDelete(null);
+          }
+        }}
+      />
     </header>
   );
 };

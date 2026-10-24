@@ -220,13 +220,13 @@ function DashboardContent() {
   // ==========================================
   // UNIT HANDLERS (Requirement 5: Custom unit title/number, rename, delete, reorder)
   // ==========================================
-  const handleAddUnit = (subjectId: string, unitTitle: string) => {
-    const updated = storageService.addUnit(subjectId, unitTitle, activeExamId);
+  const handleAddUnit = (subjectId: string, unitLabel: string, unitTitle?: string) => {
+    const updated = storageService.addUnit(subjectId, unitLabel, unitTitle, activeExamId);
     setSubjects(updated);
   };
 
-  const handleRenameUnit = (subjectId: string, unitId: string, newTitle: string) => {
-    const updated = storageService.renameUnit(subjectId, unitId, newTitle, activeExamId);
+  const handleRenameUnit = (subjectId: string, unitId: string, newLabel: string, newTitle?: string) => {
+    const updated = storageService.renameUnit(subjectId, unitId, newLabel, newTitle, activeExamId);
     setSubjects(updated);
   };
 
@@ -276,6 +276,17 @@ function DashboardContent() {
     setTopics(updated);
   };
 
+  const handleUpdateTopicTitle = (topicId: string, newTitle: string) => {
+    const updated = storageService.updateTopicTitle(topicId, newTitle, activeExamId);
+    setTopics(updated);
+    showToast('Topic title updated!', 'success');
+  };
+
+  const handleReorderTopics = (reorderedTopics: SyllabusTopic[]) => {
+    const updated = storageService.reorderTopics(reorderedTopics, activeExamId);
+    setTopics(updated);
+  };
+
   // ==========================================
   // QUESTION HANDLERS
   // ==========================================
@@ -312,6 +323,12 @@ function DashboardContent() {
     showToast(`Logged ${minutes} min focus session for ${subName}! 🔥`, 'success');
   };
 
+  const handleResetPomodoro = () => {
+    storageService.resetPomodoroLogs(activeExamId);
+    setPomodoroLogs([]);
+    showToast('Focus timer data reset to 0 mins.', 'info');
+  };
+
   // ==========================================
   // FLASHCARD HANDLERS
   // ==========================================
@@ -319,6 +336,12 @@ function DashboardContent() {
     const updated = storageService.addFlashcard(card, activeExamId);
     setFlashcards(updated);
     showToast('Flashcard saved! 🧠', 'success');
+  };
+
+  const handleUpdateFlashcard = (card: Flashcard) => {
+    const updated = storageService.updateFlashcard(card, activeExamId);
+    setFlashcards(updated);
+    showToast('Flashcard updated!', 'success');
   };
 
   const handleReviewCard = (cardId: string, rating: 'hard' | 'good' | 'easy') => {
@@ -460,6 +483,7 @@ function DashboardContent() {
             onShowToast={showToast}
             onOpenAddSubject={() => setIsAddSubjectOpen(true)}
             onEditSubject={(sub) => setEditingSubject(sub)}
+            onOpenBackup={() => setIsBackupModalOpen(true)}
           />
         )}
 
@@ -476,6 +500,8 @@ function DashboardContent() {
             onSetTopicMastery={handleSetTopicMastery}
             onAddTopic={handleAddTopic}
             onDeleteTopic={handleDeleteTopic}
+            onUpdateTopicTitle={handleUpdateTopicTitle}
+            onReorderTopics={handleReorderTopics}
             onAddTopicVideo={handleAddTopicVideo}
             onRemoveTopicVideo={handleRemoveTopicVideo}
             onAddUnit={handleAddUnit}
@@ -495,6 +521,7 @@ function DashboardContent() {
             activeSubjectId={activeSubjectId}
             pomodoroLogs={pomodoroLogs}
             onLogSession={handleLogPomodoro}
+            onResetTimerData={handleResetPomodoro}
             onShowToast={showToast}
           />
         )}
@@ -506,6 +533,7 @@ function DashboardContent() {
             activeSubjectId={activeSubjectId}
             flashcards={flashcards}
             onAddFlashcard={handleAddFlashcard}
+            onUpdateFlashcard={handleUpdateFlashcard}
             onReviewCard={handleReviewCard}
             onDeleteFlashcard={handleDeleteFlashcard}
             onShowToast={showToast}
