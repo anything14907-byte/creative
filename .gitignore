@@ -4,8 +4,15 @@ node_modules/
 .pnp.js
 
 # Build output
+web-dashboard/dist/
 dist/
 build/
+
+# Allow root GitHub Pages files to be tracked
+!/index.html
+!/404.html
+!/.nojekyll
+!/assets/**
 
 # Logs
 npm-debug.log*

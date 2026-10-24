@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   Laptop, 
   ChevronDown,
-  BookOpen
+  BookOpen,
+  Chrome
 } from 'lucide-react';
 import { SubjectMeta, SubjectId, PYQQuestion } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -24,6 +25,7 @@ interface NavbarProps {
   onImportQuestions: (imported: PYQQuestion[]) => void;
   onOpenPdfParser: () => void;
   onOpenCheatSheet: () => void;
+  onOpenExtensionInstaller: () => void;
   isExtensionSynced: boolean;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
@@ -36,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onImportQuestions,
   onOpenPdfParser,
   onOpenCheatSheet,
+  onOpenExtensionInstaller,
   isExtensionSynced,
   onShowToast
 }) => {
@@ -131,10 +134,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Action Buttons & Theme Toggle */}
         <div className="flex items-center gap-2 sm:gap-3">
           
+          {/* Get Browser Extension Button */}
+          <button
+            onClick={onOpenExtensionInstaller}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-sm shadow-indigo-500/25 transition-all active:scale-95"
+          >
+            <Chrome className="w-4 h-4" />
+            <span className="hidden sm:inline">Get Extension</span>
+          </button>
+
           {/* Extension Status Indicator */}
           <div 
-            title={isExtensionSynced ? 'Manifest V3 Extension Connected & Syncing' : 'Extension ready. Install from /extension folder'}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-solar-border dark:border-obsidian-border bg-slate-50 dark:bg-slate-900 text-solar-muted dark:text-obsidian-muted"
+            title={isExtensionSynced ? 'Manifest V3 Extension Connected & Syncing' : 'Extension ready. Click Get Extension to install'}
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-solar-border dark:border-obsidian-border bg-slate-50 dark:bg-slate-900 text-solar-muted dark:text-obsidian-muted cursor-pointer"
+            onClick={onOpenExtensionInstaller}
           >
             <span className={`w-2 h-2 rounded-full ${isExtensionSynced ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-500'}`} />
             <span>{isExtensionSynced ? 'Extension Synced' : 'MV3 Extension Ready'}</span>

@@ -6,6 +6,7 @@ import { QuestionBankExplorer } from './components/QuestionBankExplorer';
 import { RubricGraderSandbox } from './components/RubricGraderSandbox';
 import { PdfParserModal } from './components/PdfParserModal';
 import { CheatSheetModal } from './components/CheatSheetModal';
+import { ExtensionInstallerModal } from './components/ExtensionInstallerModal';
 import { Toast, ToastMessage } from './components/Toast';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { INITIAL_SUBJECTS, INITIAL_QUESTIONS } from './data/pyqData';
@@ -49,6 +50,7 @@ function DashboardContent() {
   // Modals state
   const [isPdfParserOpen, setIsPdfParserOpen] = useState(false);
   const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
+  const [isExtensionInstallerOpen, setIsExtensionInstallerOpen] = useState(false);
   const [isExtensionSynced, setIsExtensionSynced] = useState(false);
 
   // Toast notifications
@@ -191,6 +193,7 @@ function DashboardContent() {
         onImportQuestions={handleImportQuestions}
         onOpenPdfParser={() => setIsPdfParserOpen(true)}
         onOpenCheatSheet={() => setIsCheatSheetOpen(true)}
+        onOpenExtensionInstaller={() => setIsExtensionInstallerOpen(true)}
         isExtensionSynced={isExtensionSynced}
         onShowToast={showToast}
       />
@@ -306,6 +309,14 @@ function DashboardContent() {
         onClose={() => setIsCheatSheetOpen(false)}
         questions={questions}
         subject={activeSubject}
+      />
+
+      {/* Browser Extension Installer & Simulator Modal */}
+      <ExtensionInstallerModal
+        isOpen={isExtensionInstallerOpen}
+        onClose={() => setIsExtensionInstallerOpen(false)}
+        questions={questions}
+        onShowToast={showToast}
       />
 
       {/* Global Toast Alerts */}
