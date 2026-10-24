@@ -70,7 +70,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
       onMouseUp={handleMouseUp}
     >
       {/* Top Controls Bar */}
-      <div className="h-16 px-4 sm:px-6 bg-[#06090E]/90 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
+      <div className="h-16 px-4 sm:px-6 bg-[#0F172A]/95 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
         
         {/* Left: Title & Status */}
         <div className="flex items-center gap-3 overflow-hidden">
@@ -195,7 +195,7 @@ export const ImageViewerModal: React.FC<ImageViewerModalProps> = ({
         />
 
         {/* Mobile Zoom Floating Bar */}
-        <div className="sm:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-black/80 backdrop-blur-md rounded-2xl p-1.5 border border-white/20 shadow-2xl">
+        <div className="sm:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center bg-[#1E293B]/90 backdrop-blur-md rounded-2xl p-1.5 border border-white/20 shadow-2xl">
           <button
             onClick={handleZoomOut}
             className="p-2 text-white/80 active:text-white"

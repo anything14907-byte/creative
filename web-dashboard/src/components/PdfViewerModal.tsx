@@ -46,7 +46,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md animate-fade-in">
       
       {/* Header Bar */}
-      <div className="h-16 px-4 sm:px-6 bg-[#06090E]/95 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
+      <div className="h-16 px-4 sm:px-6 bg-[#0F172A]/95 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
         
         {/* Left: Title & Meta */}
         <div className="flex items-center gap-3 overflow-hidden">
@@ -131,7 +131,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       </div>
 
       {/* Main PDF Embed Container */}
-      <div className="flex-1 w-full h-full p-2 sm:p-4 bg-[#0A0F24] flex items-center justify-center">
+      <div className="flex-1 w-full h-full p-2 sm:p-4 bg-[#0F172A] flex items-center justify-center">
         <iframe
           src={file.dataUrl}
           title={file.name}

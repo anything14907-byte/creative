@@ -8,39 +8,92 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Eye-Comfort Light Mode ("Warm Paper & Deep Ink")
+        // LIGHT MODE DESIGN SYSTEM: Warm Soft Eggshell & Oxford Blue
         paper: {
-          bg: '#F2EFE9',         // Warm Alabaster/Paper (NEVER pure blinding white)
-          card: '#FFFFFF',       // Crisp Ivory White
-          cardElevated: '#FAF8F5',
-          border: '#CBD5E1',     // Solid visible border
-          borderHover: '#94A3B8',
-          ink: '#0F172A',        // Deep Charcoal Ink for headings
-          body: '#1E293B',       // Dark Slate body text
-          muted: '#475569',      // Muted Slate secondary labels
+          bg: '#F5F1E8',                   // Base background (soft eggshell / warm beige, never pure white)
+          card: '#FBF9F4',                 // Cards, panels, modals, navbar
+          cardElevated: '#EDE8DC',         // Hover or selected card
+          input: '#E7E3D9',                // Inputs, tags, empty states
+          border: 'rgba(9, 34, 64, 0.12)', // Thin border
+          borderHover: 'rgba(9, 34, 64, 0.24)',
+          ink: '#092240',                  // Headings & titles: Oxford Blue (never pure black)
+          body: '#333333',                 // Body text: Jet (>= 4.5:1 contrast)
+          muted: '#5B6573',                // Secondary text: captions, dates, hints
+          accent: '#3F7D5F',               // Main accent (muted green)
+          accentHover: '#356B51',          // Accent hover
+          link: '#3B6A94',                 // Links & secondary highlights
+          btnBg: '#3F7D5F',                // Buttons background
+          btnText: '#F8F6F0',              // Buttons text
+          btnHover: '#356B51',             // Buttons hover
         },
-        // Sleek Futuristic Night Mode ("Deep Ocean & Emerald Gold")
+        // DARK MODE DESIGN SYSTEM: Deep Navy & Soft Blue
         night: {
-          bg: '#0B131E',         // Deep Midnight Teal-Slate
-          card: '#131F2E',       // Elevated Slate Surface
-          cardElevated: '#18273A',
-          border: '#23354D',     // Crisp dark border
-          borderHover: '#3B82F6',
-          text: '#F8FAFC',       // Crisp Off-White
-          muted: '#CBD5E1',      // Soft Silver
-          emerald: '#10B981',    // Cyber Emerald
-          cyan: '#06B6D4',       // Ocean Cyan
-          amber: '#F59E0B',      // Solar Amber
-          red: '#EF4444',        // Urgent Crimson
+          bg: '#0F172A',                   // Base background (deep navy, never pure black)
+          card: '#1E293B',                 // Cards, panels, modals, navbar (hierarchy from lightness)
+          cardElevated: '#263449',         // Hover or selected card
+          input: '#172033',                // Inputs background
+          border: 'rgba(255, 255, 255, 0.10)', // Borders and dividers
+          borderHover: 'rgba(255, 255, 255, 0.20)',
+          text: '#F1F5F9',                 // Primary text: off-white (never pure white)
+          body: '#F1F5F9',                 // Body text
+          muted: '#94A3B8',                // Secondary text
+          accent: '#60A5FA',               // Main accent: soft blue (no neon)
+          accentHover: '#93C5FD',
+          link: '#60A5FA',                 // Links
+          btnBg: '#60A5FA',                // Button background
+          btnText: '#0F172A',              // Button dark text for high contrast (8.5:1)
+          btnHover: '#93C5FD',             // Slightly brighter hover
+          emerald: '#4ADE80',              // Status green (done/strong)
+          amber: '#FBBF24',                // Status amber (okay)
+          red: '#F87171',                  // Status coral (weak)
+          cyan: '#60A5FA',                 // Replaced neon cyan with soft blue
+        },
+        // Status Palettes (Overriding defaults so all components align with exact tokens)
+        emerald: {
+          50: 'rgba(63, 125, 95, 0.08)',
+          100: 'rgba(63, 125, 95, 0.15)',
+          400: 'var(--status-done)',
+          500: 'var(--accent-main)',
+          600: 'var(--btn-bg)',
+          700: 'var(--btn-hover)',
+          800: '#2A5540',
+        },
+        amber: {
+          50: 'rgba(184, 137, 47, 0.08)',
+          100: 'rgba(184, 137, 47, 0.15)',
+          400: 'var(--status-okay)',
+          500: 'var(--status-okay)',
+          600: 'var(--status-okay)',
+          700: '#946B1E',
+        },
+        rose: {
+          50: 'rgba(178, 90, 78, 0.08)',
+          100: 'rgba(178, 90, 78, 0.15)',
+          400: 'var(--status-weak)',
+          500: 'var(--status-weak)',
+          600: 'var(--status-weak)',
+          700: '#8F3D32',
+        },
+        red: {
+          50: 'rgba(178, 90, 78, 0.08)',
+          100: 'rgba(178, 90, 78, 0.15)',
+          400: 'var(--status-weak)',
+          500: 'var(--status-weak)',
+          600: 'var(--status-weak)',
+          700: '#8F3D32',
+        },
+        cyan: {
+          50: 'rgba(59, 106, 148, 0.08)',
+          100: 'rgba(59, 106, 148, 0.15)',
+          400: 'var(--accent-link)',
+          500: 'var(--accent-link)',
+          600: 'var(--accent-link)',
+          700: '#2A4E6E',
         }
       },
       boxShadow: {
-        'paper-card': '0 4px 12px rgba(15, 23, 42, 0.06)',
-        'night-card': '0 8px 24px rgba(0, 0, 0, 0.35)',
-        'glow-emerald': '0 0 20px -3px rgba(16, 185, 129, 0.35)',
-        'glow-cyan': '0 0 20px -3px rgba(6, 182, 212, 0.35)',
-        'glow-amber': '0 0 20px -3px rgba(245, 158, 11, 0.35)',
-        'glow-red': '0 0 20px -3px rgba(239, 68, 68, 0.4)',
+        'paper-card': '0 2px 8px rgba(9, 34, 64, 0.04)',
+        'night-card': '0 4px 16px rgba(0, 0, 0, 0.25)',
       }
     },
   },

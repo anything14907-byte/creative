@@ -18,18 +18,18 @@ import {
 } from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
 
-// 10 Rich Card Accent Theme Colors
+// 10 Balanced Card Accent Theme Colors (Muted, Non-Neon)
 export const ACCENT_PALETTE = [
-  { name: 'Ocean Cyan', hex: '#06B6D4' },
-  { name: 'Royal Sapphire', hex: '#3B82F6' },
-  { name: 'Emerald Mint', hex: '#10B981' },
-  { name: 'Solar Gold', hex: '#EAB308' },
-  { name: 'Sunset Orange', hex: '#F97316' },
-  { name: 'Crimson Rose', hex: '#F43F5E' },
-  { name: 'Neon Lime', hex: '#84CC16' },
-  { name: 'Warm Copper', hex: '#D97706' },
-  { name: 'Arctic Teal', hex: '#14B8A6' },
-  { name: 'Titanium Silver', hex: '#64748B' },
+  { name: 'Muted Slate Blue', hex: '#3B6A94' },
+  { name: 'Forest Sage', hex: '#3F7D5F' },
+  { name: 'Deep Teal', hex: '#2A7B88' },
+  { name: 'Warm Ochre', hex: '#B8892F' },
+  { name: 'Terracotta', hex: '#B25A4E' },
+  { name: 'Steel Blue', hex: '#4B7CB0' },
+  { name: 'Muted Pine', hex: '#4F8F6A' },
+  { name: 'Burnt Amber', hex: '#A66A2C' },
+  { name: 'Soft Charcoal', hex: '#5B6573' },
+  { name: 'Muted Bronze', hex: '#8C6D3B' },
 ];
 
 // Helper to format ISO date string for datetime-local: YYYY-MM-DDTHH:mm
@@ -461,7 +461,7 @@ export function getExamUrgencyColor(examDateString: string): ExamUrgency {
       seconds: 0,
       fractionalDays: 0,
       hue: 0,
-      hslColor: 'hsl(0, 85%, 45%)', // Urgent Crimson
+      hslColor: '#B25A4E', // Muted Terracotta (Weak/Urgent)
       isUrgent: true,
       statusLabel: 'Completed / Update Date',
       formattedCountdown: '0d : 0h : 0m : 0s',
@@ -493,7 +493,7 @@ export function getExamUrgencyColor(examDateString: string): ExamUrgency {
     isUrgent = true;
   }
 
-  const hslColor = `hsl(${hue}, 85%, 45%)`;
+  const hslColor = fractionalDays >= 15 ? '#4F8F6A' : fractionalDays > 5 ? '#B8892F' : '#B25A4E';
   const formattedCountdown = `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
 
   return {

@@ -2,6 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================================
+   CSS VARIABLES: THEME SPECIFICATION
+   ========================================================================= */
+:root, .light {
+  /* LIGHT MODE */
+  /* Backgrounds and surfaces */
+  --bg-base: #F5F1E8;             /* soft eggshell / warm beige (never pure white) */
+  --surface-card: #FBF9F4;        /* cards, panels, modals, navbar */
+  --surface-hover: #EDE8DC;       /* hover or selected card */
+  --surface-input: #E7E3D9;       /* inputs, tags, empty states */
+  --border-color: rgba(9, 34, 64, 0.12); /* thin border */
+  --border-hover: rgba(9, 34, 64, 0.24);
+
+  /* Text (>= 4.5:1 contrast, never harsh) */
+  --text-primary: #092240;        /* headings and titles: Oxford Blue (never pure black) */
+  --text-body: #333333;           /* body text: Jet */
+  --text-secondary: #5B6573;      /* captions, dates, hints */
+
+  /* Accents & Buttons */
+  --accent-main: #3F7D5F;         /* muted green: active tab, progress bars, highlights */
+  --accent-hover: #356B51;
+  --btn-bg: #3F7D5F;              /* Add Subject, Save and similar */
+  --btn-text: #F8F6F0;
+  --btn-hover: #356B51;
+
+  /* Links & Secondary Highlights */
+  --accent-link: #3B6A94;         /* links and secondary highlights */
+  --focus-outline: #3B6A94;       /* focus outline: 2px #3B6A94 */
+
+  /* Status Colors */
+  --status-done: #4F8F6A;         /* done / strong */
+  --status-okay: #B8892F;         /* okay */
+  --status-weak: #B25A4E;         /* weak */
+}
+
+.dark {
+  /* DARK MODE */
+  /* Backgrounds and surfaces */
+  --bg-base: #0F172A;             /* deep navy (never pure black) */
+  --surface-card: #1E293B;        /* lighter than base, hierarchy from lightness */
+  --surface-hover: #263449;       /* hover or selected card */
+  --surface-input: #172033;       /* inputs background */
+  --border-color: rgba(255, 255, 255, 0.10); /* borders and dividers */
+  --border-hover: rgba(255, 255, 255, 0.20);
+
+  /* Text (>= 4.5:1 contrast, never harsh) */
+  --text-primary: #F1F5F9;        /* primary text: off-white (never pure white) */
+  --text-body: #F1F5F9;           /* body text: off-white */
+  --text-secondary: #94A3B8;      /* secondary text */
+
+  /* Accents & Buttons */
+  --accent-main: #60A5FA;         /* main accent: soft blue (no neon) */
+  --accent-hover: #93C5FD;
+  --btn-bg: #60A5FA;              /* slightly lighter shade of accent */
+  --btn-text: #0F172A;            /* dark text for high contrast on soft blue */
+  --btn-hover: #93C5FD;           /* slightly brighter hover */
+
+  /* Links & Secondary Highlights */
+  --accent-link: #60A5FA;
+  --focus-outline: #60A5FA;       /* focus outline: 2px #60A5FA */
+
+  /* Status Colors */
+  --status-done: #4ADE80;         /* green */
+  --status-okay: #FBBF24;         /* amber */
+  --status-weak: #F87171;         /* coral */
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -12,7 +79,36 @@
     margin: 0;
     padding: 0;
     min-height: 100vh;
-    transition: background-color 0.25s ease, color 0.25s ease;
+    background-color: var(--bg-base);
+    color: var(--text-body);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Universal Form Input & Textarea Theming */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    background-color: var(--surface-input) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-body) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-secondary) !important;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--focus-outline) !important;
+    outline-offset: 1px;
+    border-color: var(--focus-outline) !important;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--focus-outline) !important;
+    outline-offset: 1px;
   }
 
   /* Custom Clean Scrollbar */
@@ -24,84 +120,63 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.35);
+    background: var(--border-color);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #10B981;
+    background: var(--text-secondary);
   }
 }
 
-/* =========================================================================
-   LIGHT MODE: WARM PAPER & DEEP INK (EYE-COMFORT ALABASTER: #F2EFE9)
-   ========================================================================= */
+/* Base Body Application Styles */
 .light body {
-  background-color: #F2EFE9;
-  color: #0F172A;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.03) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.03) 0px, transparent 50%);
-  background-attachment: fixed;
+  background-color: #F5F1E8;
+  color: #333333;
 }
 
-/* =========================================================================
-   NIGHT MODE: DEEP OCEAN & EMERALD GOLD (#0B131E)
-   ========================================================================= */
 .dark body {
-  background-color: #0B131E;
-  color: #F8FAFC;
-  background-image: 
-    radial-gradient(at 10% 10%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
-    radial-gradient(at 90% 20%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
-    radial-gradient(at 50% 90%, rgba(245, 158, 11, 0.04) 0px, transparent 50%);
-  background-attachment: fixed;
+  background-color: #0F172A;
+  color: #F1F5F9;
 }
 
 /* =========================================================================
-   TACTILE BUTTON & CARD MICRO-ANIMATIONS (PRESS BOUNCE & HOVER LIFT)
+   PRIMARY BUTTONS & ACCENTS
+   ========================================================================= */
+.btn-primary,
+button.btn-primary-action {
+  background-color: var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+}
+
+.btn-primary:hover,
+button.btn-primary-action:hover {
+  background-color: var(--btn-hover) !important;
+}
+
+/* Progress bar fill using main accent */
+.progress-fill {
+  background-color: var(--accent-main) !important;
+}
+
+/* =========================================================================
+   TACTILE MICRO-ANIMATIONS
    ========================================================================= */
 .btn-tactile {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   user-select: none;
 }
 .btn-tactile:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 .btn-tactile:active {
-  transform: scale(0.95);
-}
-
-/* Subtle Light-Sweep Shimmer across primary action buttons */
-.btn-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.btn-shimmer::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -60%;
-  width: 40%;
-  height: 200%;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  transform: rotate(25deg);
-  transition: all 0.65s ease;
-  pointer-events: none;
-}
-.btn-shimmer:hover::after {
-  left: 120%;
+  transform: scale(0.97);
 }
 
 /* Smooth Tab / Card Fade Slide-Up */
 @keyframes fadeSlideUp {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -109,20 +184,20 @@
   }
 }
 .animate-fade-slide-up {
-  animation: fadeSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Urgent Exam Countdown Pulse (< 5 Days) */
 @keyframes urgentExamPulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 0 0 rgba(178, 90, 78, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 5px rgba(178, 90, 78, 0);
   }
 }
 .pulse-urgent-exam {
-  animation: urgentExamPulse 1.8s infinite;
+  animation: urgentExamPulse 2s infinite;
 }
 
 /* Monospace Numbers for Ticking Countdown */
@@ -135,8 +210,8 @@
 /* Print Optimization */
 @media print {
   body {
-    background: white !important;
-    color: black !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
   }
   header, nav, .print\:hidden {
     display: none !important;
