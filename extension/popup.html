@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PyqRanker Companion</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark">
+  <div class="popup-container">
+    
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="brand">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <div class="brand-title">PyqRanker</div>
+          <div class="brand-subtitle">Study Companion MV3</div>
+        </div>
+      </div>
+      <button id="theme-toggle" class="icon-btn" title="Toggle Day/Night Theme">☀️</button>
+    </div>
+
+    <!-- Active Subject Selector -->
+    <div class="subject-card">
+      <label for="subject-select" class="meta-label">Active Syllabus Track</label>
+      <select id="subject-select" class="styled-select">
+        <option value="os">CS301: Operating Systems</option>
+        <option value="dbms">CS302: DBMS</option>
+        <option value="cn">CS303: Computer Networks</option>
+        <option value="dsa">CS304: Data Structures & Algorithms</option>
+      </select>
+    </div>
+
+    <!-- Stats Summary Row -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-val" id="total-pyqs">0</div>
+        <div class="stat-label">Total PYQs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val text-rose" id="hot-pyqs">0</div>
+        <div class="stat-label">Guaranteed Hot</div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions-stack">
+      <button id="scan-tab-btn" class="primary-btn">
+        <span>🔍 Scan Current Page Now</span>
+      </button>
+
+      <button id="open-dashboard-btn" class="secondary-btn">
+        <span>🚀 Open Web Dashboard</span>
+      </button>
+    </div>
+
+    <!-- Sync & Export Row -->
+    <div class="footer-sync">
+      <div class="sync-indicator">
+        <span class="status-dot"></span>
+        <span id="sync-status">Local Bridge Active</span>
+      </div>
+      
+      <div class="file-tools">
+        <button id="export-btn" class="text-link" title="Export JSON">Export</button>
+        <span class="divider">•</span>
+        <button id="import-btn" class="text-link" title="Import JSON">Import</button>
+        <input type="file" id="file-input" accept=".json" style="display: none;">
+      </div>
+    </div>
+
+    <div class="shortcut-tip">
+      Press <kbd>Alt + Q</kbd> anywhere to toggle study sidebar
+    </div>
+
+  </div>
+  <script src="data/pyqData.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

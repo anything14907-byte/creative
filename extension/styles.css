@@ -1,0 +1,268 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  width: 320px;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Solar Paper Theme (Light) */
+body.theme-light {
+  background: #F8FAFC;
+  color: #0F172A;
+}
+body.theme-light .popup-header {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+}
+body.theme-light .subject-card,
+body.theme-light .stat-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+}
+body.theme-light .styled-select {
+  background: #F1F5F9;
+  color: #0F172A;
+  border: 1px solid #CBD5E1;
+}
+body.theme-light .secondary-btn {
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #0F172A;
+}
+body.theme-light .secondary-btn:hover {
+  background: #F1F5F9;
+}
+body.theme-light .meta-label,
+body.theme-light .stat-label,
+body.theme-light .brand-subtitle,
+body.theme-light .shortcut-tip {
+  color: #64748B;
+}
+
+/* Obsidian Focus Theme (Dark) */
+body.theme-dark {
+  background: #090D16;
+  color: #F8FAFC;
+}
+body.theme-dark .popup-header {
+  background: #0F172A;
+  border-bottom: 1px solid #1E293B;
+}
+body.theme-dark .subject-card,
+body.theme-dark .stat-card {
+  background: #0F172A;
+  border: 1px solid #1E293B;
+}
+body.theme-dark .styled-select {
+  background: #090D16;
+  color: #F8FAFC;
+  border: 1px solid #334155;
+}
+body.theme-dark .secondary-btn {
+  background: #0F172A;
+  border: 1px solid #334155;
+  color: #F8FAFC;
+}
+body.theme-dark .secondary-btn:hover {
+  background: #1E293B;
+}
+body.theme-dark .meta-label,
+body.theme-dark .stat-label,
+body.theme-dark .brand-subtitle,
+body.theme-dark .shortcut-tip {
+  color: #94A3B8;
+}
+
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+/* Header */
+.popup-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4F46E5, #06B6D4);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.brand-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.brand-subtitle {
+  font-size: 10px;
+}
+.icon-btn {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+/* Subject Card */
+.subject-card {
+  margin: 0 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.meta-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+.styled-select {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+}
+
+/* Stats */
+.stats-grid {
+  margin: 0 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-card {
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+.stat-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #4F46E5;
+}
+.stat-val.text-rose {
+  color: #F43F5E;
+}
+.stat-label {
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* Buttons */
+.actions-stack {
+  margin: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.primary-btn {
+  width: 100%;
+  padding: 9px;
+  border-radius: 8px;
+  background: #4F46E5;
+  color: white;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  transition: all 0.15s;
+}
+.primary-btn:hover {
+  background: #4338CA;
+}
+.primary-btn:active {
+  transform: scale(0.98);
+}
+.secondary-btn {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+/* Footer Sync */
+.footer-sync {
+  margin: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+.sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10B981;
+}
+.file-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.text-link {
+  background: none;
+  border: none;
+  color: #6366F1;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0;
+}
+.text-link:hover {
+  text-decoration: underline;
+}
+.divider {
+  color: #94A3B8;
+  font-size: 10px;
+}
+
+.shortcut-tip {
+  text-align: center;
+  font-size: 10px;
+  margin-top: 4px;
+}
+kbd {
+  background: rgba(148, 163, 184, 0.2);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: 700;
+}
