@@ -1,298 +1,294 @@
 import React, { useState } from 'react';
 import { 
   Flame, 
-  Bookmark, 
-  BookmarkCheck, 
   CheckCircle2, 
-  AlertCircle, 
-  Clock, 
   ChevronDown, 
   ChevronUp, 
   PenTool, 
-  FileText, 
+  BookOpen, 
   Tag, 
-  StickyNote,
-  Save
+  Sparkles, 
+  Lightbulb, 
+  Check, 
+  X,
+  RotateCcw
 } from 'lucide-react';
-import { PYQQuestion, QuestionStatus } from '../types';
+import confetti from 'canvas-confetti';
+import { PYQQuestion, QuestionStatus, EvaluationResult } from '../types';
+import { evaluateAnswer } from '../utils/rubricEvaluator';
 
 interface QuestionCardProps {
   question: PYQQuestion;
-  onSelectForPractice: (question: PYQQuestion) => void;
-  onUpdateStatus: (id: string, status: QuestionStatus) => void;
-  onToggleBookmark: (id: string) => void;
-  onSaveNote: (id: string, note: string) => void;
+  onToggleMastered: (id: string) => void;
+  onSaveAnswer: (id: string, answer: string, score: number) => void;
+  onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
   question,
-  onSelectForPractice,
-  onUpdateStatus,
-  onToggleBookmark,
-  onSaveNote
+  onToggleMastered,
+  onSaveAnswer,
+  onShowToast
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [editingNote, setEditingNote] = useState(false);
-  const [noteText, setNoteText] = useState(question.userNotes || '');
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [showPractice, setShowPractice] = useState(false);
+  const [practiceAnswer, setPracticeAnswer] = useState(question.lastAttemptAnswer || '');
+  const [evalResult, setEvalResult] = useState<EvaluationResult | null>(null);
 
-  const handleSaveNote = () => {
-    onSaveNote(question.id, noteText);
-    setEditingNote(false);
-  };
+  const isMastered = question.userStatus === 'mastered';
 
-  const getMarksColor = (marks: number) => {
-    switch (marks) {
-      case 2:
-        return 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-      case 5:
-        return 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800';
-      case 10:
-        return 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800 font-bold';
-      default:
-        return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+  const handleToggleMaster = () => {
+    onToggleMastered(question.id);
+    if (!isMastered) {
+      confetti({
+        particleCount: 45,
+        spread: 50,
+        origin: { y: 0.8 },
+        colors: ['#00E599', '#38BDF8', '#F59E0B']
+      });
+      onShowToast('Marked as Mastered! Keep crushing it 🔥', 'success');
     }
   };
 
-  const getStatusBadge = (status: QuestionStatus) => {
-    switch (status) {
-      case 'mastered':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Mastered
-          </span>
-        );
-      case 'needs-revision':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Needs Revision
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-            <Clock className="w-3.5 h-3.5" /> Not Started
-          </span>
-        );
+  const handleCheckRecall = () => {
+    const res = evaluateAnswer(question, practiceAnswer);
+    setEvalResult(res);
+    onSaveAnswer(question.id, practiceAnswer, res.scoreOutOf10);
+
+    if (res.scoreOutOf10 >= 8.5) {
+      confetti({
+        particleCount: 70,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ['#00E599', '#38BDF8', '#FFFFFF']
+      });
+      onShowToast('🎉 Stellar Recall! 8.5+/10 on exam keywords!', 'success');
     }
   };
 
   return (
-    <div className={`rounded-2xl border transition-all duration-200 p-5 bg-solar-card dark:bg-obsidian-card ${
-      question.isHighProbability 
-        ? 'border-indigo-200/80 dark:border-indigo-900/60 shadow-sm hover:shadow-md' 
-        : 'border-solar-border dark:border-obsidian-border hover:border-slate-300 dark:hover:border-slate-700'
+    <div className={`rounded-2xl border transition-all duration-200 p-5 bg-white/90 dark:bg-[#0F1722]/80 backdrop-blur-md ${
+      isMastered 
+        ? 'border-emerald-500/40 shadow-sm'
+        : question.isHighProbability 
+        ? 'border-emerald-500/30 hover:border-[#00E599] shadow-sm hover:shadow-glow-emerald/10'
+        : 'border-day-border dark:border-cyber-border hover:border-slate-300 dark:hover:border-slate-700'
     }`}>
       
-      {/* Header: Meta Badges & Bookmark */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+      {/* Badges Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
+        <div className="flex flex-wrap items-center gap-2">
           
           {/* Unit Badge */}
-          <span className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            Unit {question.unit}
+          <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            Unit {question.unit}: {question.unitTitle}
           </span>
 
           {/* Marks Badge */}
-          <span className={`px-2 py-0.5 rounded-lg text-xs border ${getMarksColor(question.marks)}`}>
+          <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+            question.marks === 10
+              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+              : question.marks === 5
+              ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
+              : 'bg-emerald-500/10 text-emerald-700 dark:text-[#00E599] border border-emerald-500/20'
+          }`}>
             {question.marks} Marks
           </span>
 
           {/* Repeat Frequency Badge */}
           {question.repeatCount >= 3 ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-xs">
-              <Flame className="w-3 h-3 fill-white" />
-              Asked {question.repeatCount}x in 5 Years
-            </span>
-          ) : question.repeatCount > 1 ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-              Asked {question.repeatCount}x
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>Asked {question.repeatCount}x ({question.yearsAsked.join(', ')})</span>
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-lg text-xs text-solar-muted dark:text-obsidian-muted bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <span className="px-2 py-0.5 rounded-lg text-xs text-day-muted dark:text-cyber-muted bg-slate-100/60 dark:bg-slate-800/40">
               Asked in {question.yearsAsked.join(', ')}
             </span>
           )}
 
-          {/* Status Badge */}
-          {getStatusBadge(question.userStatus)}
         </div>
 
-        {/* Bookmark Button */}
+        {/* Mastered Toggle Button */}
         <button
-          onClick={() => onToggleBookmark(question.id)}
-          className={`p-1.5 rounded-xl transition-colors ${
-            question.bookmarked 
-              ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40' 
-              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          onClick={handleToggleMaster}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+            isMastered
+              ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
+              : 'border border-day-border dark:border-cyber-border text-day-muted dark:text-cyber-muted hover:border-[#00E599] hover:text-day-text dark:hover:text-white'
           }`}
-          title={question.bookmarked ? 'Remove Bookmark' : 'Bookmark Question'}
         >
-          {question.bookmarked ? <BookmarkCheck className="w-5 h-5 fill-amber-400" /> : <Bookmark className="w-5 h-5" />}
+          <CheckCircle2 className={`w-3.5 h-3.5 ${isMastered ? 'text-white dark:text-[#06090E]' : 'text-slate-400'}`} />
+          <span>{isMastered ? 'Mastered' : 'Mark as Mastered'}</span>
         </button>
       </div>
 
       {/* Question Text */}
-      <h3 className="text-sm sm:text-base font-semibold text-solar-text dark:text-obsidian-text leading-relaxed mb-3">
+      <h3 className="text-sm sm:text-base font-bold text-day-text dark:text-white leading-relaxed mb-4">
         {question.question}
       </h3>
 
-      {/* Question Years Tags */}
-      <div className="flex flex-wrap items-center gap-1 mb-4">
-        <span className="text-[11px] text-solar-muted dark:text-obsidian-muted mr-1">Appeared in:</span>
-        {question.yearsAsked.map(yr => (
-          <span 
-            key={yr} 
-            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 text-solar-muted dark:text-obsidian-muted"
-          >
-            {yr}
-          </span>
-        ))}
-      </div>
+      {/* Action Buttons: Show Ideal Answer & Test Yourself */}
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-day-border/60 dark:border-cyber-border/60">
+        
+        {/* Toggle Ideal Exam Answer */}
+        <button
+          onClick={() => setShowAnswer(!showAnswer)}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            showAnswer
+              ? 'bg-slate-200 dark:bg-slate-800 text-day-text dark:text-white'
+              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-[#00E599] border border-emerald-500/20'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>{showAnswer ? 'Hide Exam Answer' : '📖 Show Ideal Exam Answer'}</span>
+          {showAnswer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
 
-      {/* Rubric Keywords Preview Chips */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-4">
-        <span className="text-[11px] font-medium text-solar-muted dark:text-obsidian-muted flex items-center gap-1">
-          <Tag className="w-3 h-3 text-indigo-500" /> Rubric Keys:
-        </span>
-        {question.expectedKeywords.slice(0, expanded ? question.expectedKeywords.length : 4).map(kw => (
-          <span 
-            key={kw} 
-            className="text-[11px] px-2 py-0.5 rounded-md font-medium bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50"
-          >
-            {kw}
-          </span>
-        ))}
-        {!expanded && question.expectedKeywords.length > 4 && (
-          <span className="text-[10px] text-solar-muted dark:text-obsidian-muted font-medium">
-            +{question.expectedKeywords.length - 4} more
+        {/* Toggle Test Yourself Practice */}
+        <button
+          onClick={() => setShowPractice(!showPractice)}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            showPractice
+              ? 'bg-slate-200 dark:bg-slate-800 text-day-text dark:text-white'
+              : 'border border-day-border dark:border-cyber-border text-day-text dark:text-white hover:border-[#00E599]'
+          }`}
+        >
+          <PenTool className="w-3.5 h-3.5 text-cyan-500" />
+          <span>{showPractice ? 'Close Practice' : '✍️ Test Yourself'}</span>
+        </button>
+
+        {question.lastAttemptScore !== undefined && (
+          <span className="text-xs font-semibold text-day-muted dark:text-cyber-muted ml-auto">
+            Last Score: <strong className="text-emerald-600 dark:text-[#00E599]">{question.lastAttemptScore}/10</strong>
           </span>
         )}
       </div>
 
-      {/* Expanded Details: Rubric Criteria & Model Answer */}
-      {expanded && (
-        <div className="mt-4 pt-4 border-t border-solar-border dark:border-obsidian-border space-y-3 text-xs">
+      {/* EXPANDABLE 1: IDEAL EXAM ANSWER (3-4 Crisp Bullets + Diagram/Formula + Keywords) */}
+      {showAnswer && (
+        <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-[#0A0F18] border border-emerald-500/30 space-y-4 animate-in fade-in duration-200">
           
-          {/* Model Answer Summary */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-solar-border dark:border-obsidian-border">
-            <div className="font-bold text-solar-text dark:text-obsidian-text flex items-center gap-1.5 mb-1 text-xs">
-              <FileText className="w-3.5 h-3.5 text-indigo-500" />
-              Official Model Answer Key
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-[#00E599] flex items-center gap-1.5 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#00E599]" />
+              Ideal 3–4 Bullet Points for Exam Full Marks
             </div>
-            <p className="text-solar-muted dark:text-obsidian-muted leading-relaxed">
-              {question.modelAnswerSummary}
-            </p>
-          </div>
-
-          {/* Rubric Structure Checklist */}
-          <div className="p-3 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
-            <div className="font-bold text-indigo-900 dark:text-indigo-200 mb-1 text-xs">
-              Grading Benchmark Requirements ({question.marks} Marks)
-            </div>
-            <ul className="list-disc list-inside space-y-1 text-solar-muted dark:text-obsidian-muted">
-              {question.rubricGuide.structureRequirements.map((req, i) => (
-                <li key={i}>{req}</li>
+            
+            <ul className="space-y-2 text-xs sm:text-sm text-day-text dark:text-slate-200 leading-relaxed">
+              {question.bullets.map((bullet, idx) => (
+                <li key={idx} className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-[#00E599] flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <span>{bullet}</span>
+                </li>
               ))}
-              <li>Target Length: {question.rubricGuide.recommendedWordCount.min}–{question.rubricGuide.recommendedWordCount.max} words</li>
             </ul>
           </div>
 
-          {/* User Study Note Section */}
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-solar-border dark:border-obsidian-border">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-bold text-solar-text dark:text-obsidian-text flex items-center gap-1 text-xs">
-                <StickyNote className="w-3.5 h-3.5 text-amber-500" />
-                Personal Study Notes & Formulas
-              </span>
-              {!editingNote && (
-                <button
-                  onClick={() => setEditingNote(true)}
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline text-[11px]"
-                >
-                  {question.userNotes ? 'Edit Note' : '+ Add Note'}
-                </button>
-              )}
-            </div>
-
-            {editingNote ? (
-              <div className="space-y-2">
-                <textarea
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Attach mnemonics, page numbers, or formulas to remember for this question..."
-                  className="w-full text-xs p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-obsidian-card text-solar-text dark:text-obsidian-text outline-none focus:border-indigo-500"
-                  rows={2}
-                />
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setEditingNote(false)}
-                    className="px-2.5 py-1 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveNote}
-                    className="flex items-center gap-1 px-3 py-1 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
-                  >
-                    <Save className="w-3 h-3" /> Save
-                  </button>
-                </div>
+          {/* Diagram / Formula Tip */}
+          {question.diagramFormulaTip && (
+            <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-xs">
+              <div className="font-bold text-sky-800 dark:text-sky-300 flex items-center gap-1.5 mb-1">
+                <Lightbulb className="w-3.5 h-3.5 text-sky-400" />
+                Must-Draw Diagram / Formula Tip:
               </div>
-            ) : (
-              <p className="text-solar-muted dark:text-obsidian-muted italic">
-                {question.userNotes || 'No notes added yet. Click "+ Add Note" to pin critical formulas or mnemonics.'}
+              <p className="text-day-muted dark:text-slate-300 leading-relaxed">
+                {question.diagramFormulaTip}
               </p>
-            )}
+            </div>
+          )}
+
+          {/* Must-Include Keywords */}
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-day-muted dark:text-cyber-muted mb-1.5 flex items-center gap-1">
+              <Tag className="w-3 h-3 text-emerald-500" /> Essential Keywords Evaluator Looks For:
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {question.expectedKeywords.map(kw => (
+                <span 
+                  key={kw} 
+                  className="px-2 py-0.5 rounded-md text-xs font-semibold bg-[#00E599]/15 text-emerald-800 dark:text-[#00E599] border border-[#00E599]/30"
+                >
+                  {kw}
+                </span>
+              ))}
+            </div>
           </div>
 
         </div>
       )}
 
-      {/* Card Actions Footer */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-solar-border dark:border-obsidian-border mt-3">
-        
-        {/* Status Switcher */}
-        <div className="flex items-center gap-1">
-          <span className="text-[11px] text-solar-muted dark:text-obsidian-muted mr-1 hidden sm:inline">Status:</span>
-          {(['not-started', 'needs-revision', 'mastered'] as QuestionStatus[]).map((st) => (
+      {/* EXPANDABLE 2: TEST YOURSELF INLINE PRACTICE BOX */}
+      {showPractice && (
+        <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#0A0F18] border border-day-border dark:border-cyber-border space-y-3 animate-in fade-in duration-200">
+          
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-day-text dark:text-white flex items-center gap-1.5">
+              <PenTool className="w-3.5 h-3.5 text-cyan-400" />
+              Active Recall Test Box
+            </span>
+            <span className="text-day-muted dark:text-cyber-muted">
+              {practiceAnswer.split(/\s+/).filter(Boolean).length} words
+            </span>
+          </div>
+
+          <textarea
+            value={practiceAnswer}
+            onChange={(e) => setPracticeAnswer(e.target.value)}
+            placeholder="Type your brief answers or bullet points from memory here to check your score..."
+            rows={4}
+            className="w-full p-3 rounded-xl border border-day-border dark:border-cyber-border bg-white dark:bg-[#0F1722] text-xs sm:text-sm text-day-text dark:text-white outline-none focus:border-[#00E599] transition-all resize-y"
+          />
+
+          <div className="flex items-center justify-between">
             <button
-              key={st}
-              onClick={() => onUpdateStatus(question.id, st)}
-              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                question.userStatus === st
-                  ? st === 'mastered'
-                    ? 'bg-emerald-600 text-white font-semibold'
-                    : st === 'needs-revision'
-                    ? 'bg-amber-600 text-white font-semibold'
-                    : 'bg-slate-700 text-white'
-                  : 'text-solar-muted dark:text-obsidian-muted hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
+              onClick={() => {
+                setPracticeAnswer('');
+                setEvalResult(null);
+              }}
+              className="text-xs text-day-muted dark:text-cyber-muted hover:text-day-text flex items-center gap-1"
             >
-              {st === 'not-started' ? 'Pending' : st === 'needs-revision' ? 'Revise' : 'Mastered'}
+              <RotateCcw className="w-3 h-3" /> Clear
             </button>
-          ))}
+
+            <button
+              onClick={handleCheckRecall}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00E599] dark:hover:bg-[#00C782] text-white dark:text-[#06090E] font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Check My Answer Score</span>
+            </button>
+          </div>
+
+          {/* Feedback Display */}
+          {evalResult && (
+            <div className={`p-3 rounded-xl border text-xs space-y-2 ${
+              evalResult.scoreOutOf10 >= 8
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
+                : evalResult.scoreOutOf10 >= 5
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200'
+            }`}>
+              <div className="flex items-center justify-between font-bold text-sm">
+                <span>Score: {evalResult.scoreOutOf10} / 10</span>
+                <span>{evalResult.matchedKeywords.length}/{question.expectedKeywords.length} Keywords Hit</span>
+              </div>
+              <p>{evalResult.feedback}</p>
+
+              {/* Missing Keywords Alert */}
+              {evalResult.missingKeywords.length > 0 && (
+                <div className="pt-1 text-[11px]">
+                  <span className="font-bold">Missing Keywords: </span>
+                  {evalResult.missingKeywords.join(', ')}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
-
-        {/* Right Action Buttons */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-solar-muted dark:text-obsidian-muted hover:text-solar-text dark:hover:text-obsidian-text hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <span>{expanded ? 'Less' : 'Rubric Key'}</span>
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-
-          <button
-            onClick={() => onSelectForPractice(question)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm shadow-indigo-600/25 transition-all active:scale-95"
-          >
-            <PenTool className="w-3.5 h-3.5" />
-            <span>Practice Rubric</span>
-          </button>
-        </div>
-
-      </div>
+      )}
 
     </div>
   );

@@ -22,12 +22,30 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.3);
+    background: rgba(148, 163, 184, 0.25);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.5);
+    background: rgba(0, 229, 153, 0.4);
   }
+}
+
+/* Futuristic Ambient Mesh Glow in Dark Mode */
+.dark body {
+  background-color: #06090E;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(0, 229, 153, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.05) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(0, 229, 153, 0.04) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.light body {
+  background-color: #F3F6FA;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.04) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.04) 0px, transparent 50%);
+  background-attachment: fixed;
 }
 
 /* Print Optimization for Night-Before Cheat Sheet */
@@ -36,7 +54,7 @@
     background: white !important;
     color: black !important;
   }
-  header, aside, .print\:hidden {
+  header, nav, .print\:hidden {
     display: none !important;
   }
   .print\:p-0 {
@@ -46,14 +64,4 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
-}
-
-/* Animation utilities */
-@keyframes pulseSlow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.animate-pulse-slow {
-  animation: pulseSlow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

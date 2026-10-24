@@ -1,55 +1,46 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { 
   Sparkles, 
   Sun, 
   Moon, 
-  FileUp, 
+  BookOpen, 
+  Search, 
   FileText, 
-  Download, 
-  Upload, 
-  CheckCircle2, 
-  Laptop, 
-  ChevronDown,
-  BookOpen,
-  Chrome
+  Chrome,
+  Download,
+  Upload
 } from 'lucide-react';
-import { SubjectMeta, SubjectId, PYQQuestion } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
+import { PYQQuestion, SubjectId } from '../types';
 import { exportJsonSnapshot, importJsonSnapshot } from '../utils/syncBridge';
 
+export type AppMode = 'study' | 'scanner' | 'cheat';
+
 interface NavbarProps {
-  subjects: SubjectMeta[];
-  activeSubjectId: SubjectId;
-  onSelectSubject: (id: SubjectId) => void;
-  questions: PYQQuestion[];
-  onImportQuestions: (imported: PYQQuestion[]) => void;
-  onOpenPdfParser: () => void;
-  onOpenCheatSheet: () => void;
+  currentMode: AppMode;
+  onSelectMode: (mode: AppMode) => void;
   onOpenExtensionInstaller: () => void;
-  isExtensionSynced: boolean;
+  questions: PYQQuestion[];
+  activeSubjectId: SubjectId;
+  onImportQuestions: (questions: PYQQuestion[]) => void;
   onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  subjects,
-  activeSubjectId,
-  onSelectSubject,
-  questions,
-  onImportQuestions,
-  onOpenPdfParser,
-  onOpenCheatSheet,
+  currentMode,
+  onSelectMode,
   onOpenExtensionInstaller,
-  isExtensionSynced,
+  questions,
+  activeSubjectId,
+  onImportQuestions,
   onShowToast
 }) => {
   const { theme, toggleTheme } = useTheme();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const activeSubject = subjects.find(s => s.id === activeSubjectId) || subjects[0];
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
     exportJsonSnapshot(questions, activeSubjectId);
-    onShowToast(`Exported ${questions.length} questions as JSON snapshot!`, 'success');
+    onShowToast(`Exported ${questions.length} questions backup!`, 'success');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,157 +49,131 @@ export const Navbar: React.FC<NavbarProps> = ({
     try {
       const imported = await importJsonSnapshot(file);
       onImportQuestions(imported);
-      onShowToast(`Successfully imported ${imported.length} questions!`, 'success');
+      onShowToast(`Imported ${imported.length} questions successfully!`, 'success');
     } catch (err: any) {
-      onShowToast(err?.message || 'Failed to import JSON snapshot', 'error');
+      onShowToast('Could not import backup file', 'error');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-xl border-b border-solar-border dark:border-obsidian-border bg-white/80 dark:bg-[#090D16]/80 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-xl border-b border-day-border dark:border-cyber-border bg-white/85 dark:bg-[#06090E]/85 transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         
-        {/* Brand & Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 ring-1 ring-white/20">
-            <Sparkles className="w-5 h-5 animate-pulse" />
+        {/* Brand */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#00E599]/15 dark:bg-[#00E599]/20 border border-[#00E599]/40 flex items-center justify-center text-[#00E599] shadow-glow-emerald">
+            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-[#00E599]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 dark:from-indigo-400 dark:via-cyan-300 dark:to-indigo-300 bg-clip-text text-transparent">
-                PyqRanker
+              <span className="font-extrabold text-base sm:text-lg tracking-tight text-day-text dark:text-white">
+                Pyq<span className="text-emerald-600 dark:text-[#00E599]">Ranker</span>
               </span>
-              <span className="hidden sm:inline-flex text-[11px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                MV3 Companion
+              <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-[#00E599] border border-emerald-500/20">
+                AI Companion
               </span>
-            </div>
-            <p className="text-xs text-solar-muted dark:text-obsidian-muted hidden md:block">
-              Smart University PYQ Matcher & In-Page Recall
-            </p>
-          </div>
-        </div>
-
-        {/* Center: Subject Switcher Dropdown */}
-        <div className="flex items-center gap-2">
-          <div className="relative group">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-solar-border dark:border-obsidian-border bg-solar-card dark:bg-obsidian-card hover:border-indigo-500 transition-all cursor-pointer shadow-sm">
-              <BookOpen className="w-4 h-4 text-indigo-500" />
-              <div className="text-left">
-                <div className="text-[10px] text-solar-muted dark:text-obsidian-muted font-mono leading-none">
-                  {activeSubject.code}
-                </div>
-                <div className="text-sm font-semibold text-solar-text dark:text-obsidian-text leading-tight">
-                  {activeSubject.name}
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-solar-muted dark:text-obsidian-muted ml-1" />
-            </div>
-
-            <div className="absolute top-full left-0 mt-1 w-64 rounded-xl border border-solar-border dark:border-obsidian-border bg-white dark:bg-obsidian-card shadow-xl py-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50">
-              <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-solar-muted dark:text-obsidian-muted border-b border-solar-border dark:border-obsidian-border">
-                Select Active Subject
-              </div>
-              {subjects.map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => onSelectSubject(s.id)}
-                  className={`w-full px-3 py-2 text-left flex items-center justify-between text-sm transition-colors ${
-                    s.id === activeSubjectId 
-                      ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-semibold' 
-                      : 'text-solar-text dark:text-obsidian-text hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div>
-                    <div className="font-medium">{s.name}</div>
-                    <div className="text-[11px] text-solar-muted dark:text-obsidian-muted">{s.code} • {s.semester}</div>
-                  </div>
-                  {s.id === activeSubjectId && <CheckCircle2 className="w-4 h-4 text-indigo-500" />}
-                </button>
-              ))}
             </div>
           </div>
         </div>
 
-        {/* Action Buttons & Theme Toggle */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* 3 Simple Modes Selector (Center) */}
+        <nav className="flex items-center p-1 rounded-2xl border border-day-border dark:border-cyber-border bg-slate-100/80 dark:bg-[#0F1722]/90 backdrop-blur-md">
+          <button
+            onClick={() => onSelectMode('study')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              currentMode === 'study'
+                ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
+                : 'text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>1. Study Top Questions</span>
+          </button>
+
+          <button
+            onClick={() => onSelectMode('scanner')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              currentMode === 'scanner'
+                ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
+                : 'text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white'
+            }`}
+          >
+            <Search className="w-4 h-4" />
+            <span>2. Scanner & PDF</span>
+          </button>
+
+          <button
+            onClick={() => onSelectMode('cheat')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              currentMode === 'cheat'
+                ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
+                : 'text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>3. Cheat Sheet</span>
+          </button>
+        </nav>
+
+        {/* Right Actions: Get Extension, Day/Night Toggle, Backup */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           
           {/* Get Browser Extension Button */}
           <button
             onClick={onOpenExtensionInstaller}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-sm shadow-indigo-500/25 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#00E599]/15 dark:bg-[#00E599]/20 hover:bg-[#00E599]/25 text-emerald-800 dark:text-[#00E599] border border-[#00E599]/40 shadow-sm transition-all active:scale-95"
           >
-            <Chrome className="w-4 h-4" />
+            <Chrome className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Get Extension</span>
           </button>
 
-          {/* Extension Status Indicator */}
-          <div 
-            title={isExtensionSynced ? 'Manifest V3 Extension Connected & Syncing' : 'Extension ready. Click Get Extension to install'}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-solar-border dark:border-obsidian-border bg-slate-50 dark:bg-slate-900 text-solar-muted dark:text-obsidian-muted cursor-pointer"
-            onClick={onOpenExtensionInstaller}
-          >
-            <span className={`w-2 h-2 rounded-full ${isExtensionSynced ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-500'}`} />
-            <span>{isExtensionSynced ? 'Extension Synced' : 'MV3 Extension Ready'}</span>
-          </div>
-
-          {/* PDF Upload Button */}
-          <button
-            onClick={onOpenPdfParser}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all shadow-indigo-500/20 active:scale-95"
-          >
-            <FileUp className="w-4 h-4" />
-            <span className="hidden sm:inline">Parse Paper</span>
-          </button>
-
-          {/* Cheat Sheet Button */}
-          <button
-            onClick={onOpenCheatSheet}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border border-solar-border dark:border-obsidian-border bg-solar-card dark:bg-obsidian-card text-solar-text dark:text-obsidian-text hover:border-indigo-500 transition-all active:scale-95 shadow-sm"
-          >
-            <FileText className="w-4 h-4 text-purple-500" />
-            <span className="hidden md:inline">Cheat Sheet</span>
-          </button>
-
-          {/* Snapshot Export / Import */}
-          <div className="hidden sm:flex items-center gap-1 border-l border-solar-border dark:border-obsidian-border pl-2">
+          {/* Backup Tools */}
+          <div className="hidden md:flex items-center gap-1 border-l border-day-border dark:border-cyber-border pl-2">
             <button
               onClick={handleExport}
-              title="Export JSON Snapshot"
-              className="p-2 rounded-xl text-solar-muted dark:text-obsidian-muted hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="Save Backup"
+              className="p-1.5 rounded-lg text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              title="Import JSON Snapshot"
-              className="p-2 rounded-xl text-solar-muted dark:text-obsidian-muted hover:text-indigo-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="Restore Backup"
+              className="p-1.5 rounded-lg text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <Upload className="w-4 h-4" />
+              <Upload className="w-3.5 h-3.5" />
             </button>
             <input 
               ref={fileInputRef} 
               type="file" 
               accept=".json" 
               className="hidden" 
-              onChange={handleFileChange}
+              onChange={handleFileChange} 
             />
           </div>
 
-          {/* Theme Toggle (Solar Paper / Obsidian Focus) */}
+          {/* Day / Night Mode Pill Switch */}
           <button
             onClick={toggleTheme}
-            aria-label="Toggle Day / Night mode"
-            className="p-2 rounded-xl border border-solar-border dark:border-obsidian-border bg-solar-card dark:bg-obsidian-card text-solar-text dark:text-obsidian-text hover:border-indigo-500 transition-all shadow-sm active:scale-95"
-            title={theme === 'dark' ? 'Switch to Solar Paper (Day Mode)' : 'Switch to Obsidian Focus (Night Mode)'}
+            aria-label="Toggle Theme"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-day-border dark:border-cyber-border bg-white dark:bg-[#0F1722] text-xs font-semibold text-day-text dark:text-white shadow-sm hover:border-[#00E599] transition-all"
+            title={theme === 'dark' ? 'Switch to Daylight Alabaster' : 'Switch to Obsidian Titanium'}
           >
             {theme === 'dark' ? (
-              <Sun className="w-4 h-4 text-amber-400 hover:rotate-90 transition-transform" />
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden lg:inline text-[11px] font-medium text-cyber-muted">Day</span>
+              </>
             ) : (
-              <Moon className="w-4 h-4 text-indigo-600 hover:-rotate-12 transition-transform" />
+              <>
+                <Moon className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden lg:inline text-[11px] font-medium text-day-muted">Night</span>
+              </>
             )}
           </button>
+
         </div>
 
       </div>

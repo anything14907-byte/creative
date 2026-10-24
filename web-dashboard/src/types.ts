@@ -2,15 +2,7 @@ export type SubjectId = 'os' | 'dbms' | 'cn' | 'dsa' | string;
 
 export type QuestionMarks = 2 | 5 | 10;
 
-export type QuestionStatus = 'not-started' | 'needs-revision' | 'mastered';
-
-export type FrequencyCategory = 'critical' | 'frequent' | 'occasional';
-
-export interface RubricGuide {
-  recommendedWordCount: { min: number; max: number };
-  structureRequirements: string[];
-  keyConcepts: string[];
-}
+export type QuestionStatus = 'not-started' | 'mastered';
 
 export interface PYQQuestion {
   id: string;
@@ -23,15 +15,16 @@ export interface PYQQuestion {
   yearsAsked: number[];
   repeatCount: number;
   isHighProbability: boolean;
-  frequencyCategory: FrequencyCategory;
   expectedKeywords: string[];
-  rubricGuide: RubricGuide;
-  modelAnswerSummary: string;
+  
+  // Student-friendly exam model answers
+  bullets: string[];
+  diagramFormulaTip: string;
+  
   userStatus: QuestionStatus;
-  userNotes: string;
+  userNotes?: string;
   lastAttemptScore?: number;
   lastAttemptAnswer?: string;
-  lastAttemptDate?: string;
   bookmarked?: boolean;
 }
 
@@ -40,19 +33,11 @@ export interface SubjectMeta {
   code: string;
   name: string;
   semester: string;
-  totalCredits: number;
+  iconName: string;
   units: {
     unit: number;
     title: string;
-    description: string;
   }[];
-}
-
-export interface ExamCountdownConfig {
-  subjectId: SubjectId;
-  subjectName: string;
-  examDate: string; // ISO string e.g. "2026-11-15T09:30:00"
-  targetGoalMarks: number;
 }
 
 export interface EvaluationResult {
@@ -61,13 +46,7 @@ export interface EvaluationResult {
   matchedKeywords: string[];
   missingKeywords: string[];
   wordCount: number;
-  wordCountStatus: 'too-brief' | 'optimal' | 'lengthy';
-  structuralChecklist: {
-    rule: string;
-    passed: boolean;
-    feedback: string;
-  }[];
-  generalFeedback: string;
+  feedback: string;
   passedThreshold: boolean;
 }
 

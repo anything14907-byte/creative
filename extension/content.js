@@ -1,6 +1,5 @@
-// PyqRanker In-Page Study Companion & Content Script (Manifest V3)
+// PyqRanker In-Page Study Companion & Content Script (Manifest V3 - Obsidian Titanium & Cyber Emerald Edition)
 (function() {
-  // Prevent duplicate injection
   if (window.__PYQ_RANKER_INJECTED__) return;
   window.__PYQ_RANKER_INJECTED__ = true;
 
@@ -11,7 +10,8 @@
   let activeTheme = 'dark';
   let matchedPyqs = [];
   let isSidebarOpen = false;
-  let activeQuestionForRecall = null;
+  let expandedExamPoints = {};
+  let expandedPractice = {};
   let lastEvaluations = {};
 
   // Initialize data from chrome.storage or fallback to global dataset from data/pyqData.js
@@ -55,7 +55,7 @@
   }
 
   // ==========================================
-  // TF-IDF / CONTENT SIMILARITY ENGINE
+  // CONTENT SIMILARITY SCANNER
   // ==========================================
   const STOPWORDS = new Set([
     'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t',
@@ -79,14 +79,11 @@
   }
 
   function extractPageText() {
-    // 1. Gather high-weight elements: Title, H1, H2, H3, Meta Description
     const title = document.title || '';
     const metaDesc = document.querySelector('meta[name="description"]')?.content || '';
     const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
       .map(h => h.innerText || '')
       .join(' ');
-
-    // 2. Sample first 15 main paragraphs to stay fast and avoid comments/footers
     const paragraphs = Array.from(document.querySelectorAll('article p, main p, p'))
       .slice(0, 15)
       .map(p => p.innerText || '')
@@ -96,10 +93,9 @@
   }
 
   function scoreQuestionAgainstPage(question, pageTokens, pageTokenFreq) {
-    // Collect question tokens from text, keywords, and unit title
     const qTokens = tokenize(question.question);
-    const kwTokens = question.expectedKeywords.flatMap(kw => tokenize(kw));
-    const unitTokens = tokenize(question.unitTitle);
+    const kwTokens = (question.expectedKeywords || []).flatMap(kw => tokenize(kw));
+    const unitTokens = tokenize(question.unitTitle || '');
 
     let matchCount = 0;
     let keywordHits = 0;
@@ -122,42 +118,35 @@
       }
     }
 
-    // Weight keywords higher than general tokens
-    const rawScore = (matchCount * 1.5) + (keywordHits * 3.5);
-    return rawScore;
+    return (matchCount * 1.5) + (keywordHits * 3.5);
   }
 
   function scanPageContent(overrideText = null) {
     const textToScan = overrideText || extractPageText();
     const tokens = tokenize(textToScan);
     
-    // Frequency map
     const tokenFreq = {};
     for (const t of tokens) {
       tokenFreq[t] = (tokenFreq[t] || 0) + 1;
     }
 
-    // Score all questions in question bank
     const scored = currentQuestions.map(q => {
       const score = scoreQuestionAgainstPage(q, tokens, tokenFreq);
       return { question: q, score };
     });
 
-    // Filter to relevant matches and sort descending
     const filtered = scored
       .filter(item => item.score > 4.5 || (item.question.isHighProbability && item.score > 2.0))
       .sort((a, b) => b.score - a.score);
 
     matchedPyqs = filtered.map(item => item.question);
 
-    // If no specific match on page (e.g. blank page or general site), provide top high-probability questions
     if (matchedPyqs.length === 0) {
       matchedPyqs = currentQuestions
         .filter(q => q.subjectId === activeSubjectId)
         .slice(0, 5);
     }
 
-    // Update Launcher & Sidebar UI
     updateLauncherPill();
     if (isSidebarOpen) {
       renderSidebarContent();
@@ -170,7 +159,7 @@
   function evaluateInPageAnswer(question, answerText) {
     const trimmed = (answerText || '').trim();
     if (!trimmed) {
-      return { score: 0, matchedKeywords: [], missingKeywords: [...question.expectedKeywords], wordCount: 0 };
+      return { score: 0, matchedKeywords: [], missingKeywords: [...(question.expectedKeywords || [])], wordCount: 0 };
     }
 
     const words = trimmed.split(/\s+/).filter(Boolean);
@@ -180,7 +169,7 @@
     const matchedKeywords = [];
     const missingKeywords = [];
 
-    for (const kw of question.expectedKeywords) {
+    for (const kw of (question.expectedKeywords || [])) {
       const clean = kw.toLowerCase().trim();
       if (lower.includes(clean)) {
         matchedKeywords.push(kw);
@@ -189,12 +178,11 @@
       }
     }
 
-    const minWords = question.rubricGuide?.recommendedWordCount?.min || 50;
     const kwRatio = question.expectedKeywords.length > 0 
       ? matchedKeywords.length / question.expectedKeywords.length 
       : 1;
     
-    let score = Math.round((kwRatio * 6.5 + Math.min(2.5, (wordCount / minWords) * 2.5) + (/[•\-*\d]/.test(trimmed) ? 1.0 : 0)) * 10) / 10;
+    let score = Math.round((kwRatio * 7.0 + Math.min(2.0, (wordCount / 40) * 2.0) + (/[•\-*\d]/.test(trimmed) ? 1.0 : 0)) * 10) / 10;
     score = Math.min(10, score);
 
     return {
@@ -215,7 +203,6 @@
 
   const shadow = hostElement.attachShadow({ mode: 'open' });
 
-  // Stylesheet inside Shadow DOM
   const styleTag = document.createElement('style');
   styleTag.textContent = `
     * {
@@ -234,21 +221,21 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 16px;
+      padding: 10px 18px;
       border-radius: 9999px;
-      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-      color: #FFFFFF;
+      background: linear-gradient(135deg, #00E599 0%, #059669 100%);
+      color: #06090E;
       font-size: 13px;
       font-weight: 700;
-      box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4), 0 8px 10px -6px rgba(79, 70, 229, 0.2);
+      box-shadow: 0 10px 25px -5px rgba(0, 229, 153, 0.4), 0 8px 10px -6px rgba(0, 229, 153, 0.2);
       cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       user-select: none;
     }
     .pyq-launcher-pill:hover {
       transform: translateY(-2px) scale(1.03);
-      box-shadow: 0 15px 30px -5px rgba(79, 70, 229, 0.5);
+      box-shadow: 0 15px 30px -5px rgba(0, 229, 153, 0.6);
     }
     .pyq-launcher-pill:active {
       transform: scale(0.97);
@@ -262,12 +249,12 @@
       50% { transform: scale(1.2); }
     }
 
-    /* Slide-over Sidebar Container */
+    /* Overlay */
     .pyq-sidebar-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(2px);
+      background: rgba(6, 9, 14, 0.6);
+      backdrop-filter: blur(4px);
       z-index: 2147483646;
       opacity: 0;
       pointer-events: none;
@@ -278,81 +265,103 @@
       pointer-events: auto;
     }
 
+    /* Sidebar */
     .pyq-sidebar {
       position: fixed;
       top: 0;
       right: 0;
       bottom: 0;
-      width: 440px;
+      width: 450px;
       max-width: 95vw;
       z-index: 2147483647;
       transform: translateX(105%);
       transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex;
       flex-direction: column;
-      box-shadow: -10px 0 35px rgba(0, 0, 0, 0.25);
+      box-shadow: -10px 0 35px rgba(0, 0, 0, 0.4);
     }
     .pyq-sidebar.open {
       transform: translateX(0);
     }
 
-    /* THEMES */
-    /* Solar Paper (Light Mode) */
-    .theme-light {
-      background: #F8FAFC;
-      color: #0F172A;
-      border-left: 1px solid #E2E8F0;
-    }
-    .theme-light .pyq-card {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      color: #0F172A;
-    }
-    .theme-light .pyq-header {
-      background: rgba(255, 255, 255, 0.95);
-      border-bottom: 1px solid #E2E8F0;
-    }
-    .theme-light .pyq-subtext {
-      color: #64748B;
-    }
-    .theme-light .pyq-chip {
-      background: #EEF2FF;
-      color: #4338CA;
-      border: 1px solid #C7D2FE;
-    }
-    .theme-light .pyq-textarea {
-      background: #F1F5F9;
-      color: #0F172A;
-      border: 1px solid #CBD5E1;
-    }
-
-    /* Obsidian Focus (Night Mode) */
+    /* Night Mode (Default) */
     .theme-dark {
-      background: #090D16;
+      background: #06090E;
       color: #F8FAFC;
-      border-left: 1px solid #1E293B;
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
     }
     .theme-dark .pyq-card {
-      background: #0F172A;
-      border: 1px solid #1E293B;
+      background: rgba(15, 23, 34, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       color: #F8FAFC;
     }
+    .theme-dark .pyq-card:hover {
+      border-color: rgba(0, 229, 153, 0.4);
+    }
     .theme-dark .pyq-header {
-      background: rgba(15, 23, 42, 0.95);
-      border-bottom: 1px solid #1E293B;
+      background: rgba(6, 9, 14, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
     .theme-dark .pyq-subtext {
       color: #94A3B8;
     }
     .theme-dark .pyq-chip {
-      background: rgba(99, 102, 241, 0.15);
-      color: #A5B4FC;
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      background: rgba(0, 229, 153, 0.12);
+      color: #00E599;
+      border: 1px solid rgba(0, 229, 153, 0.3);
     }
     .theme-dark .pyq-textarea {
-      background: #090D16;
+      background: #0B111A;
       color: #F8FAFC;
-      border: 1px solid #334155;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .theme-dark .pyq-exam-points-box {
+      background: rgba(0, 229, 153, 0.05);
+      border: 1px solid rgba(0, 229, 153, 0.2);
+    }
+    .theme-dark .pyq-diagram-tip-box {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 3px solid #38BDF8;
+    }
+
+    /* Day Mode */
+    .theme-light {
+      background: #F3F6FA;
+      color: #090D16;
+      border-left: 1px solid #E2E8F0;
+    }
+    .theme-light .pyq-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      color: #090D16;
+    }
+    .theme-light .pyq-card:hover {
+      border-color: #059669;
+    }
+    .theme-light .pyq-header {
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .theme-light .pyq-subtext {
+      color: #475569;
+    }
+    .theme-light .pyq-chip {
+      background: #ECFDF5;
+      color: #047857;
+      border: 1px solid #A7F3D0;
+    }
+    .theme-light .pyq-textarea {
+      background: #F8FAFC;
+      color: #090D16;
+      border: 1px solid #CBD5E1;
+    }
+    .theme-light .pyq-exam-points-box {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+    }
+    .theme-light .pyq-diagram-tip-box {
+      background: #F0F9FF;
+      border-left: 3px solid #0284C7;
     }
 
     /* Header */
@@ -361,20 +370,33 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(12px);
       flex-shrink: 0;
     }
     .pyq-brand {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+    }
+    .pyq-brand-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: rgba(0, 229, 153, 0.15);
+      border: 1px solid rgba(0, 229, 153, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #00E599;
+      font-weight: 800;
     }
     .pyq-brand-title {
       font-size: 15px;
       font-weight: 800;
-      background: linear-gradient(135deg, #6366F1, #06B6D4);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+    .pyq-brand-title span {
+      color: #00E599;
     }
     .pyq-header-actions {
       display: flex;
@@ -385,11 +407,11 @@
       background: transparent;
       border: none;
       cursor: pointer;
-      padding: 6px;
+      padding: 6px 8px;
       border-radius: 8px;
       color: inherit;
-      opacity: 0.75;
-      font-size: 15px;
+      opacity: 0.8;
+      font-size: 14px;
       transition: all 0.2s;
     }
     .pyq-btn-icon:hover {
@@ -397,7 +419,7 @@
       background: rgba(148, 163, 184, 0.15);
     }
 
-    /* Quick Action Toolbar */
+    /* Toolbar */
     .pyq-toolbar {
       padding: 10px 20px;
       display: flex;
@@ -409,20 +431,37 @@
       font-weight: 600;
     }
     .pyq-btn-tool {
-      padding: 5px 10px;
+      padding: 6px 12px;
       border-radius: 6px;
-      background: #4F46E5;
-      color: white;
+      background: #00E599;
+      color: #06090E;
       border: none;
       cursor: pointer;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       display: inline-flex;
       align-items: center;
       gap: 4px;
+      transition: all 0.2s;
     }
     .pyq-btn-tool:hover {
-      background: #4338CA;
+      background: #34D399;
+      transform: translateY(-1px);
+    }
+    .pyq-btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      color: inherit;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+    }
+    .pyq-btn-secondary:hover {
+      border-color: #00E599;
+      color: #00E599;
     }
 
     /* Body List */
@@ -432,18 +471,14 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
     }
 
     /* Cards */
     .pyq-card {
       border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      transition: border-color 0.2s;
-    }
-    .pyq-card:hover {
-      border-color: #6366F1;
+      padding: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
     .pyq-card-meta {
       display: flex;
@@ -453,24 +488,89 @@
       font-size: 11px;
     }
     .pyq-badge-marks {
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 6px;
       font-weight: 700;
-      background: rgba(79, 70, 229, 0.15);
-      color: #6366F1;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38BDF8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
     }
     .pyq-badge-repeat {
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 6px;
       font-weight: 700;
-      background: rgba(244, 63, 94, 0.15);
-      color: #F43F5E;
+      background: rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.25);
     }
     .pyq-qtext {
       font-size: 13px;
       font-weight: 600;
       line-height: 1.45;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    /* Card Action Bar */
+    .pyq-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .pyq-btn-action {
+      flex: 1;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .pyq-btn-action-primary {
+      background: rgba(0, 229, 153, 0.12);
+      border: 1px solid rgba(0, 229, 153, 0.3);
+      color: #00E599;
+    }
+    .pyq-btn-action-primary:hover {
+      background: #00E599;
+      color: #06090E;
+    }
+    .pyq-btn-action-secondary {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38BDF8;
+    }
+    .pyq-btn-action-secondary:hover {
+      background: #38BDF8;
+      color: #06090E;
+    }
+
+    /* Exam Points Box */
+    .pyq-exam-points-box {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .pyq-bullet-item {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .pyq-bullet-dot {
+      color: #00E599;
+      font-weight: 800;
+    }
+    .pyq-diagram-tip-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
     }
 
     /* Rubric Chips */
@@ -478,33 +578,36 @@
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
-      margin-bottom: 10px;
+      margin-top: 8px;
     }
     .pyq-chip {
       font-size: 10px;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
       font-weight: 600;
     }
 
     /* Recall Box */
     .pyq-recall-box {
-      margin-top: 10px;
-      padding-top: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
       border-top: 1px solid rgba(148, 163, 184, 0.15);
     }
     .pyq-textarea {
       width: 100%;
-      min-height: 80px;
-      padding: 8px;
+      min-height: 70px;
+      padding: 8px 10px;
       border-radius: 8px;
       font-size: 12px;
       outline: none;
       resize: vertical;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .pyq-textarea:focus {
+      border-color: #00E599;
     }
     .pyq-score-banner {
-      padding: 8px 10px;
+      padding: 8px 12px;
       border-radius: 8px;
       font-size: 12px;
       font-weight: 700;
@@ -513,9 +616,9 @@
       align-items: center;
       justify-content: space-between;
     }
-    .score-green { background: rgba(16, 185, 129, 0.15); color: #10B981; }
-    .score-amber { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
-    .score-red { background: rgba(244, 63, 94, 0.15); color: #F43F5E; }
+    .score-green { background: rgba(0, 229, 153, 0.15); color: #00E599; border: 1px solid rgba(0, 229, 153, 0.3); }
+    .score-amber { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .score-red { background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
 
     /* Footer */
     .pyq-footer {
@@ -569,7 +672,7 @@
       const count = matchedPyqs.length;
       textSpan.textContent = count > 0 
         ? `${count} PYQs Match This Page` 
-        : `Active Recall (Alt+Q)`;
+        : `PYQ Matcher (Alt+Q)`;
     }
   }
 
@@ -580,10 +683,10 @@
       <!-- Header -->
       <div class="pyq-header">
         <div class="pyq-brand">
-          <span style="font-size: 18px;">⚡</span>
+          <div class="pyq-brand-icon">⚡</div>
           <div>
-            <div class="pyq-brand-title">PyqRanker Companion</div>
-            <div class="pyq-subtext" style="font-size: 10px;">In-Page TF-IDF Syllabus Matcher</div>
+            <div class="pyq-brand-title">Pyq<span>Ranker</span></div>
+            <div class="pyq-subtext" style="font-size: 10px;">Exam Companion & Recall</div>
           </div>
         </div>
 
@@ -605,12 +708,12 @@
           <span class="pyq-subtext">(${matchedPyqs.length} matched)</span>
         </div>
 
-        <div style="display: flex; gap: 4px;">
-          <button class="pyq-btn-tool" id="pyq-scan-selection" title="Scan Highlighted Selection">
+        <div style="display: flex; gap: 6px;">
+          <button class="pyq-btn-secondary" id="pyq-scan-selection" title="Scan Highlighted Selection">
             🔍 Scan Selection
           </button>
-          <button class="pyq-btn-tool" id="pyq-open-dashboard" style="background: #06B6D4;" title="Open Web Dashboard">
-            🚀 Dashboard
+          <button class="pyq-btn-tool" id="pyq-open-dashboard" title="Open Web Dashboard">
+            🚀 Open App
           </button>
         </div>
       </div>
@@ -624,51 +727,89 @@
           </div>
         ` : matchedPyqs.map(q => {
           const evalResult = lastEvaluations[q.id];
+          const isPointsOpen = !!expandedExamPoints[q.id];
+          const isPracticeOpen = !!expandedPractice[q.id];
+
           return `
             <div class="pyq-card" data-qid="${q.id}">
               <div class="pyq-card-meta">
-                <span class="pyq-badge-marks">${q.marks} Marks • U${q.unit}</span>
-                ${q.repeatCount >= 3 ? `<span class="pyq-badge-repeat">🔥 Asked ${q.repeatCount}x</span>` : `<span class="pyq-subtext">Asked ${q.repeatCount}x</span>`}
+                <span class="pyq-badge-marks">${q.marks} Marks • Unit ${q.unit}</span>
+                ${q.repeatCount >= 3 ? `<span class="pyq-badge-repeat">🔥 Asked ${q.repeatCount}x (${q.yearsAsked ? q.yearsAsked.slice(-3).join(', ') : 'Recent'})</span>` : `<span class="pyq-subtext">Asked ${q.repeatCount}x</span>`}
               </div>
 
               <div class="pyq-qtext">${q.question}</div>
 
-              <!-- Rubric Chips -->
-              <div class="pyq-chips-wrap">
-                ${q.expectedKeywords.map(k => `<span class="pyq-chip">${k}</span>`).join('')}
+              <!-- Action Buttons -->
+              <div class="pyq-card-actions">
+                <button class="pyq-btn-action pyq-btn-action-primary" data-action="toggle-exam-points" data-qid="${q.id}">
+                  📖 ${isPointsOpen ? 'Hide Points' : 'Show Exam Points'}
+                </button>
+                <button class="pyq-btn-action pyq-btn-action-secondary" data-action="toggle-practice" data-qid="${q.id}">
+                  ✍️ ${isPracticeOpen ? 'Close Test' : 'Quick Practice'}
+                </button>
               </div>
 
-              <!-- Active Recall Box -->
-              <div class="pyq-recall-box">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 11px;">
-                  <span class="pyq-subtext">Test Active Recall:</span>
-                  <button class="pyq-btn-tool" style="padding: 2px 6px; font-size: 10px; background: transparent; border: 1px solid rgba(148,163,184,0.4); color: inherit;" data-action="pin-highlight" data-qid="${q.id}">
-                    📌 Attach Selection as Note
-                  </button>
-                </div>
-
-                <textarea class="pyq-textarea" placeholder="Type brief answer bullets here to grade yourself against rubric keywords..." id="textarea-${q.id}">${q.lastAttemptAnswer || ''}</textarea>
-
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <button class="pyq-btn-tool" data-action="check-rubric" data-qid="${q.id}">
-                    ✓ Check Rubric
-                  </button>
-                  <button class="pyq-btn-icon" style="font-size: 11px; text-decoration: underline;" data-action="show-model" data-qid="${q.id}">
-                    Show Model Key
-                  </button>
-                </div>
-
-                ${evalResult ? `
-                  <div class="pyq-score-banner ${evalResult.score >= 7.5 ? 'score-green' : evalResult.score >= 5 ? 'score-amber' : 'score-red'}">
-                    <span>Score: ${evalResult.score}/10 (${evalResult.wordCount} words)</span>
-                    <span>${evalResult.matchedKeywords.length}/${q.expectedKeywords.length} Keywords Hit</span>
+              <!-- Model Exam Answer Points -->
+              ${isPointsOpen ? `
+                <div class="pyq-exam-points-box">
+                  <div style="font-weight: 700; font-size: 11px; margin-bottom: 8px; color: #00E599;">
+                    ✓ MODEL EXAM POINTS (MEMORIZE THESE):
                   </div>
-                ` : ''}
+                  ${(q.bullets && q.bullets.length > 0) ? q.bullets.map(b => `
+                    <div class="pyq-bullet-item">
+                      <span class="pyq-bullet-dot">•</span>
+                      <span>${b}</span>
+                    </div>
+                  `).join('') : `
+                    <div class="pyq-bullet-item">
+                      <span class="pyq-bullet-dot">•</span>
+                      <span>${q.modelAnswerSummary || 'Define core algorithm and provide structural diagram.'}</span>
+                    </div>
+                  `}
 
-                <div id="model-${q.id}" style="display: none; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 11px; line-height: 1.4; background: rgba(79, 70, 229, 0.1);">
-                  <strong>Model Key:</strong> ${q.modelAnswerSummary}
+                  ${q.diagramFormulaTip ? `
+                    <div class="pyq-diagram-tip-box">
+                      <strong>📐 Must-Draw Diagram / Formula:</strong> ${q.diagramFormulaTip}
+                    </div>
+                  ` : ''}
+
+                  <div class="pyq-chips-wrap">
+                    ${(q.expectedKeywords || []).map(k => `<span class="pyq-chip">${k}</span>`).join('')}
+                  </div>
                 </div>
-              </div>
+              ` : ''}
+
+              <!-- Active Recall Practice Box -->
+              ${isPracticeOpen ? `
+                <div class="pyq-recall-box">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px;">
+                    <span class="pyq-subtext">Test memory without looking:</span>
+                    <button class="pyq-btn-secondary" style="padding: 2px 6px; font-size: 10px;" data-action="pin-highlight" data-qid="${q.id}">
+                      📌 Attach Selected Text
+                    </button>
+                  </div>
+
+                  <textarea class="pyq-textarea" placeholder="Type key points from memory..." id="textarea-${q.id}">${q.lastAttemptAnswer || ''}</textarea>
+
+                  <div style="display: flex; justify-content: flex-end;">
+                    <button class="pyq-btn-tool" data-action="check-rubric" data-qid="${q.id}">
+                      ✓ Check Score
+                    </button>
+                  </div>
+
+                  ${evalResult ? `
+                    <div class="pyq-score-banner ${evalResult.score >= 7.5 ? 'score-green' : evalResult.score >= 5 ? 'score-amber' : 'score-red'}">
+                      <span>Score: ${evalResult.score}/10 (${evalResult.wordCount} words)</span>
+                      <span>${evalResult.matchedKeywords.length}/${q.expectedKeywords.length} Keywords Hit</span>
+                    </div>
+                    ${evalResult.missingKeywords.length > 0 ? `
+                      <div style="font-size: 11px; margin-top: 6px;" class="pyq-subtext">
+                        Missing: <span style="color: #F59E0B;">${evalResult.missingKeywords.slice(0, 3).join(', ')}</span>
+                      </div>
+                    ` : ''}
+                  ` : ''}
+                </div>
+              ` : ''}
             </div>
           `;
         }).join('')}
@@ -676,8 +817,8 @@
 
       <!-- Footer -->
       <div class="pyq-footer">
-        <span class="pyq-subtext">Keyboard Shortcut: <code style="font-weight: 700;">Alt + Q</code></span>
-        <span style="color: #10B981; font-weight: 600;">● Sync Live</span>
+        <span class="pyq-subtext">Shortcut: <code style="font-weight: 700;">Alt + Q</code></span>
+        <span style="color: #00E599; font-weight: 700;">● Cyber Sync Active</span>
       </div>
     `;
 
@@ -690,22 +831,40 @@
     });
 
     shadow.getElementById('pyq-open-dashboard')?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_WEB_DASHBOARD', url: 'http://localhost:5173' });
+      chrome.runtime.sendMessage({ type: 'OPEN_WEB_DASHBOARD', url: 'https://anything14907-byte.github.io/creative/' });
     });
 
     shadow.getElementById('pyq-scan-selection')?.addEventListener('click', () => {
       const selected = window.getSelection()?.toString() || '';
-      if (selected.trim().length > 5) {
+      if (selected.trim().length > 3) {
         scanPageContent(selected);
       } else {
-        alert('Please select or highlight text on the web page first to scan!');
+        alert('Please highlight some text on this webpage first to scan!');
       }
     });
 
-    // Check Rubric Buttons
+    // Toggle Exam Points
+    shadow.querySelectorAll('[data-action="toggle-exam-points"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const qid = e.currentTarget.getAttribute('data-qid');
+        expandedExamPoints[qid] = !expandedExamPoints[qid];
+        renderSidebarContent();
+      });
+    });
+
+    // Toggle Practice
+    shadow.querySelectorAll('[data-action="toggle-practice"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const qid = e.currentTarget.getAttribute('data-qid');
+        expandedPractice[qid] = !expandedPractice[qid];
+        renderSidebarContent();
+      });
+    });
+
+    // Check Rubric
     shadow.querySelectorAll('[data-action="check-rubric"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const qid = e.target.getAttribute('data-qid');
+        const qid = e.currentTarget.getAttribute('data-qid');
         const textarea = shadow.getElementById(`textarea-${qid}`);
         const q = currentQuestions.find(item => item.id === qid);
         if (q && textarea) {
@@ -713,28 +872,16 @@
           lastEvaluations[qid] = evalResult;
           q.lastAttemptAnswer = textarea.value;
           q.lastAttemptScore = evalResult.score;
-          // Save to chrome storage
           chrome.storage.local.set({ pyq_questions: currentQuestions });
           renderSidebarContent();
         }
       });
     });
 
-    // Show Model Key Buttons
-    shadow.querySelectorAll('[data-action="show-model"]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const qid = e.target.getAttribute('data-qid');
-        const box = shadow.getElementById(`model-${qid}`);
-        if (box) {
-          box.style.display = box.style.display === 'none' ? 'block' : 'none';
-        }
-      });
-    });
-
-    // Pin Highlight as Note Buttons
+    // Pin Highlight
     shadow.querySelectorAll('[data-action="pin-highlight"]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const qid = e.target.getAttribute('data-qid');
+        const qid = e.currentTarget.getAttribute('data-qid');
         const selected = window.getSelection()?.toString() || '';
         if (!selected.trim()) {
           alert('Highlight some text on this webpage first to pin as a study note!');
@@ -745,7 +892,6 @@
         if (q) {
           q.userNotes = q.userNotes ? `${q.userNotes}\n\n[Web Clip]: ${selected}` : `[Web Clip]: ${selected}`;
           chrome.storage.local.set({ pyq_questions: currentQuestions });
-          // Dispatch to localhost dashboard if open
           window.postMessage({ type: 'PYQ_PIN_NOTE', payload: { questionId: qid, note: selected } }, '*');
           alert(`Pinned text snippet to "${q.question.slice(0, 30)}..."!`);
         }
@@ -754,7 +900,7 @@
   }
 
   // ==========================================
-  // SEAMLESS WEB-TO-EXTENSION SYNC BRIDGE
+  // SYNC BRIDGE WITH WEB APP
   // ==========================================
   window.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'PYQ_SYNC_DATA') {
@@ -764,18 +910,15 @@
         activeSubjectId = payload.activeSubjectId || activeSubjectId;
         activeTheme = payload.theme || activeTheme;
 
-        // Persist to chrome.storage.local
         chrome.storage.local.set({
           pyq_questions: currentQuestions,
           pyq_active_subject: activeSubjectId,
           pyq_theme: activeTheme,
           pyq_last_synced: Date.now()
         }, () => {
-          // Acknowledge back to web dashboard
           window.postMessage({ type: 'PYQ_EXTENSION_ACK', timestamp: Date.now() }, '*');
         });
 
-        // Re-scan with newly synchronized questions
         scanPageContent();
       }
     }
@@ -794,7 +937,5 @@
     }
   });
 
-  // Start initialization
   initData();
-
 })();

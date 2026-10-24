@@ -1,473 +1,523 @@
-// PyqRanker Master Dataset for Manifest V3 Extension
+// PyqRanker Master Dataset for Manifest V3 Extension (Obsidian Titanium & Cyber Emerald Edition)
 const INITIAL_SUBJECTS = [
   {
     id: 'os',
     code: 'CS301',
     name: 'Operating Systems',
-    semester: '5th Semester',
-    totalCredits: 4,
+    semester: '5th Sem',
+    iconName: 'Cpu',
     units: [
-      { unit: 1, title: 'Process Management & CPU Scheduling', description: 'PCB, Process states, Context Switch, FCFS, SJF, Round Robin, Multilevel Queues' },
-      { unit: 2, title: 'Process Synchronization & Deadlocks', description: 'Critical Section, Semaphores, Peterson Algorithm, Banker Algorithm, Resource Allocation Graph' },
-      { unit: 3, title: 'Memory Management & Virtual Memory', description: 'Paging, Segmentation, TLB, Page Fault handling, FIFO, LRU, Optimal Page Replacement, Thrashing' },
-      { unit: 4, title: 'Storage & Disk Scheduling', description: 'Disk Geometry, FCFS, SSTF, SCAN, C-SCAN, LOOK, Inodes, File Allocation Methods' },
-      { unit: 5, title: 'Protection, Security & Virtualization', description: 'Access Control Matrix, Hypervisors Type 1 & 2, Buffer Overflow, Cryptographic mechanisms' },
+      { unit: 1, title: 'Process Scheduling' },
+      { unit: 2, title: 'Synchronization & Deadlocks' },
+      { unit: 3, title: 'Memory & Paging' },
+      { unit: 4, title: 'Storage & Disk Management' },
+      { unit: 5, title: 'Virtualization & Security' },
     ]
   },
   {
     id: 'dbms',
     code: 'CS302',
-    name: 'Database Management Systems',
-    semester: '5th Semester',
-    totalCredits: 4,
+    name: 'Database Systems',
+    semester: '5th Sem',
+    iconName: 'Database',
     units: [
-      { unit: 1, title: 'Relational Model & ER Architecture', description: 'Entity-Relationship Diagrams, Relational Algebra, Selection, Projection, Joins, Division' },
-      { unit: 2, title: 'SQL & Relational Normalization', description: '1NF, 2NF, 3NF, BCNF, 4NF, Lossless Decomposition, Dependency Preservation, Triggers' },
-      { unit: 3, title: 'Transaction Processing & Concurrency', description: 'ACID Properties, Conflict & View Serializability, Two-Phase Locking (2PL), Deadlock handling' },
-      { unit: 4, title: 'Indexing, B+ Trees & Query Optimization', description: 'Clustered vs Non-clustered Indexing, B-Trees, B+ Trees, Cost-based Query Execution plans' },
-      { unit: 5, title: 'Distributed DBs, NoSQL & Recovery', description: 'WAL Protocol, ARIES Recovery, Two-Phase Commit (2PC), CAP Theorem, Sharding' },
+      { unit: 1, title: 'Relational Model & Algebra' },
+      { unit: 2, title: 'SQL & Normalization' },
+      { unit: 3, title: 'Transactions & Concurrency' },
+      { unit: 4, title: 'Indexing & B+ Trees' },
+      { unit: 5, title: 'Distributed Databases' },
     ]
   },
   {
     id: 'cn',
     code: 'CS303',
     name: 'Computer Networks',
-    semester: '5th Semester',
-    totalCredits: 4,
+    semester: '5th Sem',
+    iconName: 'Network',
     units: [
-      { unit: 1, title: 'Network Architecture & Physical Layer', description: 'OSI 7-Layer vs TCP/IP Models, Guided vs Unguided Media, Circuit vs Packet Switching' },
-      { unit: 2, title: 'Data Link Layer & MAC Protocols', description: 'Framing, CRC Error Checking, Stop-and-Wait, Go-Back-N, Selective Repeat, CSMA/CD, ALOHA' },
-      { unit: 3, title: 'Network Layer & Routing Algorithms', description: 'IPv4 vs IPv6, Subnetting, CIDR, Distance Vector (Bellman-Ford), Link State (Dijkstra), OSPF, BGP' },
-      { unit: 4, title: 'Transport Layer Protocols', description: 'TCP 3-Way Handshake, TCP Congestion Control (Slow Start, Congestion Avoidance, AIMD), UDP vs TCP' },
-      { unit: 5, title: 'Application Layer & Network Security', description: 'DNS Hierarchy & Resolution, HTTP/1.1 vs HTTP/2, TLS/SSL Handshake, RSA Cryptography' },
+      { unit: 1, title: 'OSI Model & Physical Layer' },
+      { unit: 2, title: 'Data Link Layer & Framing' },
+      { unit: 3, title: 'Network Layer & Routing' },
+      { unit: 4, title: 'Transport Layer & TCP' },
+      { unit: 5, title: 'Application Layer & DNS' },
     ]
   },
   {
     id: 'dsa',
     code: 'CS304',
     name: 'Data Structures & Algorithms',
-    semester: '3rd Semester',
-    totalCredits: 4,
+    semester: '3rd Sem',
+    iconName: 'Code',
     units: [
-      { unit: 1, title: 'Asymptotic Analysis & Linear Structures', description: 'Big-O, Omega, Theta, Master Theorem, Linked List cycle detection, Stack & Queue applications' },
-      { unit: 2, title: 'Trees & Balanced Search Trees', description: 'Binary Search Tree, AVL Tree Rotations (LL, RR, LR, RL), Red-Black properties, B-Trees' },
-      { unit: 3, title: 'Priority Queues, Heaps & Hashing', description: 'Min/Max Binary Heap, HeapSort, Hash collisions, Separate Chaining, Open Addressing' },
-      { unit: 4, title: 'Graph Algorithms & Shortest Paths', description: 'BFS, DFS, Topological Sorting, Prim, Kruskal with Disjoint Set Union, Dijkstra, Bellman-Ford' },
-      { unit: 5, title: 'Dynamic Programming & Greedy Algorithms', description: '0/1 Knapsack, Fractional Knapsack, Longest Common Subsequence (LCS), Huffman Coding' },
+      { unit: 1, title: 'Asymptotic Analysis & Lists' },
+      { unit: 2, title: 'Trees & AVL Balancing' },
+      { unit: 3, title: 'Heaps & Hashing' },
+      { unit: 4, title: 'Graphs & Dijkstra' },
+      { unit: 5, title: 'Dynamic Programming' },
     ]
   }
 ];
 
 const INITIAL_QUESTIONS = [
+  // OPERATING SYSTEMS
   {
-    id: 'OS-U2-10M-01',
+    id: 'OS-01',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 2,
-    unitTitle: 'Process Synchronization & Deadlocks',
-    question: "Explain the Banker's Algorithm for Deadlock Avoidance with a comprehensive example. Define the Safety Algorithm and Resource-Request Algorithm with data structures (Available, Max, Allocation, Need).",
+    unitTitle: 'Synchronization & Deadlocks',
+    question: "Explain the Banker's Algorithm for Deadlock Avoidance. State the safety algorithm and write the data structures required (Available, Max, Allocation, Need).",
     marks: 10,
     yearsAsked: [2021, 2022, 2023, 2024, 2025],
     repeatCount: 5,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Bankers Algorithm", "Safe State", "Available Vector", "Max Matrix", "Allocation Matrix", "Need Matrix", "Deadlock Avoidance"],
-    rubricGuide: {
-      recommendedWordCount: { min: 200, max: 400 },
-      structureRequirements: [
-        'Definition of Deadlock Avoidance vs Prevention',
-        'Mathematical definition of Need = Max - Allocation',
-        'Step-by-step description of the Safety Algorithm',
-        'Numerical or Matrix verification example showing safe sequence'
-      ],
-      keyConcepts: ['Safe Sequence', 'Need Matrix Formula', 'Work and Finish Vectors']
-    },
-    modelAnswerSummary: "Banker's algorithm tests for safety by simulating the allocation of predetermined maximum possible amounts of all resources, verifying that a safe sequence exists before granting requests.",
+    bullets: [
+      "Banker's Algorithm tests for safety before allocating resources to ensure the system never enters an unsafe deadlock state.",
+      "Uses 4 core data structures: Available[m] (free resources), Max[n][m] (max demand), Allocation[n][m] (current hold), and Need[n][m].",
+      "Calculates current remaining need using the exact formula: Need[i][j] = Max[i][j] - Allocation[i][j].",
+      "Safety Algorithm iterates through all processes, releasing held resources back into Work vector once a process can complete safely."
+    ],
+    diagramFormulaTip: "Draw the Resource Matrix Table showing columns: Process | Allocation | Max | Available | Need. Write the equation Need = Max - Allocation.",
     userStatus: 'not-started',
-    userNotes: ''
+    bookmarked: true
   },
   {
-    id: 'OS-U1-10M-02',
+    id: 'OS-02',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 1,
-    unitTitle: 'Process Management & CPU Scheduling',
-    question: "Compare Preemptive and Non-Preemptive CPU Scheduling algorithms. Calculate Average Turnaround Time and Waiting Time for FCFS, SJF, and Round Robin (Time Quantum = 2ms) for given process arrival and burst times.",
+    unitTitle: 'Process Scheduling',
+    question: "Compare Preemptive and Non-Preemptive CPU Scheduling. Calculate Average Waiting Time and Turnaround Time for FCFS, SJF, and Round Robin.",
     marks: 10,
     yearsAsked: [2021, 2023, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Turnaround Time", "Waiting Time", "Gantt Chart", "Time Quantum", "Round Robin", "SJF", "Preemption"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['Preemptive vs Non-Preemptive table', 'Gantt chart drawing', 'TAT & WT formulas'],
-      keyConcepts: ['TAT = Completion - Arrival', 'Waiting Time = TAT - Burst']
-    },
-    modelAnswerSummary: 'Preemptive scheduling interrupts tasks for higher-priority processes; non-preemptive lets processes run until voluntary release. Round Robin uses time slicing to avoid starvation.',
-    userStatus: 'needs-revision',
-    userNotes: ''
+    bullets: [
+      "Preemptive scheduling allows the OS to interrupt a running process when higher-priority work arrives; Non-preemptive runs until process completion or voluntary yield.",
+      "Round Robin enforces equal time slices (Time Quantum) preventing CPU monopolization and starving long jobs.",
+      "Shortest Job First (SJF) gives optimal minimum average waiting time but can suffer from starvation of long processes.",
+      "Key Exam Formulas: Turnaround Time = Completion Time - Arrival Time; Waiting Time = Turnaround Time - Burst Time."
+    ],
+    diagramFormulaTip: "Draw a horizontal Gantt Chart timeline showing timeline intervals (0, 2, 5, 8...) and build a final calculation table with TAT and WT columns.",
+    userStatus: 'not-started',
+    bookmarked: true
   },
   {
-    id: 'OS-U3-10M-03',
+    id: 'OS-03',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 3,
-    unitTitle: 'Memory Management & Virtual Memory',
-    question: "What is Paging? Describe the Translation Lookaside Buffer (TLB) architecture and calculate the Effective Memory Access Time (EMAT) given TLB hit ratio, TLB lookup time, and Main Memory access time.",
+    unitTitle: 'Memory & Paging',
+    question: "What is Paging? Describe the Translation Lookaside Buffer (TLB) and derive the formula for Effective Memory Access Time (EMAT).",
     marks: 10,
     yearsAsked: [2022, 2023, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["TLB", "Page Table", "Effective Memory Access Time", "Hit Ratio", "Frame Number", "Page Number", "Paging"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['Paging translation diagram', 'TLB hardware role', 'EMAT formula derivation'],
-      keyConcepts: ['EMAT = h*(c+m) + (1-h)*(c+2m)', 'Internal Fragmentation']
-    },
-    modelAnswerSummary: 'Paging enables non-contiguous memory allocation. The TLB caches page-to-frame mappings. EMAT = h*(c+m) + (1-h)*(c+2m), reducing average memory latency drastically.',
-    userStatus: 'not-started',
-    userNotes: ''
+    bullets: [
+      "Paging eliminates external fragmentation by mapping fixed-size logical pages to physical memory frames non-contiguously.",
+      "The TLB is a high-speed associative hardware cache storing recent page-to-frame translations to avoid multiple slow RAM lookups.",
+      "On TLB hit (ratio h), memory access requires: t_tlb + t_mem.",
+      "On TLB miss (ratio 1-h), memory access requires: t_tlb + 2 * t_mem (one for page table, one for data).",
+      "Final EMAT Formula: EMAT = h * (t_tlb + t_mem) + (1 - h) * (t_tlb + 2 * t_mem)."
+    ],
+    diagramFormulaTip: "Draw the CPU Logical Address split into Page (p) and Offset (d), pointing first to the TLB box and fallback to the Main Memory Page Table.",
+    userStatus: 'not-started'
   },
   {
-    id: 'OS-U2-5M-04',
+    id: 'OS-04',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 2,
-    unitTitle: 'Process Synchronization & Deadlocks',
-    question: "Define Semaphores. Distinguish between Counting Semaphore and Binary Semaphore. How does the Wait() and Signal() primitive maintain mutual exclusion in the Critical Section problem?",
+    unitTitle: 'Synchronization & Deadlocks',
+    question: "Explain Counting vs Binary Semaphores. How do Wait() and Signal() primitives ensure Mutual Exclusion in Critical Sections?",
     marks: 5,
     yearsAsked: [2021, 2022, 2024],
     repeatCount: 3,
     isHighProbability: true,
-    frequencyCategory: 'frequent',
     expectedKeywords: ["Semaphore", "Wait Primitive", "Signal Primitive", "Mutual Exclusion", "Critical Section", "Binary Semaphore", "Counting Semaphore"],
-    rubricGuide: {
-      recommendedWordCount: { min: 90, max: 180 },
-      structureRequirements: ['Atomic wait() and signal() definitions', 'Binary vs counting comparison'],
-      keyConcepts: ['Atomic Operations', 'Critical section protection']
-    },
-    modelAnswerSummary: 'A semaphore is an atomic synchronization variable manipulated exclusively via wait() and signal(). Binary acts as a mutex; counting manages pools of identical resources.',
-    userStatus: 'mastered',
-    userNotes: ''
+    bullets: [
+      "A semaphore is an atomic synchronization variable modified only by wait() [P] and signal() [V] operations.",
+      "Binary Semaphore takes values 0 or 1, serving as a Mutex Lock to guarantee mutual exclusion in the critical section.",
+      "Counting Semaphore takes non-negative values to control access to a finite pool of identical resource instances.",
+      "wait(S) decrements S; if S <= 0, the calling process blocks. signal(S) increments S and unblocks waiting processes."
+    ],
+    diagramFormulaTip: "Write the 3-line atomic pseudocode for wait(S) { while(S<=0); S--; } and signal(S) { S++; }.",
+    userStatus: 'not-started'
   },
   {
-    id: 'OS-U3-5M-05',
+    id: 'OS-05',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 3,
-    unitTitle: 'Memory Management & Virtual Memory',
-    question: "Explain Belady's Anomaly in page replacement algorithms with a clear reference string example. Why is LRU immune to Belady's Anomaly?",
+    unitTitle: 'Memory & Paging',
+    question: "Explain Belady's Anomaly in page replacement algorithms with a reference string example. Why is LRU immune to it?",
     marks: 5,
     yearsAsked: [2021, 2023, 2025],
     repeatCount: 3,
     isHighProbability: true,
-    frequencyCategory: 'frequent',
     expectedKeywords: ["Beladys Anomaly", "FIFO", "Page Faults", "Stack Algorithm", "LRU", "Frame Allocation"],
-    rubricGuide: {
-      recommendedWordCount: { min: 80, max: 160 },
-      structureRequirements: ['Definition of Beladys anomaly', 'FIFO counterexample string', 'Stack algorithm explanation'],
-      keyConcepts: ['Stack algorithm inclusion property']
-    },
-    modelAnswerSummary: "Belady's anomaly occurs when allocating more page frames results in more page faults under FIFO. LRU is immune as it satisfies the stack algorithm subset property.",
-    userStatus: 'not-started',
-    userNotes: ''
+    bullets: [
+      "Belady's Anomaly is the counter-intuitive phenomenon where increasing physical frame allocation causes MORE page faults under FIFO.",
+      "Common reference string counterexample: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5 (causes 9 faults with 3 frames, but 10 faults with 4 frames).",
+      "LRU and Optimal algorithms are provably immune because they belong to the class of 'Stack Algorithms'.",
+      "In stack algorithms, the page set in n frames is always a strict subset of the page set in (n+1) frames."
+    ],
+    diagramFormulaTip: "Draw a small grid tracing the 12-number string with 3 frame rows vs 4 frame rows showing the asterisk (*) page faults.",
+    userStatus: 'not-started'
   },
   {
-    id: 'OS-U4-5M-06',
+    id: 'OS-06',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 4,
-    unitTitle: 'Storage & Disk Scheduling',
-    question: "Compare SCAN and C-SCAN disk scheduling algorithms. Calculate total head movement given a disk request queue and initial head position.",
+    unitTitle: 'Storage & Disk Management',
+    question: "Compare SCAN and C-SCAN disk scheduling algorithms. Calculate total head movement given a cylinder request queue.",
     marks: 5,
     yearsAsked: [2022, 2024, 2025],
     repeatCount: 3,
     isHighProbability: true,
-    frequencyCategory: 'frequent',
     expectedKeywords: ["Disk Scheduling", "SCAN", "C-SCAN", "Head Movement", "Cylinder", "Elevator Algorithm"],
-    rubricGuide: {
-      recommendedWordCount: { min: 80, max: 160 },
-      structureRequirements: ['Elevator behavior of SCAN', 'Circular return of C-SCAN', 'Head movement formula'],
-      keyConcepts: ['Uniform waiting time in C-SCAN']
-    },
-    modelAnswerSummary: 'SCAN sweeps across the disk in one direction then reverses. C-SCAN sweeps in one direction, returning to start without servicing requests to ensure uniform waiting time.',
-    userStatus: 'not-started',
-    userNotes: ''
+    bullets: [
+      "SCAN (Elevator Algorithm) moves disk heads in one direction servicing all requests until the disk boundary, then reverses.",
+      "C-SCAN (Circular SCAN) moves in one direction servicing requests, but upon reaching the end, jumps directly back to cylinder 0 without servicing on the return trip.",
+      "C-SCAN provides more uniform waiting times for newly arriving requests at cylinder edges.",
+      "Total Head Movement = Sum of absolute differences between consecutive cylinder stops: |pos_current - pos_next|."
+    ],
+    diagramFormulaTip: "Draw a horizontal cylinder axis (0 to 199) with zigzag line for SCAN vs unidirectional slope with dashed return line for C-SCAN.",
+    userStatus: 'not-started'
   },
   {
-    id: 'OS-U1-2M-07',
+    id: 'OS-07',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 1,
-    unitTitle: 'Process Management & CPU Scheduling',
-    question: "What is a Process Control Block (PCB)? State any four major fields contained within it.",
+    unitTitle: 'Process Scheduling',
+    question: "What is a Process Control Block (PCB)? List any four essential attributes contained in it.",
     marks: 2,
     yearsAsked: [2021, 2022, 2023, 2024, 2025],
     repeatCount: 5,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Process Control Block", "PCB", "Program Counter", "Process State", "CPU Registers", "Memory Limits"],
-    rubricGuide: {
-      recommendedWordCount: { min: 30, max: 60 },
-      structureRequirements: ['PCB definition', '4 fields listed'],
-      keyConcepts: ['Process representation']
-    },
-    modelAnswerSummary: 'The PCB is an OS data structure storing all attributes of a process including PID, state, program counter, CPU registers, and memory bounds.',
-    userStatus: 'mastered',
-    userNotes: ''
+    bullets: [
+      "The PCB is the kernel data structure containing all administrative info required to manage and context-switch an active process.",
+      "Field 1: Process ID (PID) & Current State (Ready, Running, Waiting, Terminated).",
+      "Field 2: Program Counter (stores the address of the next instruction to execute).",
+      "Field 3: CPU Registers (accumulators, index registers saved during context switch).",
+      "Field 4: Memory Management Limits (base and limit registers or page table pointers)."
+    ],
+    diagramFormulaTip: "Draw a simple rectangular box divided into 5 labeled horizontal slots representing the PCB struct.",
+    userStatus: 'not-started'
   },
   {
-    id: 'OS-U2-2M-08',
+    id: 'OS-08',
     subjectId: 'os',
     subjectName: 'Operating Systems',
     unit: 2,
-    unitTitle: 'Process Synchronization & Deadlocks',
-    question: "State the four necessary and sufficient conditions for a Deadlock to occur in an operating system.",
+    unitTitle: 'Synchronization & Deadlocks',
+    question: "State the four Coffman conditions necessary for a Deadlock to occur in an operating system.",
     marks: 2,
     yearsAsked: [2021, 2022, 2023, 2024],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Mutual Exclusion", "Hold and Wait", "No Preemption", "Circular Wait", "Deadlock Conditions"],
-    rubricGuide: {
-      recommendedWordCount: { min: 30, max: 60 },
-      structureRequirements: ['List 4 Coffman conditions'],
-      keyConcepts: ['Coffman conditions']
-    },
-    modelAnswerSummary: 'Deadlock requires: 1. Mutual Exclusion, 2. Hold and Wait, 3. No Preemption, and 4. Circular Wait holding concurrently.',
-    userStatus: 'mastered',
-    userNotes: ''
+    bullets: [
+      "1. Mutual Exclusion: At least one resource must be held in a non-shareable mode.",
+      "2. Hold and Wait: A process holding at least one resource is actively waiting to acquire others held by different processes.",
+      "3. No Preemption: Resources cannot be forcibly taken; they are released only voluntarily by the holding process.",
+      "4. Circular Wait: A closed loop {P0 -> P1 -> ... -> Pn -> P0} exists where each process waits for a resource held by the next."
+    ],
+    diagramFormulaTip: "Draw a 4-node circular arrow loop showing Process 1 holding R1 waiting for R2 held by Process 2.",
+    userStatus: 'not-started'
   },
 
-  // DBMS
+  // DATABASE SYSTEMS
   {
-    id: 'DBMS-U2-10M-01',
+    id: 'DBMS-01',
     subjectId: 'dbms',
-    subjectName: 'Database Management Systems',
+    subjectName: 'Database Systems',
     unit: 2,
-    unitTitle: 'SQL & Relational Normalization',
-    question: "Explain 1NF, 2NF, 3NF, and BCNF with concrete relation schemas and Functional Dependencies (FDs). Show how a relation in 3NF may violate BCNF and demonstrate lossless decomposition.",
+    unitTitle: 'SQL & Normalization',
+    question: "Explain 1NF, 2NF, 3NF, and BCNF with Functional Dependencies. Demonstrate an example schema that satisfies 3NF but violates BCNF.",
     marks: 10,
     yearsAsked: [2021, 2022, 2023, 2024, 2025],
     repeatCount: 5,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Normalization", "1NF", "2NF", "3NF", "BCNF", "Functional Dependency", "Superkey", "Lossless Decomposition", "Candidate Key"],
-    rubricGuide: {
-      recommendedWordCount: { min: 200, max: 400 },
-      structureRequirements: ['1NF, 2NF, 3NF definitions', 'BCNF superkey rule', 'Counterexample schema'],
-      keyConcepts: ['Prime vs Non-Prime attributes', 'Superkey requirement']
-    },
-    modelAnswerSummary: 'Normalization decomposes relations to avoid anomalies: 1NF enforces atomicity, 2NF eliminates partial dependencies, 3NF eliminates transitive dependencies, and BCNF requires determinants to be superkeys.',
-    userStatus: 'needs-revision',
-    userNotes: ''
+    bullets: [
+      "1NF requires all attribute values to be atomic (no multi-valued or nested repeating groups).",
+      "2NF is in 1NF and contains no Partial Dependencies (every non-prime attribute must depend on the FULL candidate key).",
+      "3NF is in 2NF and contains no Transitive Dependencies (for every X -> Y, either X is a superkey or Y is a prime attribute).",
+      "BCNF enforces the strict rule: for every non-trivial FD X -> Y, X MUST be a Superkey.",
+      "Classic 3NF vs BCNF violation: R(Student, Subject, Teacher) with FDs: {Student, Subject} -> Teacher and Teacher -> Subject. Here Teacher is not a superkey, violating BCNF while satisfying 3NF."
+    ],
+    diagramFormulaTip: "Write the formal containment diagram: BCNF ⊂ 3NF ⊂ 2NF ⊂ 1NF as concentric circles.",
+    userStatus: 'not-started',
+    bookmarked: true
   },
   {
-    id: 'DBMS-U3-10M-02',
+    id: 'DBMS-02',
     subjectId: 'dbms',
-    subjectName: 'Database Management Systems',
+    subjectName: 'Database Systems',
     unit: 3,
-    unitTitle: 'Transaction Processing & Concurrency',
-    question: "Discuss ACID properties in transaction processing. Explain Conflict Serializability and the Precedence (Serialization) Graph method for detecting conflicting schedules.",
+    unitTitle: 'Transactions & Concurrency',
+    question: "Explain ACID Properties and Conflict Serializability. How does a Precedence (Serialization) Graph detect conflicting schedules?",
     marks: 10,
     yearsAsked: [2021, 2023, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["ACID Properties", "Atomicity", "Consistency", "Isolation", "Durability", "Conflict Serializability", "Precedence Graph", "Conflict Equivalent"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['ACID breakdown', 'Conflicting operations definition', 'Graph cycle test'],
-      keyConcepts: ['Precedence Graph', 'Conflict equivalence']
-    },
-    modelAnswerSummary: 'ACID guarantees database integrity. Operations conflict if they touch the same data and one is a write. A schedule is conflict serializable if its precedence graph has no cycles.',
+    bullets: [
+      "ACID: Atomicity (all-or-nothing via WAL), Consistency (database constraints preserved), Isolation (concurrency control), Durability (committed changes persist).",
+      "Two operations conflict if they belong to different transactions, access the exact same data item, and at least ONE operation is a WRITE.",
+      "A schedule is Conflict Serializable if it can be transformed into a serial schedule by swapping non-conflicting consecutive operations.",
+      "Precedence Graph: Nodes represent transactions; draw directed edge Ti -> Tj if Ti executes a conflicting operation before Tj.",
+      "Theorem: A schedule is conflict serializable if and only if its Precedence Graph has NO directed cycles."
+    ],
+    diagramFormulaTip: "Draw a 2-node graph with T1 and T2 showing directed arrow T1 -> T2 and state that topological sort gives equivalent serial order.",
     userStatus: 'not-started',
-    userNotes: ''
+    bookmarked: true
   },
   {
-    id: 'DBMS-U4-10M-03',
+    id: 'DBMS-03',
     subjectId: 'dbms',
-    subjectName: 'Database Management Systems',
+    subjectName: 'Database Systems',
     unit: 4,
-    unitTitle: 'Indexing, B+ Trees & Query Optimization',
-    question: "Describe the structure of a B+ Tree index. Explain insertion and deletion operations with node splitting and merging. Contrast B+ Trees with standard B-Trees for range queries.",
+    unitTitle: 'Indexing & B+ Trees',
+    question: "Describe B+ Tree index structures. Explain how node splitting works and why B+ Trees are superior to B-Trees for range queries.",
     marks: 10,
     yearsAsked: [2022, 2023, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["B+ Tree", "B-Tree", "Leaf Nodes", "Linked List", "Range Queries", "Node Splitting", "Internal Nodes", "Clustered Index"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['B+ Tree diagram', 'Linked leaf advantage', 'Split and merge rules'],
-      keyConcepts: ['Linked leaf level', 'High fanout']
-    },
-    modelAnswerSummary: 'In B+ Trees, all data records/pointers reside in linked leaves, allowing sequential range traversal without tree re-traversals. Internal nodes store only navigation keys.',
-    userStatus: 'not-started',
-    userNotes: ''
+    bullets: [
+      "In B+ Trees, all actual data records and pointers reside strictly in linked leaf nodes; internal nodes store only router/search keys.",
+      "Leaves are doubly linked, enabling fast O(log N + k) sequential range scans without re-traversing the tree from root.",
+      "High branching factor (fan-out) minimizes disk I/O depth, keeping tree height typically between 2 to 4 levels for millions of rows.",
+      "When a node exceeds maximum capacity (m-1 keys), it splits into two halves, pushing the median key up to the parent."
+    ],
+    diagramFormulaTip: "Draw a 2-level B+ Tree showing internal key routing nodes and bottom leaf nodes connected with horizontal bi-directional arrows (↔).",
+    userStatus: 'not-started'
   },
   {
-    id: 'DBMS-U3-5M-04',
+    id: 'DBMS-04',
     subjectId: 'dbms',
-    subjectName: 'Database Management Systems',
+    subjectName: 'Database Systems',
     unit: 3,
-    unitTitle: 'Transaction Processing & Concurrency',
-    question: "Explain the Two-Phase Locking (2PL) protocol. Differentiate between Growing Phase and Shrinking Phase. Does Basic 2PL prevent deadlocks?",
+    unitTitle: 'Transactions & Concurrency',
+    question: "Explain Two-Phase Locking (2PL). Contrast Growing Phase and Shrinking Phase. Does Basic 2PL prevent Deadlocks?",
     marks: 5,
     yearsAsked: [2021, 2022, 2024],
     repeatCount: 3,
     isHighProbability: true,
-    frequencyCategory: 'frequent',
     expectedKeywords: ["Two-Phase Locking", "2PL", "Growing Phase", "Shrinking Phase", "Lock Point", "Deadlock", "Cascading Rollback"],
-    rubricGuide: {
-      recommendedWordCount: { min: 80, max: 170 },
-      structureRequirements: ['Growing vs shrinking phase', 'Lock point definition', 'Deadlock disclaimer'],
-      keyConcepts: ['Conflict serializability guarantee', 'Deadlocks possible']
-    },
-    modelAnswerSummary: '2PL requires acquiring all locks before releasing any. It guarantees conflict serializability, but does not prevent deadlocks or cascading aborts.',
-    userStatus: 'mastered',
-    userNotes: ''
+    bullets: [
+      "2PL Protocol Rule: A transaction may not acquire any new lock once it releases its first lock.",
+      "Growing Phase: Locks are acquired and no locks are released; transaction reaches its 'Lock Point' at the peak.",
+      "Shrinking Phase: Locks are released and no new locks can be acquired.",
+      "2PL guarantees Conflict Serializability, but DOES NOT prevent deadlocks (transactions can still enter circular lock waits).",
+      "Strict 2PL prevents cascading aborts by holding all exclusive locks until transaction commit/abort."
+    ],
+    diagramFormulaTip: "Draw a 2D line graph with X-axis (Time) and Y-axis (Number of Locks Held) forming a triangular peak at the Lock Point.",
+    userStatus: 'not-started'
+  },
+  {
+    id: 'DBMS-05',
+    subjectId: 'dbms',
+    subjectName: 'Database Systems',
+    unit: 3,
+    unitTitle: 'Transactions & Concurrency',
+    question: "What is a Dirty Read anomaly in concurrent transactions? Which SQL isolation level prevents it?",
+    marks: 2,
+    yearsAsked: [2022, 2023, 2024, 2025],
+    repeatCount: 4,
+    isHighProbability: true,
+    expectedKeywords: ["Dirty Read", "Uncommitted Data", "Rollback", "Read Committed", "Transaction Isolation"],
+    bullets: [
+      "A Dirty Read occurs when Transaction T1 reads data modified by concurrent Transaction T2, but T2 subsequently aborts and rolls back.",
+      "T1 operates on phantom/invalid data that officially never existed in the permanent database log.",
+      "Prevented by setting transaction isolation level to READ COMMITTED (or REPEATABLE READ / SERIALIZABLE)."
+    ],
+    diagramFormulaTip: "Write a 3-step timeline: T1 writes X=100 -> T2 reads X=100 -> T1 aborts/rolls back.",
+    userStatus: 'not-started'
   },
 
   // COMPUTER NETWORKS
   {
-    id: 'CN-U4-10M-01',
+    id: 'CN-01',
     subjectId: 'cn',
     subjectName: 'Computer Networks',
     unit: 4,
-    unitTitle: 'Transport Layer Protocols',
-    question: "Explain TCP Congestion Control mechanisms in detail, including Slow Start, Congestion Avoidance, Fast Retransmit, and Fast Recovery. Illustrate with a Congestion Window (cwnd) vs Transmission Round graph.",
+    unitTitle: 'Transport Layer & TCP',
+    question: "Explain TCP Congestion Control mechanisms (Slow Start, Congestion Avoidance, Fast Retransmit, Fast Recovery) with a cwnd graph.",
     marks: 10,
     yearsAsked: [2021, 2022, 2023, 2024, 2025],
     repeatCount: 5,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["TCP Congestion Control", "Slow Start", "Congestion Avoidance", "Fast Retransmit", "Fast Recovery", "AIMD", "ssthresh", "cwnd"],
-    rubricGuide: {
-      recommendedWordCount: { min: 200, max: 400 },
-      structureRequirements: ['cwnd and ssthresh definitions', 'Exponential vs linear growth', '3 Dup ACK trigger', 'Graph description'],
-      keyConcepts: ['Additive Increase Multiplicative Decrease']
-    },
-    modelAnswerSummary: 'TCP regulates traffic via cwnd. Slow Start doubles cwnd every RTT until ssthresh, after which Congestion Avoidance adds 1 MSS per RTT. 3 duplicate ACKs trigger Fast Retransmit and Fast Recovery.',
-    userStatus: 'needs-revision',
-    userNotes: ''
+    bullets: [
+      "TCP uses the Congestion Window (cwnd) to regulate transmission rate into the network based on packet loss feedback.",
+      "Slow Start: Starts with cwnd = 1 MSS and doubles cwnd every RTT (exponential growth) until reaching ssthresh.",
+      "Congestion Avoidance: Once cwnd >= ssthresh, switches to AIMD (Additive Increase Multiplicative Decrease) adding 1 MSS per RTT.",
+      "On 3 Duplicate ACKs: Triggers Fast Retransmit (re-sends lost packet immediately) and enters Fast Recovery setting ssthresh = cwnd / 2 without dropping back to 1 MSS.",
+      "On Timeout: cwnd drops to 1 MSS and enters Slow Start."
+    ],
+    diagramFormulaTip: "Draw a cwnd vs Transmission Round graph showing the exponential curve up to ssthresh, linear climb, sudden drop on 3 dup ACKs, and continued recovery.",
+    userStatus: 'not-started',
+    bookmarked: true
   },
   {
-    id: 'CN-U3-10M-02',
+    id: 'CN-02',
     subjectId: 'cn',
     subjectName: 'Computer Networks',
     unit: 3,
-    unitTitle: 'Network Layer & Routing Algorithms',
-    question: "Compare Distance Vector Routing and Link State Routing. Explain the Count-to-Infinity problem in Distance Vector routing and discuss how Split Horizon and Poison Reverse mitigate it.",
+    unitTitle: 'Network Layer & Routing',
+    question: "Compare Distance Vector and Link State Routing. Explain Count-to-Infinity and how Split Horizon and Poison Reverse mitigate it.",
     marks: 10,
     yearsAsked: [2021, 2023, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Distance Vector", "Link State", "Bellman-Ford", "Dijkstra", "Count to Infinity", "Split Horizon", "Poison Reverse", "Routing Loop"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['Comparison table', 'Routing loop scenario', 'Split horizon definition'],
-      keyConcepts: ['Slow convergence of bad news']
-    },
-    modelAnswerSummary: 'Distance Vector shares full tables with direct neighbors (Bellman-Ford); Link State broadcasts link states to all nodes (Dijkstra). Count-to-infinity is mitigated by Split Horizon and Poison Reverse.',
-    userStatus: 'not-started',
-    userNotes: ''
+    bullets: [
+      "Distance Vector shares entire routing tables with direct neighbors only (Bellman-Ford); Link State floods link status to all network routers (Dijkstra).",
+      "Count-to-Infinity occurs in Distance Vector when a link fails, and neighbors slowly increment distance costs in a loop believing alternate paths exist.",
+      "Split Horizon: A router never advertises a route back out through the same interface it learned it from.",
+      "Poison Reverse: Advertises the reverse route with an explicit metric of Infinity (16 in RIP), instantly poisoning the loop."
+    ],
+    diagramFormulaTip: "Draw a simple 3-node linear topology A --- B --- C, showing link B-C breaking and cost incrementing up to 16.",
+    userStatus: 'not-started'
   },
   {
-    id: 'CN-U4-5M-04',
+    id: 'CN-03',
     subjectId: 'cn',
     subjectName: 'Computer Networks',
     unit: 4,
-    unitTitle: 'Transport Layer Protocols',
-    question: "Explain the TCP Three-Way Handshake connection establishment and Four-Way Handshake connection termination with sequence/acknowledgment numbers and state transitions.",
+    unitTitle: 'Transport Layer & TCP',
+    question: "Explain the TCP Three-Way Handshake for connection establishment and Four-Way Handshake for connection termination.",
     marks: 5,
     yearsAsked: [2021, 2022, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Three-Way Handshake", "SYN", "SYN-ACK", "ACK", "FIN", "TIME_WAIT", "Connection Establishment"],
-    rubricGuide: {
-      recommendedWordCount: { min: 90, max: 180 },
-      structureRequirements: ['SYN, SYN-ACK, ACK sequence', 'Four-way FIN termination', 'TIME_WAIT rationale'],
-      keyConcepts: ['ISN synchronization']
-    },
-    modelAnswerSummary: 'TCP establishes reliable connections via SYN -> SYN-ACK -> ACK. Termination requires four packets (FIN, ACK, FIN, ACK) with a TIME_WAIT state to ensure pending packets drain.',
-    userStatus: 'mastered',
-    userNotes: ''
+    bullets: [
+      "Step 1: Client sends SYN packet with Initial Sequence Number (ISN = x).",
+      "Step 2: Server responds with SYN-ACK packet with its own sequence (seq = y) and acknowledgement (ack = x + 1).",
+      "Step 3: Client confirms with ACK packet (seq = x + 1, ack = y + 1) and connection is established.",
+      "Termination requires 4 steps (FIN -> ACK, then FIN -> ACK from other direction) with client entering TIME_WAIT state to ensure delayed packets drain."
+    ],
+    diagramFormulaTip: "Draw a vertical two-column ladder diagram (Client vs Server) with 3 diagonal arrows for connection and 4 diagonal arrows for termination.",
+    userStatus: 'not-started',
+    bookmarked: true
+  },
+  {
+    id: 'CN-04',
+    subjectId: 'cn',
+    subjectName: 'Computer Networks',
+    unit: 5,
+    unitTitle: 'Application Layer & DNS',
+    question: "What is DNS? Differentiate between Recursive and Iterative DNS queries with a clean diagram.",
+    marks: 2,
+    yearsAsked: [2021, 2023, 2024],
+    repeatCount: 3,
+    isHighProbability: true,
+    expectedKeywords: ["DNS", "Recursive Query", "Iterative Query", "Domain Name", "IP Resolution"],
+    bullets: [
+      "DNS (Domain Name System) is a distributed hierarchical database that translates human-friendly domain names (google.com) into numerical IP addresses (142.250.x.x).",
+      "Recursive Query: The client requests the local DNS server to resolve the address completely, taking full responsibility to query upstream servers.",
+      "Iterative Query: The queried DNS server returns the best referral address it knows (Root, TLD, or Authoritative server) rather than resolving the complete name itself."
+    ],
+    diagramFormulaTip: "Draw Client -> Local DNS Resolver -> Root Server -> TLD Server (.com) -> Authoritative Server hierarchy.",
+    userStatus: 'not-started'
   },
 
-  // DATA STRUCTURES
+  // DATA STRUCTURES & ALGORITHMS
   {
-    id: 'DSA-U2-10M-01',
+    id: 'DSA-01',
     subjectId: 'dsa',
     subjectName: 'Data Structures & Algorithms',
     unit: 2,
-    unitTitle: 'Trees & Balanced Search Trees',
-    question: "Define an AVL Tree. Explain the Balance Factor and all four rotation cases (LL, RR, LR, RL) used to restore balance during insertion. Demonstrate with the sequence: 10, 20, 30, 40, 50, 25.",
+    unitTitle: 'Trees & AVL Balancing',
+    question: "Define an AVL Tree. Explain the Balance Factor and all four rotation cases (LL, RR, LR, RL) with an insertion sequence.",
     marks: 10,
     yearsAsked: [2021, 2022, 2023, 2024, 2025],
     repeatCount: 5,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["AVL Tree", "Balance Factor", "LL Rotation", "RR Rotation", "LR Rotation", "RL Rotation", "Height Balanced", "O(log N)"],
-    rubricGuide: {
-      recommendedWordCount: { min: 200, max: 400 },
-      structureRequirements: ['Balance factor {-1,0,1}', 'Single vs double rotation', 'Sequence trace', 'O(log n) complexity'],
-      keyConcepts: ['Self-balancing binary search tree']
-    },
-    modelAnswerSummary: 'An AVL tree maintains height balance such that balance factors stay between -1 and 1. Violations are fixed through LL, RR (single), or LR, RL (double) rotations, guaranteeing O(log n) operations.',
-    userStatus: 'needs-revision',
-    userNotes: ''
+    bullets: [
+      "An AVL Tree is a self-balancing Binary Search Tree where the Balance Factor of any node is strictly within {-1, 0, +1}.",
+      "Balance Factor Formula: BF = Height(Left Subtree) - Height(Right Subtree).",
+      "Single Rotations: LL Rotation (Right Rotate at unbalanced node); RR Rotation (Left Rotate at unbalanced node).",
+      "Double Rotations: LR Rotation (Left Rotate on Left Child, then Right Rotate on Node); RL Rotation (Right Rotate on Right Child, then Left Rotate on Node).",
+      "Guarantees worst-case Search, Insertion, and Deletion time complexity of O(log N)."
+    ],
+    diagramFormulaTip: "Draw the 3-node triangular pivot rotation showing node A, B, C transforming after LL and LR rotations.",
+    userStatus: 'not-started',
+    bookmarked: true
   },
   {
-    id: 'DSA-U4-10M-02',
+    id: 'DSA-02',
     subjectId: 'dsa',
     subjectName: 'Data Structures & Algorithms',
     unit: 4,
-    unitTitle: 'Graph Algorithms & Shortest Paths',
-    question: "Explain Dijkstra's Single Source Shortest Path algorithm with pseudocode. Analyze its time complexity using Adjacency Matrix vs Min-Heap with Adjacency List. Why does it fail for negative edge weights?",
+    unitTitle: 'Graphs & Dijkstra',
+    question: "Explain Dijkstra's Single Source Shortest Path Algorithm. Analyze its time complexity with Adjacency List + Min-Heap. Why does it fail for negative edge weights?",
     marks: 10,
     yearsAsked: [2021, 2022, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["Dijkstras Algorithm", "Single Source Shortest Path", "Min-Heap", "Greedy Choice", "Negative Weights", "Relaxation", "Time Complexity"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['Relaxation condition', 'Heap complexity O((V+E)log V)', 'Negative weight counterexample'],
-      keyConcepts: ['Greedy irreversible path finalization']
-    },
-    modelAnswerSummary: "Dijkstra computes single-source shortest paths in non-negative weighted graphs in O((V+E)log V) using a min-heap. It fails on negative weights because greedy choices cannot be revised once marked settled.",
-    userStatus: 'not-started',
-    userNotes: ''
+    bullets: [
+      "Dijkstra solves single-source shortest paths on weighted graphs with non-negative edge weights using a Greedy approach.",
+      "Relaxation Step: If dist[u] + weight(u, v) < dist[v], then update dist[v] = dist[u] + weight(u, v).",
+      "Using an Adjacency List and Binary Min-Heap, the time complexity is O((V + E) * log V).",
+      "Fails on Negative Weights because once a vertex is marked 'visited/settled', Dijkstra assumes its optimal shortest path is finalized and never revisits it."
+    ],
+    diagramFormulaTip: "Draw a 3-node triangle graph (A->B with cost 3, B->C with cost -5, A->C with cost 1) showing greedy error.",
+    userStatus: 'not-started'
   },
   {
-    id: 'DSA-U5-10M-03',
+    id: 'DSA-03',
     subjectId: 'dsa',
     subjectName: 'Data Structures & Algorithms',
     unit: 5,
-    unitTitle: 'Dynamic Programming & Greedy Algorithms',
-    question: "Solve the 0/1 Knapsack Problem using Dynamic Programming. Provide the recurrence relation, algorithm, and trace the DP table for items with weights {2, 3, 4, 5}, values {3, 4, 5, 6}, and capacity W = 5.",
+    unitTitle: 'Dynamic Programming',
+    question: "Solve the 0/1 Knapsack problem using Dynamic Programming. Write the recurrence relation and trace the DP table.",
     marks: 10,
     yearsAsked: [2021, 2023, 2024, 2025],
     repeatCount: 4,
     isHighProbability: true,
-    frequencyCategory: 'critical',
     expectedKeywords: ["0/1 Knapsack", "Dynamic Programming", "Recurrence Relation", "Optimal Substructure", "Overlapping Subproblems", "DP Table", "Pseudo-polynomial"],
-    rubricGuide: {
-      recommendedWordCount: { min: 180, max: 350 },
-      structureRequirements: ['Recurrence formula', 'DP grid trace', 'Time & Space complexity O(NW)'],
-      keyConcepts: ['Include vs exclude item trade-off']
-    },
-    modelAnswerSummary: '0/1 Knapsack uses DP table K[i][w] = max(K[i-1][w], val[i] + K[i-1][w-wt[i]]) to pick the optimal subset of non-fractional items within weight capacity W in O(NW) time.',
+    bullets: [
+      "In 0/1 Knapsack, items cannot be broken into fractions; each item is either included (1) or excluded (0).",
+      "Recurrence Relation: If wt[i-1] <= w, K[i][w] = max(val[i-1] + K[i-1][w - wt[i-1]], K[i-1][w]); Else K[i][w] = K[i-1][w].",
+      "Base Cases: K[0][w] = 0 (no items) and K[i][0] = 0 (zero capacity).",
+      "Time and Space Complexity: O(N * W), where N is the number of items and W is maximum knapsack capacity."
+    ],
+    diagramFormulaTip: "Draw a small DP grid with Rows (Items 0 to 4) and Columns (Weights 0 to 5) showing cell lookup arrows.",
     userStatus: 'not-started',
-    userNotes: ''
+    bookmarked: true
+  },
+  {
+    id: 'DSA-04',
+    subjectId: 'dsa',
+    subjectName: 'Data Structures & Algorithms',
+    unit: 1,
+    unitTitle: 'Asymptotic Analysis & Lists',
+    question: "State Master Theorem for solving divide-and-conquer recurrences: T(n) = a*T(n/b) + O(n^d).",
+    marks: 2,
+    yearsAsked: [2021, 2022, 2023, 2024, 2025],
+    repeatCount: 5,
+    isHighProbability: true,
+    expectedKeywords: ["Master Theorem", "Divide and Conquer", "Asymptotic Complexity", "Logarithmic Base", "Recurrence Relation"],
+    bullets: [
+      "Applies to recurrences of form T(n) = a * T(n/b) + f(n) where f(n) = O(n^d).",
+      "Case 1: If d < log_b(a) => T(n) = Θ(n^(log_b a)) [Leaf-heavy work].",
+      "Case 2: If d = log_b(a) => T(n) = Θ(n^d * log n) [Evenly balanced work].",
+      "Case 3: If d > log_b(a) => T(n) = Θ(n^d) [Root-heavy work]."
+    ],
+    diagramFormulaTip: "Write the 3 cases clearly separated with curly braces and compare with Merge Sort: T(n)=2T(n/2)+O(n) -> Case 2 -> O(n log n).",
+    userStatus: 'not-started'
   }
 ];
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { INITIAL_SUBJECTS, INITIAL_QUESTIONS };
-}
