@@ -4,18 +4,18 @@
  * SECURITY & PRIVACY PRINCIPLES:
  * 1. The API key is stored ONLY in a dedicated, isolated IndexedDB database ('PyqRankerCredentialsDB').
  * 2. It is NEVER stored in localStorage, never included in backups, and never transmitted to any PyqRanker server.
- * 3. Calling Google's Generative Language API directly from the browser is supported natively with CORS.
- * 4. If Smart Analysis fails for any reason (missing key, quota, invalid JSON), it falls back to the rule-based extractor.
+ * 3. Never prints or logs the user's API key anywhere.
+ * 4. Dynamically discovers models using the ListModels endpoint; does NOT hardcode any single model name.
+ * 5. Automatically selects the optimal working model (flash models newest first -> other text models -> first working).
+ * 6. If a model fails with "not found" or "not supported", automatically refreshes models and retries once before fallback.
  */
 
-import { PracticeQuestionItem, KeyTerm, SectionHeading, FormulasAndAlgorithms } from './notesAnalyzer';
+import { PracticeQuestionItem, KeyTerm, FormulasAndAlgorithms } from './notesAnalyzer';
 
 const CREDENTIALS_DB_NAME = 'PyqRankerCredentialsDB';
 const CREDENTIALS_STORE_NAME = 'credentials';
 const GEMINI_KEY_ID = 'gemini_api_key';
 const GEMINI_MODEL_ID = 'gemini_selected_model';
-
-export const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
 
 // =========================================================================
 // 1. ISOLATED INDEXEDDB CREDENTIALS STORAGE (Never exported in backups)
@@ -90,7 +90,7 @@ export async function deleteApiKey(): Promise<void> {
   });
 }
 
-export async function getSavedModel(): Promise<string> {
+export async function getSavedModel(): Promise<string | null> {
   try {
     const db = await openCredentialsDB();
     return new Promise((resolve) => {
@@ -98,23 +98,24 @@ export async function getSavedModel(): Promise<string> {
       const store = tx.objectStore(CREDENTIALS_STORE_NAME);
       const req = store.get(GEMINI_MODEL_ID);
       req.onsuccess = () => {
-        resolve(req.result?.value || DEFAULT_GEMINI_MODEL);
+        resolve(req.result?.value || null);
       };
-      req.onerror = () => resolve(DEFAULT_GEMINI_MODEL);
+      req.onerror = () => resolve(null);
     });
   } catch {
-    return DEFAULT_GEMINI_MODEL;
+    return null;
   }
 }
 
 export async function saveModel(model: string): Promise<void> {
+  if (!model || !model.trim()) return;
   const db = await openCredentialsDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(CREDENTIALS_STORE_NAME, 'readwrite');
     const store = tx.objectStore(CREDENTIALS_STORE_NAME);
     const req = store.put({
       id: GEMINI_MODEL_ID,
-      value: model.trim() || DEFAULT_GEMINI_MODEL,
+      value: model.trim().replace(/^models\//, ''),
       updatedAt: Date.now()
     });
     req.onsuccess = () => resolve();
@@ -123,63 +124,219 @@ export async function saveModel(model: string): Promise<void> {
 }
 
 // =========================================================================
-// 2. TEST API KEY DIRECTLY FROM BROWSER
+// 2. DYNAMIC MODEL DISCOVERY & AUTOMATIC RANKING (NO HARDCODING)
 // =========================================================================
 
-export async function testApiKey(
-  apiKey: string,
-  model: string = DEFAULT_GEMINI_MODEL
-): Promise<{ success: boolean; message: string }> {
-  const trimmed = apiKey.trim();
-  if (!trimmed) {
-    return { success: false, message: 'API key cannot be empty.' };
+/**
+ * Calls the provider's ListModels endpoint and keeps only models supporting generateContent.
+ */
+export async function listSupportedModels(apiKey: string): Promise<string[]> {
+  const trimmedKey = apiKey.trim();
+  if (!trimmedKey) {
+    throw new Error('API key cannot be empty.');
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(trimmed)}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(trimmedKey)}`;
+  
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+  } catch {
+    throw new Error('Could not reach any model, check your key or internet');
+  }
+
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 401 || response.status === 403) {
+      throw new Error('Invalid API key, please check your key from Google AI Studio');
+    }
+    throw new Error('Could not reach any model, check your key or internet');
+  }
+
+  let data: any;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('Could not reach any model, check your key or internet');
+  }
+
+  if (!data || !Array.isArray(data.models)) {
+    throw new Error('Could not reach any model, check your key or internet');
+  }
+
+  // Keep only models that support generateContent
+  const supported = data.models
+    .filter((m: any) => m && Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+    .map((m: any) => String(m.name || '').replace(/^models\//, '').trim())
+    .filter((name: string) => name.length > 0);
+
+  if (supported.length === 0) {
+    throw new Error('Could not reach any model, check your key or internet');
+  }
+
+  return supported;
+}
+
+/**
+ * Extracts numeric version from model name (e.g. "gemini-2.5-flash" -> 2.5, "gemini-2.0" -> 2.0).
+ */
+function extractModelVersion(name: string): number {
+  const match = name.match(/(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+/**
+ * Checks if a model name contains excluded tags (preview, exp, image, tts, embedding, lite).
+ */
+function isExcludedModelName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return (
+    lower.includes('preview') ||
+    lower.includes('exp') ||
+    lower.includes('image') ||
+    lower.includes('tts') ||
+    lower.includes('embedding') ||
+    lower.includes('lite')
+  );
+}
+
+/**
+ * Sorts available models by user priority:
+ * 1. Models containing "flash" (newest version first, ignoring preview, exp, image, tts, embedding, lite).
+ * 2. Any other text model (newest version first).
+ * 3. Any remaining models.
+ */
+export function sortModelsByPreference(models: string[]): string[] {
+  // 1. Flash models
+  const flashCandidates = models.filter(m => {
+    const lower = m.toLowerCase();
+    return lower.includes('flash') && !isExcludedModelName(lower);
+  }).sort((a, b) => {
+    const diff = extractModelVersion(b) - extractModelVersion(a);
+    if (diff !== 0) return diff;
+    return a.localeCompare(b);
+  });
+
+  // 2. Other text models (excluding image/tts/embedding)
+  const otherTextCandidates = models.filter(m => {
+    const lower = m.toLowerCase();
+    const isExcluded = lower.includes('image') || lower.includes('tts') || lower.includes('embedding') || lower.includes('exp');
+    return !lower.includes('flash') && !isExcluded;
+  }).sort((a, b) => {
+    const diff = extractModelVersion(b) - extractModelVersion(a);
+    if (diff !== 0) return diff;
+    return a.localeCompare(b);
+  });
+
+  // 3. Remaining models
+  const remaining = models.filter(m => !flashCandidates.includes(m) && !otherTextCandidates.includes(m));
+
+  return [...flashCandidates, ...otherTextCandidates, ...remaining];
+}
+
+/**
+ * Sends a tiny test request ("reply OK") to confirm a model responds without error.
+ */
+export async function testModelQuick(apiKey: string, model: string): Promise<boolean> {
+  const cleanModel = model.replace(/^models\//, '');
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 9000);
+
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: 'Respond with exactly the single word "OK" to test connectivity.' }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 10
-        }
-      })
+        contents: [{ parts: [{ text: 'reply OK' }] }],
+        generationConfig: { maxOutputTokens: 5, temperature: 0.1 }
+      }),
+      signal: controller.signal
     });
 
-    if (!response.ok) {
-      let errMsg = `HTTP ${response.status} ${response.statusText}`;
-      try {
-        const errorJson = await response.json();
-        if (errorJson.error?.message) {
-          errMsg = errorJson.error.message;
-        }
-      } catch {
-        // ignore json parse error
-      }
-      return { success: false, message: `Key verification failed: ${errMsg}` };
-    }
+    clearTimeout(timer);
+    if (!response.ok) return false;
 
     const data = await response.json();
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (replyText) {
-      return { success: true, message: `API Key verified successfully! Connected to ${model}.` };
+    return !!(data.candidates?.[0]?.content?.parts?.[0]?.text);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Finds and tests the first working model in priority order and saves it.
+ */
+export async function pickWorkingModel(
+  apiKey: string,
+  candidateModels?: string[]
+): Promise<string> {
+  const models = candidateModels && candidateModels.length > 0 
+    ? candidateModels 
+    : await listSupportedModels(apiKey);
+
+  const prioritized = sortModelsByPreference(models);
+
+  for (const candidate of prioritized) {
+    const ok = await testModelQuick(apiKey, candidate);
+    if (ok) {
+      await saveModel(candidate);
+      return candidate;
+    }
+  }
+
+  throw new Error('Could not reach any model, check your key or internet');
+}
+
+/**
+ * Test key action for Settings: calls ListModels, verifies preferred or auto-detected model,
+ * and returns plain, clean messages without ever exposing the key.
+ */
+export async function testApiKey(
+  apiKey: string,
+  preferredModel?: string
+): Promise<{ success: boolean; message: string; workingModel?: string; models: string[] }> {
+  const trimmed = apiKey.trim();
+  if (!trimmed) {
+    return { success: false, message: 'API key cannot be empty.', models: [] };
+  }
+
+  try {
+    const models = await listSupportedModels(trimmed);
+    if (models.length === 0) {
+      return { success: false, message: 'Could not reach any model, check your key or internet', models: [] };
     }
 
-    return { success: true, message: `Connected to Google AI Studio successfully.` };
+    // Try preferred model if provided
+    if (preferredModel && models.includes(preferredModel)) {
+      const preferredWorks = await testModelQuick(trimmed, preferredModel);
+      if (preferredWorks) {
+        await saveModel(preferredModel);
+        return {
+          success: true,
+          message: `Your key is valid, using model ${preferredModel}`,
+          workingModel: preferredModel,
+          models
+        };
+      }
+    }
+
+    // Otherwise automatically pick the first working model by priority
+    const workingModel = await pickWorkingModel(trimmed, models);
+    return {
+      success: true,
+      message: `Your key is valid, using model ${workingModel}`,
+      workingModel,
+      models
+    };
   } catch (err: any) {
     return {
       success: false,
-      message: `Direct browser call error: ${err.message || 'Network error or connection blocked.'}`
+      message: err.message || 'Could not reach any model, check your key or internet',
+      models: []
     };
   }
 }
@@ -193,12 +350,11 @@ export interface SmartAnalysisResult {
   keyTerms: KeyTerm[];
   formulasAndAlgorithms: FormulasAndAlgorithms;
   practiceQuestions: PracticeQuestionItem[];
+  modelUsed?: string;
 }
 
 /**
  * Split long cleaned text into manageable chunks at paragraph boundaries.
- * Chunks are sized around 15,000 to 20,000 characters to stay well within
- * model context and token generation boundaries.
  */
 function splitIntoChunks(text: string, maxChunkLength: number = 18000): string[] {
   if (text.length <= maxChunkLength) {
@@ -229,7 +385,6 @@ function splitIntoChunks(text: string, maxChunkLength: number = 18000): string[]
  * Validate and clean JSON response from Gemini
  */
 function validateAndParseAiJson(rawJsonText: string): any {
-  // Strip possible markdown code fence ```json ... ```
   let cleaned = rawJsonText.trim();
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```[a-z]*\s*\r?\n?/i, '').replace(/```\s*$/, '').trim();
@@ -250,12 +405,12 @@ function validateAndParseAiJson(rawJsonText: string): any {
 }
 
 /**
- * Send a single chunk to Gemini and request strict structured JSON
+ * Send a single chunk to the chosen model and request strict structured JSON
  */
 async function analyzeChunkWithGemini(
   chunkText: string,
   apiKey: string,
-  model: string = DEFAULT_GEMINI_MODEL
+  model: string
 ): Promise<{
   summary: string[];
   keyTerms: Array<{ term: string; definition: string }>;
@@ -263,6 +418,7 @@ async function analyzeChunkWithGemini(
   algorithms: string[];
   practiceQuestions: Array<{ question: string; type: string; suggestedMarks: number }>;
 }> {
+  const cleanModel = model.replace(/^models\//, '');
   const prompt = `You are an academic exam notes analyzer. Analyze the provided study notes text and return ONLY a valid JSON object. Do not include markdown formatting around the JSON, and do not include any preamble or extra text.
 
 Return exactly this JSON structure:
@@ -303,7 +459,7 @@ Study notes text:
 ${chunkText}
 ---`;
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(apiKey.trim())}`;
 
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -345,7 +501,6 @@ ${chunkText}
 
   const parsed = validateAndParseAiJson(rawText);
 
-  // Normalize structure
   return {
     summary: Array.isArray(parsed.summary)
       ? parsed.summary.filter((s: any) => typeof s === 'string' && s.trim().length >= 20)
@@ -370,23 +525,14 @@ ${chunkText}
 }
 
 /**
- * Executes Smart AI Analysis on cleaned notes text.
- * Falls back to throwing an error if the model fails or key is invalid,
- * allowing the caller to invoke the rule-based extractor.
+ * Processes all chunks for a specific model
  */
-export async function runSmartAnalysis(
-  cleanedText: string,
+async function analyzeAllChunks(
+  chunks: string[],
   apiKey: string,
-  model: string = DEFAULT_GEMINI_MODEL,
-  onProgress?: (step: string) => void
+  model: string,
+  onProgress?: (msg: string) => void
 ): Promise<SmartAnalysisResult> {
-  if (!apiKey || !apiKey.trim()) {
-    throw new Error('Missing API key. Please configure your key in Settings.');
-  }
-
-  const chunks = splitIntoChunks(cleanedText);
-  onProgress?.(`Sending notes to ${model} (${chunks.length} chunk${chunks.length > 1 ? 's' : ''})...`);
-
   const allSummaries: string[] = [];
   const keyTermsMap = new Map<string, KeyTerm>();
   const formulasSet = new Set<string>();
@@ -394,17 +540,15 @@ export async function runSmartAnalysis(
   const questionsList: PracticeQuestionItem[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
-    onProgress?.(`Analyzing chunk ${i + 1} of ${chunks.length} with AI...`);
+    onProgress?.(`Analyzing chunk ${i + 1} of ${chunks.length} with ${model}...`);
     const chunkResult = await analyzeChunkWithGemini(chunks[i], apiKey, model);
 
-    // Merge summary sentences
     for (const s of chunkResult.summary) {
       if (!allSummaries.includes(s) && allSummaries.length < 5) {
         allSummaries.push(s);
       }
     }
 
-    // Merge key terms (deduplicate by term lowercase)
     for (const kt of chunkResult.keyTerms) {
       const norm = kt.term.trim().toLowerCase();
       if (!keyTermsMap.has(norm) && keyTermsMap.size < 15) {
@@ -415,17 +559,14 @@ export async function runSmartAnalysis(
       }
     }
 
-    // Merge formulas
     for (const f of chunkResult.formulas) {
       formulasSet.add(f.trim());
     }
 
-    // Merge algorithms
     for (const a of chunkResult.algorithms) {
       algorithmsSet.add(a.trim());
     }
 
-    // Merge practice questions
     for (const pq of chunkResult.practiceQuestions) {
       const qText = pq.question.trim();
       const existing = questionsList.some(q => q.question.toLowerCase() === qText.toLowerCase());
@@ -441,25 +582,81 @@ export async function runSmartAnalysis(
           question: qText,
           marks,
           type,
-          sourceSnippet: 'Generated by Smart AI Analysis'
+          sourceSnippet: `Generated by Smart AI Analysis (${model})`
         });
       }
     }
   }
 
-  // Ensure 3 to 5 summary sentences
-  const finalSummary = allSummaries.slice(0, 5);
-  if (finalSummary.length < 3 && chunks.length > 0) {
-    // If AI returned fewer than 3, we don't fail, but keep what we have
-  }
-
   return {
-    summary: finalSummary,
+    summary: allSummaries.slice(0, 5),
     keyTerms: Array.from(keyTermsMap.values()),
     formulasAndAlgorithms: {
       formulas: Array.from(formulasSet),
       algorithms: Array.from(algorithmsSet)
     },
-    practiceQuestions: questionsList
+    practiceQuestions: questionsList,
+    modelUsed: model
   };
+}
+
+/**
+ * Executes Smart AI Analysis on cleaned notes text.
+ * If a model returns "not found" or "not supported", automatically repeats model detection
+ * and retries one time before falling back.
+ */
+export async function runSmartAnalysis(
+  cleanedText: string,
+  apiKey: string,
+  preferredModel?: string,
+  onProgress?: (step: string) => void,
+  onModelResolved?: (workingModel: string) => void
+): Promise<SmartAnalysisResult> {
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error('Missing API key. Please configure your key in Settings.');
+  }
+
+  let activeModel = preferredModel?.trim();
+  if (!activeModel) {
+    const saved = await getSavedModel();
+    if (saved) activeModel = saved;
+  }
+
+  if (!activeModel) {
+    onProgress?.('Detecting best available AI model...');
+    activeModel = await pickWorkingModel(apiKey);
+    onModelResolved?.(activeModel);
+  }
+
+  const chunks = splitIntoChunks(cleanedText);
+  onProgress?.(`Sending notes to ${activeModel} (${chunks.length} chunk${chunks.length > 1 ? 's' : ''})...`);
+
+  try {
+    const result = await analyzeAllChunks(chunks, apiKey, activeModel, onProgress);
+    onModelResolved?.(activeModel);
+    return result;
+  } catch (err: any) {
+    const errStr = (err.message || '').toLowerCase();
+    const isNotFoundOrUnsupported = (
+      errStr.includes('not found') ||
+      errStr.includes('not supported') ||
+      errStr.includes('404')
+    );
+
+    if (isNotFoundOrUnsupported) {
+      // REQUIREMENT 3: Repeat steps 1 and 2 automatically ONE TIME before falling back
+      onProgress?.('Selected model is retired or not supported. Auto-detecting working model...');
+      try {
+        const newModel = await pickWorkingModel(apiKey);
+        onModelResolved?.(newModel);
+        onProgress?.(`Retrying analysis with ${newModel}...`);
+        const retryResult = await analyzeAllChunks(chunks, apiKey, newModel, onProgress);
+        return retryResult;
+      } catch (retryErr: any) {
+        throw new Error('Could not reach any model, check your key or internet');
+      }
+    }
+
+    throw new Error('Could not reach any model, check your key or internet');
+  }
 }

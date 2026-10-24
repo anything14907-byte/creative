@@ -20,9 +20,9 @@ import {
   deleteApiKey, 
   getSavedModel, 
   saveModel, 
+  listSupportedModels,
   testApiKey, 
-  runSmartAnalysis, 
-  DEFAULT_GEMINI_MODEL 
+  runSmartAnalysis 
 } from '../utils/aiService';
 import { 
   FileText, 
@@ -83,8 +83,10 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   onShowToast
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
-  const [targetSubjectId, setTargetSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
+  // REQUIREMENT 5.a: Do not pre-select a subject. Show "Choose subject" and "Choose unit".
+  const [targetSubjectId, setTargetSubjectId] = useState<string>('');
   const [targetUnitId, setTargetUnitId] = useState<string>('');
+  const [suggestedSubject, setSuggestedSubject] = useState<SubjectMeta | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileDataUrl, setFileDataUrl] = useState<string>('');
@@ -111,7 +113,10 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   const [smartAnalysisEnabled, setSmartAnalysisEnabled] = useState<boolean>(false);
   const [savedApiKey, setSavedApiKey] = useState<string | null>(null);
   const [hasSavedApiKey, setHasSavedApiKey] = useState<boolean>(false);
-  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_GEMINI_MODEL);
+  // Do not hardcode any single model name
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState<boolean>(false);
   const [showAiSettings, setShowAiSettings] = useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [showApiKeyText, setShowApiKeyText] = useState<boolean>(false);
@@ -149,8 +154,29 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     };
   }, []);
 
-  const targetSubject = subjects.find(s => s.id === targetSubjectId) || subjects[0];
-  const selectedUnit = targetSubject?.units?.find(u => u.id === targetUnitId) || targetSubject?.units?.[0];
+  // When opening Settings, fetch available models supporting generateContent
+  useEffect(() => {
+    if (showAiSettings) {
+      const keyToUse = apiKeyInput.trim() || savedApiKey;
+      if (keyToUse) {
+        setIsLoadingModels(true);
+        listSupportedModels(keyToUse)
+          .then(models => {
+            setAvailableModels(models);
+            if (!selectedModel && models.length > 0) {
+              // Leave default choice algorithm to pick if none chosen
+            }
+          })
+          .catch(() => {
+            // Error will be surfaced via Test Key if needed
+          })
+          .finally(() => setIsLoadingModels(false));
+      }
+    }
+  }, [showAiSettings, savedApiKey, apiKeyInput, selectedModel]);
+
+  const targetSubject = subjects.find(s => s.id === targetSubjectId);
+  const selectedUnit = targetSubject?.units?.find(u => u.id === targetUnitId);
   const subjectPdfs = pdfs.filter(p => p.subjectId === selectedSubjectId);
 
   // Check which headings already exist as topics in current subject/unit
@@ -181,14 +207,17 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     if (smartAnalysisEnabled && savedApiKey && rawText.trim().length >= 45) {
       setIsAiAnalyzing(true);
       setAiAnalysisError(null);
-      setAiProgressMessage('Connecting to Google Gemini API...');
+      setAiProgressMessage('Connecting to AI model...');
 
       try {
         const aiResult = await runSmartAnalysis(
           cleanedText,
           savedApiKey,
           selectedModel,
-          (msg) => setAiProgressMessage(msg)
+          (msg) => setAiProgressMessage(msg),
+          (workingModel) => {
+            setSelectedModel(workingModel);
+          }
         );
 
         setAnalysis({
@@ -205,8 +234,8 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
         setUsedAiMode(true);
       } catch (aiErr: any) {
         console.warn('Smart AI Analysis failed, falling back to rule-based analysis:', aiErr);
-        const errMsg = aiErr.message || 'AI request failed';
-        setAiAnalysisError(`Smart AI Analysis failed (${errMsg}). Successfully fell back to Rule-Based Extractor.`);
+        // Requirement 4: Short, plain messages, never printing the raw provider stack or API key
+        setAiAnalysisError('Could not reach any model, check your key or internet. Fell back to Rule-Based Extractor.');
         
         // Fall back to rule-based extractor
         const ruleResult = analyzeExtractedNotes(rawText);
@@ -237,6 +266,18 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     setOcrProgress(null);
     setAnalysis(null);
     setAiAnalysisError(null);
+
+    // Requirement 5.a: Suggest subject if file name matches a subject, but do NOT select it
+    const cleanFileName = file.name.toLowerCase().replace(/[_\-\.]+/g, ' ');
+    const matchedSubject = subjects.find(s => {
+      const sName = s.name.toLowerCase();
+      const sCode = s.code ? s.code.toLowerCase() : '';
+      return cleanFileName.includes(sName) || (sCode && cleanFileName.includes(sCode)) ||
+        s.name.toLowerCase().split(/\s+/).filter(w => w.length > 4).some(w => cleanFileName.includes(w));
+    });
+    setSuggestedSubject(matchedSubject || null);
+    setTargetSubjectId('');
+    setTargetUnitId('');
 
     // Read Data URL for saving to IndexedDB / previewing
     const reader = new FileReader();
@@ -341,14 +382,22 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     setTestKeyResult(null);
     try {
       const res = await testApiKey(apiKeyInput.trim(), selectedModel);
-      setTestKeyResult(res);
+      setTestKeyResult({ success: res.success, message: res.message });
+      if (res.models && res.models.length > 0) {
+        setAvailableModels(res.models);
+      }
+      if (res.workingModel) {
+        setSelectedModel(res.workingModel);
+      }
       if (res.success) {
-        onShowToast('API Key verified! Connected to Google AI Studio. ✅', 'success');
+        onShowToast(res.message, 'success');
       } else {
         onShowToast(res.message, 'error');
       }
     } catch (e: any) {
-      setTestKeyResult({ success: false, message: e.message || 'Network test failed.' });
+      const msg = e.message || 'Could not reach any model, check your key or internet';
+      setTestKeyResult({ success: false, message: msg });
+      onShowToast(msg, 'error');
     } finally {
       setIsTestingKey(false);
     }
@@ -362,7 +411,9 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     }
     try {
       await saveApiKey(apiKeyInput.trim());
-      await saveModel(selectedModel);
+      if (selectedModel) {
+        await saveModel(selectedModel);
+      }
       setSavedApiKey(apiKeyInput.trim());
       setHasSavedApiKey(true);
       setShowAiSettings(false);
@@ -394,8 +445,12 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   // ACTION 1: Add Headings as Topics to Selected Unit
   const handleAddHeadingsAsTopics = () => {
     if (!analysis || !onAddTopic) return;
-    const unitId = selectedUnit?.id || 'u1';
-    const unitNum = selectedUnit?.unit || 1;
+    if (!targetSubject || !selectedUnit) {
+      onShowToast('Please choose a subject and unit first.', 'info');
+      return;
+    }
+    const unitId = selectedUnit.id || 'u1';
+    const unitNum = selectedUnit.unit || 1;
 
     const headingsToAdd = analysis.headings.filter(h => {
       const isChecked = selectedHeadings[h.id];
@@ -415,7 +470,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
         subjectId: targetSubjectId,
         unitNumber: unitNum,
         unitId,
-        unitLabel: selectedUnit ? formatUnitDisplayName(selectedUnit) : undefined,
+        unitLabel: formatUnitDisplayName(selectedUnit),
         title: h.cleanTitle,
         completed: false,
         mastery: 'weak',
@@ -431,7 +486,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
       return updated;
     });
 
-    onShowToast(`Added ${addedCount} topics to ${targetSubject.name} (${selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit'})! 📚`, 'success');
+    onShowToast(`Added ${addedCount} topics to ${targetSubject.name} (${formatUnitDisplayName(selectedUnit)})! 📚`, 'success');
   };
 
   // ACTION 2: Create Flashcards from Key Terms
@@ -440,12 +495,16 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
       onShowToast('No key terms found to create flashcards.', 'info');
       return;
     }
+    if (!targetSubject || !selectedUnit) {
+      onShowToast('Please choose a subject and unit first.', 'info');
+      return;
+    }
 
     analysis.keyTerms.forEach((kt, idx) => {
       const card: Flashcard = {
         id: `fc-pdf-${Date.now().toString(36)}-${idx}`,
         subjectId: targetSubjectId as any,
-        unitId: selectedUnit?.id || `u1`,
+        unitId: selectedUnit.id || `u1`,
         front: kt.term,
         back: kt.definition,
         intervalStep: 0,
@@ -464,6 +523,10 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
       onShowToast('No practice questions available to add.', 'info');
       return;
     }
+    if (!targetSubject || !selectedUnit) {
+      onShowToast('Please choose a subject and unit first.', 'info');
+      return;
+    }
 
     const currentYear = new Date().getFullYear();
     practiceQuestions.forEach((pq) => {
@@ -471,10 +534,10 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
         id: `pq-bank-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
         subjectId: targetSubjectId as any,
         subjectName: targetSubject.name,
-        unit: selectedUnit?.unit || 1,
-        unitTitle: selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit 1',
-        unitLabel: selectedUnit ? formatUnitDisplayName(selectedUnit) : undefined,
-        unitId: selectedUnit?.id,
+        unit: selectedUnit.unit || 1,
+        unitTitle: formatUnitDisplayName(selectedUnit),
+        unitLabel: formatUnitDisplayName(selectedUnit),
+        unitId: selectedUnit.id,
         question: pq.question,
         marks: pq.marks,
         yearsAsked: [currentYear],
@@ -494,13 +557,17 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
 
   // ACTION 4: Save Original File to IndexedDB & Notes Library
   const handleSaveToSubject = async () => {
+    if (!targetSubject || !selectedUnit) {
+      onShowToast('Please choose a subject and unit before saving.', 'info');
+      return;
+    }
     if (!selectedFile && !editableText) {
       onShowToast('No file or text to save.', 'info');
       return;
     }
 
     const fileName = selectedFile?.name || `${targetSubject.name}_Notes.txt`;
-    const unitLabelDisplay = selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit 1';
+    const unitLabelDisplay = formatUnitDisplayName(selectedUnit);
 
     // 1. Store original file in IndexedDB under selected subject & unit
     if (fileDataUrl && selectedFile) {
@@ -518,7 +585,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           examType: 'Lecture Notes',
           isImportant: false,
           isDone: false,
-          unitId: selectedUnit?.id,
+          unitId: selectedUnit.id,
           createdAt: Date.now()
         };
         await indexedDbService.addFile(newSubjectFile);
@@ -531,8 +598,8 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     const newPdf: PdfResource = {
       id: `pdf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
       subjectId: targetSubjectId,
-      unit: selectedUnit?.unit || 1,
-      unitId: selectedUnit?.id || `u1`,
+      unit: selectedUnit.unit || 1,
+      unitId: selectedUnit.id || `u1`,
       fileName,
       uploadDate: new Date().toLocaleDateString(),
       fileSize: selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB',
@@ -707,16 +774,17 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
                 <span className="font-bold text-sm text-paper-ink dark:text-night-text">
                   {selectedFile?.name || 'Analyzed Document'}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-paper-border/60 text-paper-muted">
+                {/* Requirement 5.b: High-contrast badges in both light and dark mode */}
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border border-slate-700 dark:border-slate-300 shadow-xs">
                   {analysis.cleanedText.length} characters
                 </span>
                 {usedAiMode ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-400 dark:border-indigo-700 shadow-xs flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400 fill-indigo-500" />
                     <span>Smart AI Mode</span>
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-paper-border/40 text-paper-muted">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 shadow-xs">
                     Rule-Based Mode
                   </span>
                 )}
@@ -726,37 +794,49 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
               </p>
             </div>
 
-            {/* Target Subject and Unit Selectors */}
+            {/* Target Subject and Unit Selectors (Requirement 5.a: Do not pre-select, show Choose subject/Choose unit) */}
             <div className="flex items-center gap-2 flex-wrap">
+              {suggestedSubject && !targetSubjectId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetSubjectId(suggestedSubject.id);
+                    setTargetUnitId('');
+                  }}
+                  className="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-200 text-xs font-semibold hover:bg-amber-500/25 transition-colors flex items-center gap-1"
+                  title="Click to apply suggested subject"
+                >
+                  <span>💡 Suggested: <strong>{suggestedSubject.name}</strong></span>
+                </button>
+              )}
+
               <select
                 value={targetSubjectId}
                 onChange={e => {
                   setTargetSubjectId(e.target.value);
-                  const subj = subjects.find(s => s.id === e.target.value);
-                  if (subj && subj.units && subj.units.length > 0) {
-                    setTargetUnitId(subj.units[0].id);
-                  }
+                  setTargetUnitId('');
                 }}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none"
               >
+                <option value="">Choose subject</option>
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
 
-              {targetSubject && targetSubject.units && targetSubject.units.length > 0 && (
-                <select
-                  value={targetUnitId || targetSubject.units[0]?.id}
-                  onChange={e => setTargetUnitId(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none max-w-[200px] truncate"
-                >
-                  {targetSubject.units.map(u => (
-                    <option key={u.id} value={u.id}>
-                      {formatUnitDisplayName(u)}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <select
+                value={targetUnitId}
+                onChange={e => setTargetUnitId(e.target.value)}
+                disabled={!targetSubjectId || !targetSubject?.units || targetSubject.units.length === 0}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none max-w-[200px] truncate disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <option value="">Choose unit</option>
+                {targetSubject?.units?.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {formatUnitDisplayName(u)}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -1054,10 +1134,11 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-6 border-t border-paper-border dark:border-night-border">
             <button
               onClick={handleSaveToSubject}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 btn-tactile shadow-sm"
+              disabled={!targetSubjectId || !targetUnitId || (!selectedFile && !editableText)}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 btn-tactile shadow-sm"
             >
               <Download className="w-4 h-4" />
-              <span>Save to {targetSubject.name} (IndexedDB)</span>
+              <span>{targetSubject ? `Save to ${targetSubject.name} (IndexedDB)` : 'Save to Subject (IndexedDB)'}</span>
             </button>
           </div>
 
@@ -1255,20 +1336,39 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
               </div>
             </div>
 
-            {/* Model Selector */}
+            {/* Model Selector (Requirement 1: Dropdown named "AI model") */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-paper-ink dark:text-night-text">
-                Language Model Service
+              <label className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center justify-between">
+                <span>AI model</span>
+                {isLoadingModels && (
+                  <span className="text-[10px] text-paper-muted flex items-center gap-1 font-normal">
+                    <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />
+                    <span>Fetching models...</span>
+                  </span>
+                )}
               </label>
               <select
                 value={selectedModel}
-                onChange={e => setSelectedModel(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-indigo-500"
+                onChange={e => {
+                  setSelectedModel(e.target.value);
+                  saveModel(e.target.value);
+                }}
+                disabled={availableModels.length === 0}
+                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-indigo-500 disabled:opacity-50"
               >
-                <option value="gemini-1.5-flash">gemini-1.5-flash (Recommended • Fast & Free tier)</option>
-                <option value="gemini-2.5-flash">gemini-2.5-flash (Latest Flash preview)</option>
-                <option value="gemini-1.5-pro">gemini-1.5-pro (High reasoning)</option>
+                {availableModels.length > 0 ? (
+                  availableModels.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))
+                ) : (
+                  <option value="">{selectedModel || 'Click "Test Key" to discover available models'}</option>
+                )}
               </select>
+              {availableModels.length > 0 && !selectedModel && (
+                <p className="text-[10px] text-paper-muted dark:text-night-muted">
+                  Auto-selection is active. Choose a specific model above if you prefer.
+                </p>
+              )}
             </div>
 
             {/* Test Key Result Banner */}

@@ -219,20 +219,32 @@ export function assessTextQuality(text: string): TextQualityAssessment {
 // 3. FIND THE STRUCTURE: HEADINGS & OUTLINE
 // =========================================================================
 export function detectStructureAndHeadings(text: string): SectionHeading[] {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!text) return [];
+
+  // REQUIREMENT 5.c: Split joined inline text before numbering patterns like '1.', '1.1', '2.3' and before 'UNIT I'
+  // so that headings concatenated into a single line land on their own individual lines.
+  const headingSplitPattern = /(?<=\S)\s+(?=(?:\b\d+(?:\.\d+)+(?:\.|\b)\s+[A-Z]|\b\d+\.\s+[A-Z]|\b(?:UNIT|Unit|MODULE|Module|CHAPTER|Chapter)\s+(?:[IVXLCDM]+|\d+)\b))/gi;
+  const preprocessedText = text.replace(headingSplitPattern, '\n');
+
+  const lines = preprocessedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const headings: SectionHeading[] = [];
   const seenTitles = new Set<string>();
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (line.length < 3 || line.length > 80) continue;
-    if (line.includes('=') && !line.includes(':')) continue; // Skip mathematical equations
+    if (line.length < 3 || line.length > 85) continue;
+    
+    // Skip lines with mathematical formulas, equalities, or relations
+    if (/[=≈≤≥≠<>→√′″]/.test(line)) continue;
+
+    // Skip full sentences ending in period (at least 5 words long)
+    if (/\.\s*$/.test(line) && line.split(/\s+/).length >= 5) continue;
 
     let cleanTitle = '';
     let level: 1 | 2 | 3 = 2;
 
-    // Pattern 1: Numbered like 1., 1.1, 1.1.1
-    const numMatch = line.match(/^(\d+(?:\.\d+)*)\s*[\.\-–\)]\s*(.+)$/);
+    // Pattern 1: Numbered like 1., 1.1, 1.1.1, 2.3
+    const numMatch = line.match(/^(\d+(?:\.\d+)*)(?:\.|\b)\s*[\.\-–\)]?\s*([A-Z].+)$/);
     if (numMatch) {
       const numPart = numMatch[1];
       const titlePart = numMatch[2].replace(/:$/, '').trim();
@@ -241,27 +253,27 @@ export function detectStructureAndHeadings(text: string): SectionHeading[] {
       cleanTitle = titlePart;
     }
 
-    // Pattern 2: Unit / Module / Chapter header (e.g. UNIT I: Process Management)
-    else if (/^(?:UNIT|Unit|MODULE|Module|CHAPTER|Chapter)\s+([IVXLCDM]+|\d+)\s*[:\-–]?\s*(.*)$/i.test(line)) {
-      const match = line.match(/^(?:UNIT|Unit|MODULE|Module|CHAPTER|Chapter)\s+([IVXLCDM]+|\d+)\s*[:\-–]?\s*(.*)$/i);
+    // Pattern 2: Unit / Module / Chapter header (e.g. UNIT I: Line Search Methods)
+    else if (/^(?:UNIT|Unit|MODULE|Module|CHAPTER|Chapter)\s+([IVXLCDM]+|\d+)\s*[:\-–—]?\s*(.*)$/i.test(line)) {
+      const match = line.match(/^(?:UNIT|Unit|MODULE|Module|CHAPTER|Chapter)\s+([IVXLCDM]+|\d+)\s*[:\-–—]?\s*(.*)$/i);
       if (match) {
         level = 1;
-        cleanTitle = match[2]?.trim() || `Unit ${match[1]}`;
+        const sub = match[2]?.replace(/^[—\-–:]\s*/, '').trim();
+        cleanTitle = sub && sub.toLowerCase() !== 'contents' ? sub : `Unit ${match[1]}`;
       }
     }
 
-    // Pattern 3: Short line in ALL CAPS (length 4 to 60, 1-8 words)
+    // Pattern 3: Short line in ALL CAPS (length 4 to 60, 1-7 words)
     else if (/^[A-Z0-9\s,&/\-–()]{4,60}$/.test(line)) {
       const wordCount = line.split(/\s+/).length;
       if (wordCount >= 1 && wordCount <= 7 && !/^(PAGE|OF|DATE|TOTAL|NOTE|FIG|FIGURE)\b/i.test(line)) {
         level = 1;
         cleanTitle = line.replace(/[:\-–]$/, '').trim();
-        // Capitalize for topic display
         cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1).toLowerCase();
       }
     }
 
-    // Pattern 4: Short line ending with colon (e.g. "Types of Operating Systems:")
+    // Pattern 4: Short line ending with colon (e.g. "Types of Optimization Methods:")
     else if (/^[A-Z][A-Za-z0-9\s,&/\-–()]{3,60}:$/.test(line)) {
       level = 2;
       cleanTitle = line.replace(/:$/, '').trim();
