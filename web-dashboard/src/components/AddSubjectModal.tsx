@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { SubjectMeta } from '../types';
-import { toDatetimeLocalString } from '../utils/storageService';
+import { SubjectMeta, SubjectUnit } from '../types';
+import { ACCENT_PALETTE, toDatetimeLocalString } from '../utils/storageService';
 import { Plus, X, Calendar, BookOpen, Tag } from 'lucide-react';
 
 interface AddSubjectModalProps {
@@ -8,14 +8,6 @@ interface AddSubjectModalProps {
   onClose: () => void;
   onAdd: (newSubject: SubjectMeta) => void;
 }
-
-const COLOR_OPTIONS = [
-  { name: 'Cyber Emerald', hex: '#10B981' },
-  { name: 'Ocean Cyan', hex: '#06B6D4' },
-  { name: 'Solar Amber', hex: '#F59E0B' },
-  { name: 'Crimson Red', hex: '#EF4444' },
-  { name: 'Sky Blue', hex: '#0EA5E9' },
-];
 
 const ICON_OPTIONS = ['Cpu', 'Database', 'Network', 'Code', 'BookOpen'];
 
@@ -26,10 +18,9 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [semester, setSemester] = useState('5th Semester');
-  const [accentColor, setAccentColor] = useState(COLOR_OPTIONS[0].hex);
+  const [accentColor, setAccentColor] = useState(ACCENT_PALETTE[0].hex);
   const [iconName, setIconName] = useState(ICON_OPTIONS[0]);
   const [examDate, setExamDate] = useState(() => {
-    // Default 10 days from now
     return toDatetimeLocalString(new Date(Date.now() + 10 * 24 * 3600 * 1000));
   });
   const [unitsInput, setUnitsInput] = useState('Unit 1: Fundamentals & Architecture\nUnit 2: Core Processing & Logic\nUnit 3: Optimization & Practice');
@@ -41,17 +32,21 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
     if (!name.trim() || !examDate) return;
 
     // Parse units
-    const units = unitsInput
+    const parsedUnits: SubjectUnit[] = unitsInput
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
-      .map((line, idx) => ({
-        unit: idx + 1,
-        title: line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || `Unit ${idx + 1}`
-      }));
+      .map((line, idx) => {
+        const cleanTitle = line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || `Unit ${idx + 1}`;
+        return {
+          id: `u${idx + 1}`,
+          unit: idx + 1,
+          title: cleanTitle,
+          name: cleanTitle
+        };
+      });
 
     const newId = `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
-    // Derive a clean short code from subject initials
     const code = name.trim().split(' ').map(w => w[0]).join('').slice(0, 4).toUpperCase();
 
     const newSubject: SubjectMeta = {
@@ -62,7 +57,9 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
       accentColor,
       iconName,
       examDate,
-      units: units.length > 0 ? units : [{ unit: 1, title: 'Core Syllabus' }]
+      units: parsedUnits.length > 0 ? parsedUnits : [
+        { id: 'u1', unit: 1, title: 'Core Syllabus & Fundamentals', name: 'Core Syllabus & Fundamentals' }
+      ]
     };
 
     onAdd(newSubject);
@@ -91,7 +88,7 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
               + Add New Subject
             </h3>
             <p className="text-xs text-paper-muted dark:text-night-muted">
-              Track live countdowns, study plans, and past exam questions
+              Configure exam date, 10 card theme colors, and syllabus units
             </p>
           </div>
         </div>
@@ -126,44 +123,35 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
             />
           </div>
 
-          {/* Color & Semester Pickers */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1.5 flex items-center gap-1.5">
+          {/* 10 Card Accent Theme Colors */}
+          <div>
+            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Card Accent Theme</span>
-              </label>
-              <div className="flex gap-2">
-                {COLOR_OPTIONS.map(c => (
-                  <button
-                    key={c.hex}
-                    type="button"
-                    onClick={() => setAccentColor(c.hex)}
-                    title={c.name}
-                    className={`w-7 h-7 rounded-full transition-transform btn-tactile ${accentColor === c.hex ? 'scale-125 ring-2 ring-emerald-500' : 'opacity-70 hover:opacity-100'}`}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1.5">
-                Semester / Term
-              </label>
-              <input
-                type="text"
-                value={semester}
-                onChange={e => setSemester(e.target.value)}
-                placeholder="e.g. 5th Semester"
-                className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text text-xs focus:outline-none focus:border-emerald-500"
-              />
+                <span>Card Accent Theme (10 Rich Colors)</span>
+              </span>
+              <span className="text-[11px] font-mono font-bold" style={{ color: accentColor }}>
+                {ACCENT_PALETTE.find(c => c.hex === accentColor)?.name}
+              </span>
+            </label>
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 p-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border">
+              {ACCENT_PALETTE.map(c => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  onClick={() => setAccentColor(c.hex)}
+                  title={c.name}
+                  className={`w-7 h-7 rounded-full transition-transform btn-tactile mx-auto ${accentColor === c.hex ? 'scale-125 ring-2 ring-emerald-500 shadow-sm' : 'opacity-75 hover:opacity-100'}`}
+                  style={{ backgroundColor: c.hex }}
+                />
+              ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1">
-              Syllabus Units (1 per line)
+            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1 flex items-center justify-between">
+              <span>Syllabus Units (1 per line)</span>
+              <span className="text-[10px] text-paper-muted dark:text-night-muted">Auto-organized inside subject</span>
             </label>
             <textarea
               rows={3}
@@ -184,7 +172,8 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg text-xs font-bold flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
+              className="flex-1 py-2.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
+              style={{ backgroundColor: accentColor }}
             >
               <Plus className="w-4 h-4" />
               <span>+ Add Subject</span>

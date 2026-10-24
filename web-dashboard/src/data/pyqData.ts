@@ -12,28 +12,28 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     id: 'os',
     name: 'Operating Systems',
     iconName: 'Cpu',
-    accentColor: '#EF4444',
+    accentColor: '#3B82F6',
     examDate: defaultDate(3, 8),
     units: [
-      { unit: 1, title: 'Process Scheduling' },
-      { unit: 2, title: 'Synchronization & Deadlocks' },
-      { unit: 3, title: 'Memory & Paging' },
-      { unit: 4, title: 'Storage & Disk Management' },
-      { unit: 5, title: 'Virtualization & Security' },
+      { id: 'u1', unit: 1, title: 'Process Scheduling', name: 'Process Scheduling' },
+      { id: 'u2', unit: 2, title: 'Synchronization & Deadlocks', name: 'Synchronization & Deadlocks' },
+      { id: 'u3', unit: 3, title: 'Memory & Paging', name: 'Memory & Paging' },
+      { id: 'u4', unit: 4, title: 'Storage & Disk Management', name: 'Storage & Disk Management' },
+      { id: 'u5', unit: 5, title: 'Virtualization & Security', name: 'Virtualization & Security' },
     ]
   },
   {
     id: 'dbms',
     name: 'Database Systems',
     iconName: 'Database',
-    accentColor: '#F59E0B',
+    accentColor: '#F97316',
     examDate: defaultDate(7, 4),
     units: [
-      { unit: 1, title: 'Relational Model & Algebra' },
-      { unit: 2, title: 'SQL & Normalization' },
-      { unit: 3, title: 'Transactions & Concurrency' },
-      { unit: 4, title: 'Indexing & B+ Trees' },
-      { unit: 5, title: 'Distributed Databases' },
+      { id: 'u1', unit: 1, title: 'Relational Model & Algebra', name: 'Relational Model & Algebra' },
+      { id: 'u2', unit: 2, title: 'SQL & Normalization', name: 'SQL & Normalization' },
+      { id: 'u3', unit: 3, title: 'Transactions & Concurrency', name: 'Transactions & Concurrency' },
+      { id: 'u4', unit: 4, title: 'Indexing & B+ Trees', name: 'Indexing & B+ Trees' },
+      { id: 'u5', unit: 5, title: 'Distributed Databases', name: 'Distributed Databases' },
     ]
   },
   {
@@ -43,11 +43,11 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     accentColor: '#10B981',
     examDate: defaultDate(11, 9),
     units: [
-      { unit: 1, title: 'OSI Model & Physical Layer' },
-      { unit: 2, title: 'Data Link Layer & Framing' },
-      { unit: 3, title: 'Network Layer & Routing' },
-      { unit: 4, title: 'Transport Layer & TCP' },
-      { unit: 5, title: 'Application Layer & DNS' },
+      { id: 'u1', unit: 1, title: 'OSI Model & Physical Layer', name: 'OSI Model & Physical Layer' },
+      { id: 'u2', unit: 2, title: 'Data Link Layer & Framing', name: 'Data Link Layer & Framing' },
+      { id: 'u3', unit: 3, title: 'Network Layer & Routing', name: 'Network Layer & Routing' },
+      { id: 'u4', unit: 4, title: 'Transport Layer & TCP', name: 'Transport Layer & TCP' },
+      { id: 'u5', unit: 5, title: 'Application Layer & DNS', name: 'Application Layer & DNS' },
     ]
   },
   {
@@ -57,11 +57,11 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     accentColor: '#06B6D4',
     examDate: defaultDate(18, 12),
     units: [
-      { unit: 1, title: 'Asymptotic Analysis & Lists' },
-      { unit: 2, title: 'Trees & AVL Balancing' },
-      { unit: 3, title: 'Heaps & Hashing' },
-      { unit: 4, title: 'Graphs & Dijkstra' },
-      { unit: 5, title: 'Dynamic Programming' },
+      { id: 'u1', unit: 1, title: 'Asymptotic Analysis & Lists', name: 'Asymptotic Analysis & Lists' },
+      { id: 'u2', unit: 2, title: 'Trees & AVL Balancing', name: 'Trees & AVL Balancing' },
+      { id: 'u3', unit: 3, title: 'Heaps & Hashing', name: 'Heaps & Hashing' },
+      { id: 'u4', unit: 4, title: 'Graphs & Dijkstra', name: 'Graphs & Dijkstra' },
+      { id: 'u5', unit: 5, title: 'Dynamic Programming', name: 'Dynamic Programming' },
     ]
   }
 ];

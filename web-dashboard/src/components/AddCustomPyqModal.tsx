@@ -39,12 +39,14 @@ export const AddCustomPyqModal: React.FC<AddCustomPyqModalProps> = ({
 
     const selectedUnitObj = subject.units.find(u => u.unit === unit);
     const unitTitle = selectedUnitObj ? selectedUnitObj.title : `Unit ${unit}`;
+    const unitId = selectedUnitObj?.id || `u${unit}`;
 
     const newQuestion: PYQQuestion = {
       id: `q-custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
       subjectId: subject.id,
       subjectName: subject.name,
       unit,
+      unitId,
       unitTitle,
       question: question.trim(),
       marks,

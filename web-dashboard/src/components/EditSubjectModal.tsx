@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { SubjectMeta } from '../types';
+import { SubjectMeta, SubjectUnit } from '../types';
+import { ACCENT_PALETTE } from '../utils/storageService';
 import { Edit3, X, Trash2, Calendar, BookOpen, Tag, Check } from 'lucide-react';
 
 interface EditSubjectModalProps {
@@ -10,14 +11,6 @@ interface EditSubjectModalProps {
   onDelete: (id: string) => void;
 }
 
-const COLOR_OPTIONS = [
-  { name: 'Cyber Emerald', hex: '#10B981' },
-  { name: 'Ocean Cyan', hex: '#06B6D4' },
-  { name: 'Solar Amber', hex: '#F59E0B' },
-  { name: 'Crimson Red', hex: '#EF4444' },
-  { name: 'Sky Blue', hex: '#0EA5E9' },
-];
-
 export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
   subject,
   isOpen,
@@ -27,7 +20,7 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [semester, setSemester] = useState('');
-  const [accentColor, setAccentColor] = useState(COLOR_OPTIONS[0].hex);
+  const [accentColor, setAccentColor] = useState(ACCENT_PALETTE[0].hex);
   const [examDate, setExamDate] = useState('');
   const [unitsInput, setUnitsInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -36,7 +29,7 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
     if (subject) {
       setName(subject.name);
       setSemester(subject.semester || '5th Semester');
-      setAccentColor(subject.accentColor || COLOR_OPTIONS[0].hex);
+      setAccentColor(subject.accentColor || ACCENT_PALETTE[0].hex);
       setExamDate(subject.examDate || '');
       setUnitsInput(
         subject.units.map(u => `Unit ${u.unit}: ${u.title}`).join('\n')
@@ -51,14 +44,19 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
     e.preventDefault();
     if (!name.trim() || !examDate) return;
 
-    const units = unitsInput
+    const parsedUnits: SubjectUnit[] = unitsInput
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
-      .map((line, idx) => ({
-        unit: idx + 1,
-        title: line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || `Unit ${idx + 1}`
-      }));
+      .map((line, idx) => {
+        const cleanTitle = line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || `Unit ${idx + 1}`;
+        return {
+          id: subject.units[idx]?.id || `u${idx + 1}`,
+          unit: idx + 1,
+          title: cleanTitle,
+          name: cleanTitle
+        };
+      });
 
     const updated: SubjectMeta = {
       ...subject,
@@ -66,7 +64,7 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
       semester: semester.trim(),
       accentColor,
       examDate,
-      units: units.length > 0 ? units : subject.units
+      units: parsedUnits.length > 0 ? parsedUnits : subject.units
     };
 
     onUpdate(updated);
@@ -134,42 +132,35 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1.5 flex items-center gap-1.5">
+          {/* 10 Card Accent Theme Colors */}
+          <div>
+            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Card Accent Theme</span>
-              </label>
-              <div className="flex gap-2">
-                {COLOR_OPTIONS.map(c => (
-                  <button
-                    key={c.hex}
-                    type="button"
-                    onClick={() => setAccentColor(c.hex)}
-                    title={c.name}
-                    className={`w-7 h-7 rounded-full transition-transform btn-tactile ${accentColor === c.hex ? 'scale-125 ring-2 ring-emerald-500' : 'opacity-70 hover:opacity-100'}`}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1.5">
-                Semester / Term
-              </label>
-              <input
-                type="text"
-                value={semester}
-                onChange={e => setSemester(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text text-xs focus:outline-none focus:border-emerald-500"
-              />
+              </span>
+              <span className="text-[11px] font-mono font-bold" style={{ color: accentColor }}>
+                {ACCENT_PALETTE.find(c => c.hex === accentColor)?.name}
+              </span>
+            </label>
+            <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 p-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border">
+              {ACCENT_PALETTE.map(c => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  onClick={() => setAccentColor(c.hex)}
+                  title={c.name}
+                  className={`w-7 h-7 rounded-full transition-transform btn-tactile mx-auto ${accentColor === c.hex ? 'scale-125 ring-2 ring-emerald-500 shadow-sm' : 'opacity-75 hover:opacity-100'}`}
+                  style={{ backgroundColor: c.hex }}
+                />
+              ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1">
-              Syllabus Units (1 per line)
+            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1 flex items-center justify-between">
+              <span>Syllabus Units (1 per line)</span>
+              <span className="text-[10px] text-paper-muted dark:text-night-muted">Organized inside subject</span>
             </label>
             <textarea
               rows={3}

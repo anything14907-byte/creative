@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SubjectMeta } from '../types';
-import { getExamUrgencyColor } from '../utils/storageService';
+import { getExamUrgencyColor, sortSubjectsByExamUrgency } from '../utils/storageService';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Sparkles, Clock, Sun, Moon, Plus, Download, RotateCcw, 
-  Layers, BookOpen 
+  Layers, BookOpen, ChevronDown 
 } from 'lucide-react';
 
 export type MainNavView = 'overview' | 'workspace';
@@ -14,6 +14,7 @@ interface NavbarProps {
   onSelectView: (view: MainNavView) => void;
   subjects: SubjectMeta[];
   activeSubjectId: string;
+  onSelectSubject?: (id: string) => void;
   onOpenAddSubject: () => void;
   onOpenExtensionModal: () => void;
   onResetData: () => void;
@@ -24,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectView,
   subjects,
   activeSubjectId,
+  onSelectSubject,
   onOpenAddSubject,
   onOpenExtensionModal,
   onResetData
@@ -45,7 +47,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     return nearest;
   }, [subjects]);
 
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const sortedSubjects = React.useMemo(() => sortSubjectsByExamUrgency(subjects), [subjects]);
   const activeSubject = subjects.find(s => s.id === activeSubjectId) || subjects[0];
+
+  const handleSelectFromSwitcher = (id: string) => {
+    setIsSwitcherOpen(false);
+    if (onSelectSubject) {
+      onSelectSubject(id);
+    } else {
+      onSelectView('workspace');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
@@ -96,8 +109,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
 
-        {/* Center: Simplified Clean Navigation */}
-        <nav className="flex items-center gap-2">
+        {/* Center: Simplified Navigation with Sorted Subject Switcher */}
+        <nav className="flex items-center gap-2 relative">
           <button
             onClick={() => onSelectView('overview')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
@@ -110,18 +123,82 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>All Subjects</span>
           </button>
 
+          {/* Subject Switcher Button with Dropdown Popover */}
           {activeSubject && (
-            <button
-              onClick={() => onSelectView('workspace')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
-                currentView === 'workspace'
-                  ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
-                  : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>{activeSubject.name}</span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
+                  currentView === 'workspace'
+                    ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
+                    : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
+                }`}
+              >
+                <span 
+                  className="w-2.5 h-2.5 rounded-full shrink-0" 
+                  style={{ backgroundColor: activeSubject.accentColor }} 
+                />
+                <span className="max-w-[130px] sm:max-w-[180px] truncate">{activeSubject.name}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown Menu listing subjects sorted chronologically by time remaining */}
+              {isSwitcherOpen && (
+                <div className="absolute left-0 mt-2 w-72 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-2 z-50 animate-fade-slide-up space-y-1">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted border-b border-paper-border dark:border-night-border flex items-center justify-between">
+                    <span>Priority Ranked Subjects</span>
+                    <span>{sortedSubjects.length} Total</span>
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto space-y-1 pt-1">
+                    {sortedSubjects.map((sub, idx) => {
+                      const u = getExamUrgencyColor(sub.examDate);
+                      const isCurrent = sub.id === activeSubjectId;
+                      let badge = `Priority #${idx + 1}`;
+                      if (u.fractionalDays <= 0) badge = 'Completed';
+                      else if (idx === 0) badge = '🚨 #1 Closest';
+
+                      return (
+                        <div
+                          key={sub.id}
+                          onClick={() => handleSelectFromSwitcher(sub.id)}
+                          className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between gap-2 btn-tactile ${
+                            isCurrent 
+                              ? 'bg-emerald-500/15 border border-emerald-500/30' 
+                              : 'hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span 
+                              className="w-2.5 h-2.5 rounded-full shrink-0" 
+                              style={{ backgroundColor: sub.accentColor }} 
+                            />
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-paper-ink dark:text-night-text truncate">
+                                {sub.name}
+                              </div>
+                              <div className="text-[10px] text-paper-muted dark:text-night-muted">
+                                {badge} • {sub.units.length} Units
+                              </div>
+                            </div>
+                          </div>
+
+                          <span 
+                            className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0"
+                            style={{ 
+                              color: u.hslColor,
+                              backgroundColor: `${u.hslColor}16`
+                            }}
+                          >
+                            {u.days}d {u.hours}h
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </nav>
 

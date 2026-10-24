@@ -10,7 +10,7 @@ import { ExtensionInstallerModal } from './components/ExtensionInstallerModal';
 import { Toast, ToastMessage } from './components/Toast';
 
 function DashboardContent() {
-  // 1. Core State loaded from Persistent Storage (bumped to exam_hub_v3)
+  // 1. Core State loaded from Persistent Storage (Guaranteed Zero Data Loss)
   const [subjects, setSubjects] = useState<SubjectMeta[]>(() => storageService.getSubjects());
   const [questions, setQuestions] = useState<PYQQuestion[]>(() => storageService.getQuestions());
   const [tasks, setTasks] = useState<StudyTask[]>(() => storageService.getTasks());
@@ -20,10 +20,11 @@ function DashboardContent() {
   // Active navigation view: 'overview' (Command Center) | 'workspace' (Subject Hub)
   const [currentView, setCurrentView] = useState<MainNavView>('overview');
 
-  // Currently focused subject
+  // Currently focused subject & unit
   const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
     return localStorage.getItem('exam_hub_v3_active_subject') || subjects[0]?.id || 'os';
   });
+  const [activeUnitId, setActiveUnitId] = useState<string>('all');
 
   // Modal states
   const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
@@ -59,8 +60,9 @@ function DashboardContent() {
   // ==========================================
   // SUBJECT HANDLERS
   // ==========================================
-  const handleSelectSubject = (id: string) => {
+  const handleSelectSubject = (id: string, unitId?: string) => {
     setActiveSubjectId(id);
+    setActiveUnitId(unitId || 'all');
     localStorage.setItem('exam_hub_v3_active_subject', id);
     setCurrentView('workspace');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -70,6 +72,7 @@ function DashboardContent() {
     const updated = storageService.addSubject(newSubject);
     setSubjects(updated);
     setActiveSubjectId(newSubject.id);
+    setActiveUnitId('all');
     localStorage.setItem('exam_hub_v3_active_subject', newSubject.id);
     setCurrentView('workspace');
     showToast(`Created new subject "${newSubject.name}"! 🚀`, 'success');
@@ -78,7 +81,7 @@ function DashboardContent() {
   const handleUpdateSubject = (updatedSubject: SubjectMeta) => {
     const updated = storageService.updateSubject(updatedSubject);
     setSubjects(updated);
-    showToast(`Updated ${updatedSubject.name} settings & exam date!`, 'success');
+    showToast(`Updated ${updatedSubject.name}!`, 'success');
   };
 
   const handleDeleteSubject = (id: string) => {
@@ -127,10 +130,12 @@ function DashboardContent() {
     setTasks(updated);
   };
 
-  const handleAddTask = (text: string) => {
+  const handleAddTask = (text: string, unitId?: string, unitNum?: number) => {
     const newTask: StudyTask = {
       id: `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
       subjectId: activeSubjectId,
+      unitId,
+      unit: unitNum,
       text,
       completed: false,
       isMission: false,
@@ -153,7 +158,6 @@ function DashboardContent() {
   const handleAddVideo = (video: VideoResource) => {
     const updated = storageService.addVideo(video);
     setVideos(updated);
-    showToast('YouTube video embedded in Subject Hub! 🎬', 'success');
   };
 
   const handleUpdateVideoNotes = (id: string, notes: string) => {
@@ -178,7 +182,6 @@ function DashboardContent() {
   const handleAddPdf = (pdf: PdfResource) => {
     const updated = storageService.addPdf(pdf);
     setPdfs(updated);
-    showToast('Document parsed and saved to Vault! 📄', 'success');
   };
 
   const handleDeletePdf = (id: string) => {
@@ -188,10 +191,26 @@ function DashboardContent() {
   };
 
   // ==========================================
+  // MOVE ITEM TO UNIT HANDLER
+  // ==========================================
+  const handleMoveItemToUnit = (
+    type: 'task' | 'video' | 'pdf' | 'question', 
+    itemId: string, 
+    targetUnitId: string, 
+    targetUnitNumber?: number
+  ) => {
+    storageService.moveItemToUnit(type, itemId, targetUnitId, targetUnitNumber);
+    if (type === 'task') setTasks(storageService.getTasks());
+    if (type === 'video') setVideos(storageService.getVideos());
+    if (type === 'pdf') setPdfs(storageService.getPdfs());
+    if (type === 'question') setQuestions(storageService.getQuestions());
+  };
+
+  // ==========================================
   // RESET DEMO DATA
   // ==========================================
   const handleResetData = () => {
-    if (window.confirm('Reset all subjects, countdowns, videos, and questions to the default university study dataset?')) {
+    if (window.confirm('Reset all subjects, countdowns, videos, and questions to default? This will replace any custom changes.')) {
       const reset = storageService.resetToDefaultData();
       setSubjects(reset.subjects);
       setQuestions(reset.questions);
@@ -199,6 +218,7 @@ function DashboardContent() {
       setVideos(reset.videos);
       setPdfs(reset.pdfs);
       setActiveSubjectId(reset.subjects[0].id);
+      setActiveUnitId('all');
       localStorage.setItem('exam_hub_v3_active_subject', reset.subjects[0].id);
       showToast('Reset to default university study data!', 'info');
     }
@@ -213,6 +233,7 @@ function DashboardContent() {
         onSelectView={setCurrentView}
         subjects={subjects}
         activeSubjectId={activeSubjectId}
+        onSelectSubject={handleSelectSubject}
         onOpenAddSubject={() => setIsAddSubjectOpen(true)}
         onOpenExtensionModal={() => setIsExtensionModalOpen(true)}
         onResetData={handleResetData}
@@ -238,6 +259,7 @@ function DashboardContent() {
         {currentView === 'workspace' && activeSubject && (
           <SubjectWorkspace
             subject={activeSubject}
+            initialUnitId={activeUnitId}
             questions={questions}
             tasks={tasks}
             videos={videos}
@@ -254,6 +276,7 @@ function DashboardContent() {
             onDeleteVideo={handleDeleteVideo}
             onAddPdf={handleAddPdf}
             onDeletePdf={handleDeletePdf}
+            onMoveItemToUnit={handleMoveItemToUnit}
             onUpdateSubject={handleUpdateSubject}
             onDeleteSubject={handleDeleteSubject}
             onBackToOverview={() => setCurrentView('overview')}

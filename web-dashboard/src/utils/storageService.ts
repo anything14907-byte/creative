@@ -1,5 +1,28 @@
-import { SubjectMeta, PYQQuestion, StudyTask, VideoResource, PdfResource, ExamUrgency, CountdownTime } from '../types';
+import { 
+  SubjectMeta, 
+  SubjectUnit, 
+  PYQQuestion, 
+  StudyTask, 
+  VideoResource, 
+  PdfResource, 
+  ExamUrgency, 
+  CountdownTime 
+} from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
+
+// 10 Rich Card Accent Theme Colors
+export const ACCENT_PALETTE = [
+  { name: 'Ocean Cyan', hex: '#06B6D4' },
+  { name: 'Royal Sapphire', hex: '#3B82F6' },
+  { name: 'Emerald Mint', hex: '#10B981' },
+  { name: 'Solar Gold', hex: '#EAB308' },
+  { name: 'Sunset Orange', hex: '#F97316' },
+  { name: 'Crimson Rose', hex: '#F43F5E' },
+  { name: 'Neon Lime', hex: '#84CC16' },
+  { name: 'Warm Copper', hex: '#D97706' },
+  { name: 'Arctic Teal', hex: '#14B8A6' },
+  { name: 'Titanium Silver', hex: '#64748B' },
+];
 
 // Helper to format ISO date string for datetime-local: YYYY-MM-DDTHH:mm
 export function toDatetimeLocalString(date: Date): string {
@@ -14,89 +37,91 @@ export function toDatetimeLocalString(date: Date): string {
 
 // Generate realistic default exam dates based on current time
 const now = Date.now();
-const DEFAULT_OS_EXAM = toDatetimeLocalString(new Date(now + (3 * 24 + 8) * 3600 * 1000));   // ~3.3 days (Urgent Red/Orange < 5d)
-const DEFAULT_DBMS_EXAM = toDatetimeLocalString(new Date(now + (7 * 24 + 6) * 3600 * 1000)); // ~7.2 days (Warm Yellow/Amber)
-const DEFAULT_CN_EXAM = toDatetimeLocalString(new Date(now + (11 * 24 + 9) * 3600 * 1000));  // ~11.4 days (Yellow-Green)
-const DEFAULT_DSA_EXAM = toDatetimeLocalString(new Date(now + (18 * 24 + 11) * 3600 * 1000)); // ~18.5 days (Safe Green > 15d)
+const DEFAULT_OS_EXAM = toDatetimeLocalString(new Date(now + (3 * 24 + 8) * 3600 * 1000));   // ~3.3 days
+const DEFAULT_DBMS_EXAM = toDatetimeLocalString(new Date(now + (7 * 24 + 6) * 3600 * 1000)); // ~7.2 days
+const DEFAULT_CN_EXAM = toDatetimeLocalString(new Date(now + (11 * 24 + 9) * 3600 * 1000));  // ~11.4 days
+const DEFAULT_DSA_EXAM = toDatetimeLocalString(new Date(now + (18 * 24 + 11) * 3600 * 1000)); // ~18.5 days
 
 export const DEFAULT_SUBJECTS: SubjectMeta[] = [
   {
     id: 'os',
     name: 'Operating Systems',
-    accentColor: '#EF4444', // Will dynamically compute from urgency
+    accentColor: '#3B82F6', // Royal Sapphire
     examDate: DEFAULT_OS_EXAM,
     iconName: 'Cpu',
     units: [
-      { unit: 1, title: 'Process Scheduling & CPU Algorithms' },
-      { unit: 2, title: 'Process Synchronization & Deadlocks' },
-      { unit: 3, title: 'Memory Management & Paging / TLB' },
-      { unit: 4, title: 'Storage & Disk Scheduling' },
-      { unit: 5, title: 'Virtualization & System Security' },
+      { id: 'u1', unit: 1, title: 'Process Scheduling & CPU Algorithms', name: 'Process Scheduling & CPU Algorithms' },
+      { id: 'u2', unit: 2, title: 'Process Synchronization & Deadlocks', name: 'Process Synchronization & Deadlocks' },
+      { id: 'u3', unit: 3, title: 'Memory Management & Paging / TLB', name: 'Memory Management & Paging / TLB' },
+      { id: 'u4', unit: 4, title: 'Storage & Disk Scheduling', name: 'Storage & Disk Scheduling' },
+      { id: 'u5', unit: 5, title: 'Virtualization & System Security', name: 'Virtualization & System Security' },
     ]
   },
   {
     id: 'dbms',
     name: 'Database Systems',
-    accentColor: '#F59E0B',
+    accentColor: '#F97316', // Sunset Orange
     examDate: DEFAULT_DBMS_EXAM,
     iconName: 'Database',
     units: [
-      { unit: 1, title: 'Relational Model & ER Architecture' },
-      { unit: 2, title: 'SQL & Normalization (1NF to BCNF)' },
-      { unit: 3, title: 'Transactions, ACID & Concurrency' },
-      { unit: 4, title: 'Indexing, B+ Trees & Query Plans' },
-      { unit: 5, title: 'Distributed DBs & WAL Recovery' },
+      { id: 'u1', unit: 1, title: 'Relational Model & ER Architecture', name: 'Relational Model & ER Architecture' },
+      { id: 'u2', unit: 2, title: 'SQL & Normalization (1NF to BCNF)', name: 'SQL & Normalization (1NF to BCNF)' },
+      { id: 'u3', unit: 3, title: 'Transactions, ACID & Concurrency', name: 'Transactions, ACID & Concurrency' },
+      { id: 'u4', unit: 4, title: 'Indexing, B+ Trees & Query Plans', name: 'Indexing, B+ Trees & Query Plans' },
+      { id: 'u5', unit: 5, title: 'Distributed DBs & WAL Recovery', name: 'Distributed DBs & WAL Recovery' },
     ]
   },
   {
     id: 'cn',
     name: 'Computer Networks',
-    accentColor: '#10B981',
+    accentColor: '#10B981', // Emerald Mint
     examDate: DEFAULT_CN_EXAM,
     iconName: 'Network',
     units: [
-      { unit: 1, title: 'OSI 7-Layer vs TCP/IP Models' },
-      { unit: 2, title: 'Data Link Layer & Flow Control' },
-      { unit: 3, title: 'Network Layer & Routing Protocols' },
-      { unit: 4, title: 'Transport Layer & TCP Congestion' },
-      { unit: 5, title: 'Application Layer & DNS Resolution' },
+      { id: 'u1', unit: 1, title: 'OSI 7-Layer vs TCP/IP Models', name: 'OSI 7-Layer vs TCP/IP Models' },
+      { id: 'u2', unit: 2, title: 'Data Link Layer & Flow Control', name: 'Data Link Layer & Flow Control' },
+      { id: 'u3', unit: 3, title: 'Network Layer & Routing Protocols', name: 'Network Layer & Routing Protocols' },
+      { id: 'u4', unit: 4, title: 'Transport Layer & TCP Congestion', name: 'Transport Layer & TCP Congestion' },
+      { id: 'u5', unit: 5, title: 'Application Layer & DNS Resolution', name: 'Application Layer & DNS Resolution' },
     ]
   },
   {
     id: 'dsa',
     name: 'Data Structures & Algorithms',
-    accentColor: '#06B6D4',
+    accentColor: '#06B6D4', // Ocean Cyan
     examDate: DEFAULT_DSA_EXAM,
     iconName: 'Code',
     units: [
-      { unit: 1, title: 'Asymptotic Analysis & Master Theorem' },
-      { unit: 2, title: 'Balanced Search Trees & AVL Rotations' },
-      { unit: 3, title: 'Priority Queues, Heaps & Hashing' },
-      { unit: 4, title: 'Graph Algorithms & Shortest Paths' },
-      { unit: 5, title: 'Dynamic Programming & 0/1 Knapsack' },
+      { id: 'u1', unit: 1, title: 'Asymptotic Analysis & Master Theorem', name: 'Asymptotic Analysis & Master Theorem' },
+      { id: 'u2', unit: 2, title: 'Balanced Search Trees & AVL Rotations', name: 'Balanced Search Trees & AVL Rotations' },
+      { id: 'u3', unit: 3, title: 'Priority Queues, Heaps & Hashing', name: 'Priority Queues, Heaps & Hashing' },
+      { id: 'u4', unit: 4, title: 'Graph Algorithms & Shortest Paths', name: 'Graph Algorithms & Shortest Paths' },
+      { id: 'u5', unit: 5, title: 'Dynamic Programming & 0/1 Knapsack', name: 'Dynamic Programming & 0/1 Knapsack' },
     ]
   }
 ];
 
 export const DEFAULT_TASKS: StudyTask[] = [
-  { id: 't-os-1', subjectId: 'os', text: 'Solve Banker\'s Algorithm 10-Mark safe sequence problem', completed: false, isMission: true, createdAt: Date.now() },
-  { id: 't-os-2', subjectId: 'os', text: 'Derive Effective Memory Access Time (EMAT) formula with TLB hit ratio', completed: false, isMission: true, createdAt: Date.now() },
-  { id: 't-os-3', subjectId: 'os', text: 'Watch 15-min crash revision video on CPU Scheduling Gantt Charts', completed: true, isMission: false, createdAt: Date.now() },
+  { id: 't-os-1', subjectId: 'os', unitId: 'u2', unit: 2, text: 'Solve Banker\'s Algorithm 10-Mark safe sequence problem', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-os-2', subjectId: 'os', unitId: 'u3', unit: 3, text: 'Derive Effective Memory Access Time (EMAT) formula with TLB hit ratio', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-os-3', subjectId: 'os', unitId: 'u1', unit: 1, text: 'Watch 15-min crash revision video on CPU Scheduling Gantt Charts', completed: true, isMission: false, createdAt: Date.now() },
   
-  { id: 't-dbms-1', subjectId: 'dbms', text: 'Practice 1NF -> 2NF -> 3NF -> BCNF decomposition table', completed: false, isMission: true, createdAt: Date.now() },
-  { id: 't-dbms-2', subjectId: 'dbms', text: 'Precedence Graph conflict serializability cycle detection test', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-dbms-1', subjectId: 'dbms', unitId: 'u2', unit: 2, text: 'Practice 1NF -> 2NF -> 3NF -> BCNF decomposition table', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-dbms-2', subjectId: 'dbms', unitId: 'u3', unit: 3, text: 'Precedence Graph conflict serializability cycle detection test', completed: false, isMission: true, createdAt: Date.now() },
 
-  { id: 't-cn-1', subjectId: 'cn', text: 'Draw TCP Congestion Control cwnd graph (Slow start, AIMD, 3 dup ACKs)', completed: false, isMission: true, createdAt: Date.now() },
-  { id: 't-cn-2', subjectId: 'cn', text: 'Memorize TCP 3-Way Handshake vs 4-Way Termination packet ladder', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-cn-1', subjectId: 'cn', unitId: 'u4', unit: 4, text: 'Draw TCP Congestion Control cwnd graph (Slow start, AIMD, 3 dup ACKs)', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-cn-2', subjectId: 'cn', unitId: 'u4', unit: 4, text: 'Memorize TCP 3-Way Handshake vs 4-Way Termination packet ladder', completed: false, isMission: true, createdAt: Date.now() },
 
-  { id: 't-dsa-1', subjectId: 'dsa', text: 'Practice all 4 AVL Tree rotations (LL, RR, LR, RL) on sample key set', completed: false, isMission: true, createdAt: Date.now() },
-  { id: 't-dsa-2', subjectId: 'dsa', text: 'Trace 0/1 Knapsack dynamic programming table recurrence relation', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-dsa-1', subjectId: 'dsa', unitId: 'u2', unit: 2, text: 'Practice all 4 AVL Tree rotations (LL, RR, LR, RL) on sample key set', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-dsa-2', subjectId: 'dsa', unitId: 'u5', unit: 5, text: 'Trace 0/1 Knapsack dynamic programming table recurrence relation', completed: false, isMission: true, createdAt: Date.now() },
 ];
 
 export const DEFAULT_VIDEOS: VideoResource[] = [
   {
     id: 'v-os-1',
     subjectId: 'os',
+    unitId: 'u2',
+    unit: 2,
     title: "Banker's Algorithm with Safe Sequence Example — Gate Smashers",
     youtubeUrl: 'https://www.youtube.com/watch?v=7gmLZ2vgw5Y',
     videoId: '7gmLZ2vgw5Y',
@@ -107,6 +132,8 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
   {
     id: 'v-os-2',
     subjectId: 'os',
+    unitId: 'u1',
+    unit: 1,
     title: 'Preemptive vs Non-Preemptive CPU Scheduling Algorithms — Neso Academy',
     youtubeUrl: 'https://www.youtube.com/watch?v=EWkQD_WWmS4',
     videoId: 'EWkQD_WWmS4',
@@ -117,6 +144,8 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
   {
     id: 'v-dbms-1',
     subjectId: 'dbms',
+    unitId: 'u2',
+    unit: 2,
     title: 'Normalization (1NF, 2NF, 3NF, BCNF) Made Easy — Gate Smashers',
     youtubeUrl: 'https://www.youtube.com/watch?v=5fs1hdkhms8',
     videoId: '5fs1hdkhms8',
@@ -127,6 +156,8 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
   {
     id: 'v-cn-1',
     subjectId: 'cn',
+    unitId: 'u4',
+    unit: 4,
     title: 'TCP Congestion Control (Slow Start & AIMD) — Gate Smashers',
     youtubeUrl: 'https://www.youtube.com/watch?v=8y_jC_XvXn4',
     videoId: '8y_jC_XvXn4',
@@ -137,6 +168,8 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
   {
     id: 'v-dsa-1',
     subjectId: 'dsa',
+    unitId: 'u2',
+    unit: 2,
     title: 'AVL Tree Insertion & 4 Rotations (LL, RR, LR, RL) — Abdul Bari',
     youtubeUrl: 'https://www.youtube.com/watch?v=jDM6_TnYIqE',
     videoId: 'jDM6_TnYIqE',
@@ -150,6 +183,8 @@ export const DEFAULT_PDFS: PdfResource[] = [
   {
     id: 'pdf-os-1',
     subjectId: 'os',
+    unitId: 'u2',
+    unit: 2,
     fileName: 'OS_Deadlocks_Synchronization_Summary.pdf',
     uploadDate: new Date(Date.now() - 86400000).toLocaleDateString(),
     fileSize: '1.4 MB',
@@ -164,6 +199,8 @@ export const DEFAULT_PDFS: PdfResource[] = [
   {
     id: 'pdf-dbms-1',
     subjectId: 'dbms',
+    unitId: 'u2',
+    unit: 2,
     fileName: 'DBMS_Normalization_CheatSheet.pdf',
     uploadDate: new Date(Date.now() - 172800000).toLocaleDateString(),
     fileSize: '2.1 MB',
@@ -184,18 +221,109 @@ export function extractYoutubeId(url: string): string | null {
 }
 
 /**
- * Requirement 2: Smooth Continuous Exam Urgency Color Shift (Green -> Yellow -> Red)
- * Calculates exact fractional daysRemaining and smoothly interpolates HSL color:
- * - daysRemaining >= 15: Safe Green (hue = 145)
- * - 5 < daysRemaining < 15: Green (145) -> Yellow-Green (95) -> Warm Yellow/Amber (45) -> Orange (20)
- * - daysRemaining <= 5: Orange (20) -> Urgent Crimson Red (0) with pulse animation
+ * Robust Unit Normalizer:
+ * Safely recovers units whether saved as an array of objects, array of strings,
+ * comma-separated string, or newline-separated text.
+ */
+export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
+  if (!subject) return [];
+
+  const raw = subject.units ?? subject.syllabus ?? subject.topics;
+
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.map((item: any, idx: number) => {
+      if (typeof item === 'string') {
+        const cleanTitle = item.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || item.trim();
+        return {
+          id: `u${idx + 1}`,
+          unit: idx + 1,
+          title: cleanTitle || `Unit ${idx + 1}`,
+          name: cleanTitle || `Unit ${idx + 1}`
+        };
+      }
+      if (typeof item === 'object' && item !== null) {
+        const uNum = Number(item.unit) || (idx + 1);
+        const title = (item.title || item.name || `Unit ${uNum}`).trim();
+        return {
+          id: String(item.id || `u${uNum}`),
+          unit: uNum,
+          title: title,
+          name: title
+        };
+      }
+      return {
+        id: `u${idx + 1}`,
+        unit: idx + 1,
+        title: `Unit ${idx + 1}`,
+        name: `Unit ${idx + 1}`
+      };
+    });
+  }
+
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    const lines = raw.split(/\r?\n|,/).map(l => l.trim()).filter(Boolean);
+    if (lines.length > 0) {
+      return lines.map((line, idx) => {
+        const cleanTitle = line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || line.trim();
+        return {
+          id: `u${idx + 1}`,
+          unit: idx + 1,
+          title: cleanTitle || `Unit ${idx + 1}`,
+          name: cleanTitle || `Unit ${idx + 1}`
+        };
+      });
+    }
+  }
+
+  // Fallback if no units were entered: provide a default Unit 1
+  return [
+    {
+      id: 'u1',
+      unit: 1,
+      title: 'Core Concepts & Fundamentals',
+      name: 'Core Concepts & Fundamentals'
+    }
+  ];
+}
+
+/**
+ * Requirement 2: Auto-Sort Subjects by Exam Time Remaining (Closest Exam First)
+ * Upcoming exams with least time left come first (#1, #2, ...), followed by more distant exams.
+ * Completed / past exams are placed at the end.
+ */
+export function sortSubjectsByExamUrgency(subjects: SubjectMeta[]): SubjectMeta[] {
+  const now = Date.now();
+  return [...subjects].sort((a, b) => {
+    const targetA = a.examDate ? new Date(a.examDate).getTime() : Infinity;
+    const targetB = b.examDate ? new Date(b.examDate).getTime() : Infinity;
+    const diffA = targetA - now;
+    const diffB = targetB - now;
+
+    // Both in future: closest first
+    if (diffA > 0 && diffB > 0) {
+      return diffA - diffB;
+    }
+    // A in future, B in past: A comes first
+    if (diffA > 0 && diffB <= 0) {
+      return -1;
+    }
+    // B in future, A in past: B comes first
+    if (diffA <= 0 && diffB > 0) {
+      return 1;
+    }
+    // Both in past: most recently passed first
+    return targetB - targetA;
+  });
+}
+
+/**
+ * Exam Urgency Calculation with Continuous HSL Color Shift
  */
 export function getExamUrgencyColor(examDateString: string): ExamUrgency {
   const fallbackDate = new Date(Date.now() + 7 * 86400 * 1000);
   const target = examDateString ? new Date(examDateString).getTime() : fallbackDate.getTime();
   const diffMs = target - Date.now();
 
-  // Formatted date string for user
   const targetObj = new Date(target);
   const formattedExamDate = isNaN(target) 
     ? 'No Exam Date Set' 
@@ -215,7 +343,7 @@ export function getExamUrgencyColor(examDateString: string): ExamUrgency {
       hue: 0,
       hslColor: 'hsl(0, 85%, 45%)', // Urgent Crimson
       isUrgent: true,
-      statusLabel: 'Exam Today / Completed',
+      statusLabel: 'Completed / Update Date',
       formattedCountdown: '0d : 0h : 0m : 0s',
       formattedExamDate
     };
@@ -232,17 +360,14 @@ export function getExamUrgencyColor(examDateString: string): ExamUrgency {
   let isUrgent = false;
 
   if (fractionalDays >= 15) {
-    // Vibrant Safe Green
     hue = 145;
     statusLabel = 'On Track (> 15 Days)';
   } else if (fractionalDays > 5) {
-    // Smooth transition from Green (145) down to Orange (20)
-    const t = (fractionalDays - 5) / (15 - 5); // 0 at 5 days, 1 at 15 days
+    const t = (fractionalDays - 5) / (15 - 5);
     hue = Math.round(20 + t * (145 - 20));
     statusLabel = fractionalDays > 9 ? 'Active Prep' : 'Approaching Soon';
   } else {
-    // Smooth transition from Orange (20) down to Urgent Red (0)
-    const t = Math.max(0, fractionalDays) / 5; // 0 at 0 days, 1 at 5 days
+    const t = Math.max(0, fractionalDays) / 5;
     hue = Math.round(t * 20);
     statusLabel = '🚨 Urgent (< 5 Days)';
     isUrgent = true;
@@ -282,7 +407,7 @@ export function calculateCountdown(examDateString: string): CountdownTime {
   };
 }
 
-// STORAGE KEYS — BUMPED TO exam_hub_v3 AS REQUIRED
+// EXACT STORAGE KEYS (PRESERVED FOR ZERO DATA LOSS)
 const STORAGE_KEYS = {
   SUBJECTS: 'exam_hub_v3_subjects',
   QUESTIONS: 'exam_hub_v3_questions',
@@ -293,19 +418,59 @@ const STORAGE_KEYS = {
   THEME: 'exam_hub_v3_theme',
 };
 
-// Storage Service API
+// FALLBACK KEYS FROM PREVIOUS VERSIONS (ONLY CHECKED IF CURRENT KEY IS COMPLETELY EMPTY)
+const FALLBACK_KEYS = {
+  SUBJECTS: ['pyq_hud_subjects_v2', 'pyq_subjects', 'exam_hub_subjects'],
+  QUESTIONS: ['pyq_hud_questions_v2', 'pyq_questions'],
+  TASKS: ['pyq_hud_tasks_v2', 'pyq_tasks'],
+  VIDEOS: ['pyq_hud_videos_v2'],
+  PDFS: ['pyq_hud_pdfs_v2']
+};
+
+/**
+ * Storage Service with Non-Destructive Schema Upgrading
+ * Guarantees zero data loss for existing user-entered subjects and resources.
+ */
 export const storageService = {
   // SUBJECTS
   getSubjects(): SubjectMeta[] {
     try {
+      // 1. First check the primary storage key
       const data = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Non-destructively normalize units while preserving all user data
+          const upgraded = parsed.map((s: any) => ({
+            ...s,
+            accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
+            units: normalizeSubjectUnits(s)
+          }));
+          return upgraded;
+        }
+      }
+
+      // 2. If primary is empty, inspect fallback keys to rescue previously entered data
+      for (const fallbackKey of FALLBACK_KEYS.SUBJECTS) {
+        const fallbackData = localStorage.getItem(fallbackKey);
+        if (fallbackData) {
+          const parsed = JSON.parse(fallbackData);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const upgraded = parsed.map((s: any) => ({
+              ...s,
+              accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
+              units: normalizeSubjectUnits(s)
+            }));
+            this.saveSubjects(upgraded);
+            return upgraded;
+          }
+        }
       }
     } catch (e) {
       console.warn('Error reading subjects:', e);
     }
+
+    // 3. ONLY load defaults if user has ZERO subjects anywhere
     this.saveSubjects(DEFAULT_SUBJECTS);
     return DEFAULT_SUBJECTS;
   },
@@ -321,14 +486,34 @@ export const storageService = {
 
   addSubject(subject: SubjectMeta): SubjectMeta[] {
     const list = this.getSubjects();
-    const updated = [...list, subject];
+    const normalized: SubjectMeta = {
+      ...subject,
+      units: normalizeSubjectUnits(subject)
+    };
+    const updated = [...list, normalized];
     this.saveSubjects(updated);
     return updated;
   },
 
   updateSubject(subject: SubjectMeta): SubjectMeta[] {
     const list = this.getSubjects();
-    const updated = list.map(s => s.id === subject.id ? subject : s);
+    const normalized: SubjectMeta = {
+      ...subject,
+      units: normalizeSubjectUnits(subject)
+    };
+    const updated = list.map(s => s.id === subject.id ? normalized : s);
+    this.saveSubjects(updated);
+    return updated;
+  },
+
+  updateSubjectUnits(subjectId: string, units: SubjectUnit[]): SubjectMeta[] {
+    const list = this.getSubjects();
+    const updated = list.map(s => {
+      if (s.id === subjectId) {
+        return { ...s, units };
+      }
+      return s;
+    });
     this.saveSubjects(updated);
     return updated;
   },
@@ -353,7 +538,23 @@ export const storageService = {
       const data = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((q: any) => ({
+            ...q,
+            unitId: q.unitId || (q.unit ? `u${q.unit}` : undefined)
+          }));
+        }
+      }
+
+      for (const fallbackKey of FALLBACK_KEYS.QUESTIONS) {
+        const fallbackData = localStorage.getItem(fallbackKey);
+        if (fallbackData) {
+          const parsed = JSON.parse(fallbackData);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.saveQuestions(parsed);
+            return parsed;
+          }
+        }
       }
     } catch (e) {
       console.warn('Error reading questions:', e);
@@ -399,7 +600,23 @@ export const storageService = {
       const data = localStorage.getItem(STORAGE_KEYS.TASKS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map((t: any) => ({
+            ...t,
+            unitId: t.unitId || (t.unit ? `u${t.unit}` : undefined)
+          }));
+        }
+      }
+
+      for (const fallbackKey of FALLBACK_KEYS.TASKS) {
+        const fallbackData = localStorage.getItem(fallbackKey);
+        if (fallbackData) {
+          const parsed = JSON.parse(fallbackData);
+          if (Array.isArray(parsed)) {
+            this.saveTasks(parsed);
+            return parsed;
+          }
+        }
       }
     } catch (e) {
       console.warn('Error reading tasks:', e);
@@ -443,7 +660,23 @@ export const storageService = {
       const data = localStorage.getItem(STORAGE_KEYS.VIDEOS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map((v: any) => ({
+            ...v,
+            unitId: v.unitId || (v.unit ? `u${v.unit}` : undefined)
+          }));
+        }
+      }
+
+      for (const fallbackKey of FALLBACK_KEYS.VIDEOS) {
+        const fallbackData = localStorage.getItem(fallbackKey);
+        if (fallbackData) {
+          const parsed = JSON.parse(fallbackData);
+          if (Array.isArray(parsed)) {
+            this.saveVideos(parsed);
+            return parsed;
+          }
+        }
       }
     } catch (e) {
       console.warn('Error reading videos:', e);
@@ -494,7 +727,23 @@ export const storageService = {
       const data = localStorage.getItem(STORAGE_KEYS.PDFS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map((p: any) => ({
+            ...p,
+            unitId: p.unitId || (p.unit ? `u${p.unit}` : undefined)
+          }));
+        }
+      }
+
+      for (const fallbackKey of FALLBACK_KEYS.PDFS) {
+        const fallbackData = localStorage.getItem(fallbackKey);
+        if (fallbackData) {
+          const parsed = JSON.parse(fallbackData);
+          if (Array.isArray(parsed)) {
+            this.savePdfs(parsed);
+            return parsed;
+          }
+        }
       }
     } catch (e) {
       console.warn('Error reading pdfs:', e);
@@ -523,6 +772,48 @@ export const storageService = {
     const updated = list.filter(p => p.id !== pdfId);
     this.savePdfs(updated);
     return updated;
+  },
+
+  // MOVE ITEMS BETWEEN UNITS (1-Click Move to Unit)
+  moveItemToUnit(
+    itemType: 'task' | 'video' | 'pdf' | 'question', 
+    itemId: string, 
+    targetUnitId: string,
+    targetUnitNumber?: number
+  ): void {
+    if (itemType === 'task') {
+      const tasks = this.getTasks().map(t => {
+        if (t.id === itemId) {
+          return { ...t, unitId: targetUnitId, unit: targetUnitNumber ?? t.unit };
+        }
+        return t;
+      });
+      this.saveTasks(tasks);
+    } else if (itemType === 'video') {
+      const videos = this.getVideos().map(v => {
+        if (v.id === itemId) {
+          return { ...v, unitId: targetUnitId, unit: targetUnitNumber ?? v.unit };
+        }
+        return v;
+      });
+      this.saveVideos(videos);
+    } else if (itemType === 'pdf') {
+      const pdfs = this.getPdfs().map(p => {
+        if (p.id === itemId) {
+          return { ...p, unitId: targetUnitId, unit: targetUnitNumber ?? p.unit };
+        }
+        return p;
+      });
+      this.savePdfs(pdfs);
+    } else if (itemType === 'question') {
+      const questions = this.getQuestions().map(q => {
+        if (q.id === itemId) {
+          return { ...q, unitId: targetUnitId, unit: targetUnitNumber ?? q.unit };
+        }
+        return q;
+      });
+      this.saveQuestions(questions);
+    }
   },
 
   // RESET TO DEFAULT DEMO DATA

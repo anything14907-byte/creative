@@ -4,12 +4,20 @@ export type QuestionMarks = 2 | 5 | 10;
 
 export type QuestionStatus = 'not-started' | 'mastered';
 
+export interface SubjectUnit {
+  id: string; // e.g. 'u1' or 'unit-1'
+  unit: number; // 1, 2, 3...
+  title: string; // e.g. 'Process Scheduling & CPU Algorithms'
+  name?: string; // alias for title
+}
+
 export interface PYQQuestion {
   id: string;
   subjectId: SubjectId;
   subjectName: string;
   unit: number;
   unitTitle: string;
+  unitId?: string; // Links question to a specific SubjectUnit
   question: string;
   marks: QuestionMarks;
   yearsAsked: number[];
@@ -36,11 +44,10 @@ export interface SubjectMeta {
   semester?: string;
   examDate: string; // ISO datetime string: 'YYYY-MM-DDTHH:mm'
   iconName: string;
-  accentColor: string; // Hex color: '#10B981', '#06B6D4', '#F59E0B', '#EF4444'
-  units: {
-    unit: number;
-    title: string;
-  }[];
+  accentColor: string; // 10 distinct swatches
+  units: SubjectUnit[];
+  syllabus?: any;
+  topics?: any;
 }
 
 export interface CountdownTime {
@@ -75,6 +82,8 @@ export interface StudyTask {
   isMission: boolean;
   createdAt: number;
   category?: string;
+  unitId?: string; // Links task to a specific SubjectUnit
+  unit?: number;
 }
 
 export interface VideoResource {
@@ -86,6 +95,8 @@ export interface VideoResource {
   notes: string;
   isWatched: boolean;
   addedAt: number;
+  unitId?: string; // Links video to a specific SubjectUnit
+  unit?: number;
 }
 
 export interface PdfResource {
@@ -97,6 +108,8 @@ export interface PdfResource {
   extractedText: string;
   summary: string;
   extractedQuestions?: string[];
+  unitId?: string; // Links PDF to a specific SubjectUnit
+  unit?: number;
 }
 
 export interface ConceptExplainer {
