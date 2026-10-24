@@ -1,4 +1,5 @@
-import { PYQQuestion, SubjectId, SyncPayload } from '../types';
+import { SubjectMeta, PYQQuestion, SubjectId, SyncPayload } from '../types';
+import { storageService } from './storageService';
 
 const STORAGE_KEY = 'pyq_ranker_questions_v1';
 const SUBJECT_KEY = 'pyq_ranker_active_subject_v1';
@@ -8,7 +9,9 @@ const EXAM_DATE_KEY = 'pyq_ranker_target_exam_v1';
 /**
  * Broadcast sync data to extension and local storage
  */
-export function broadcastSync(questions: PYQQuestion[], activeSubjectId: SubjectId, theme: 'light' | 'dark') {
+export function broadcastSync(questions: PYQQuestion[], activeSubjectId: SubjectId, theme: 'light' | 'dark', subjects?: SubjectMeta[]) {
+  const currentSubjects = subjects || storageService.getSubjects();
+
   // Save locally in localStorage for web dashboard persistence
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
@@ -20,8 +23,9 @@ export function broadcastSync(questions: PYQQuestion[], activeSubjectId: Subject
 
   // Dispatch postMessage event for the Manifest V3 content script
   const payload: SyncPayload = {
-    version: '1.0.0',
+    version: '2.0.0',
     timestamp: Date.now(),
+    subjects: currentSubjects,
     questions,
     activeSubjectId,
     theme

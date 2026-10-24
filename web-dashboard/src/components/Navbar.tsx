@@ -1,176 +1,183 @@
 import React from 'react';
-import { 
-  Sparkles, 
-  Sun, 
-  Moon, 
-  BookOpen, 
-  Search, 
-  FileText, 
-  Chrome,
-  Download,
-  Upload
-} from 'lucide-react';
+import { SubjectMeta } from '../types';
+import { calculateCountdown } from '../utils/storageService';
 import { useTheme } from '../contexts/ThemeContext';
-import { PYQQuestion, SubjectId } from '../types';
-import { exportJsonSnapshot, importJsonSnapshot } from '../utils/syncBridge';
+import { 
+  Sparkles, Clock, Sun, Moon, Plus, Download, RotateCcw, 
+  Layers, Compass, Printer, Flame 
+} from 'lucide-react';
 
-export type AppMode = 'study' | 'scanner' | 'cheat';
+export type MainNavView = 'overview' | 'workspace' | 'scanner' | 'cheatsheet';
 
 interface NavbarProps {
-  currentMode: AppMode;
-  onSelectMode: (mode: AppMode) => void;
-  onOpenExtensionInstaller: () => void;
-  questions: PYQQuestion[];
-  activeSubjectId: SubjectId;
-  onImportQuestions: (questions: PYQQuestion[]) => void;
-  onShowToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
+  currentView: MainNavView;
+  onSelectView: (view: MainNavView) => void;
+  subjects: SubjectMeta[];
+  activeSubjectId: string;
+  onOpenAddSubject: () => void;
+  onOpenExtensionModal: () => void;
+  onResetData: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  currentMode,
-  onSelectMode,
-  onOpenExtensionInstaller,
-  questions,
+  currentView,
+  onSelectView,
+  subjects,
   activeSubjectId,
-  onImportQuestions,
-  onShowToast
+  onOpenAddSubject,
+  onOpenExtensionModal,
+  onResetData
 }) => {
   const { theme, toggleTheme } = useTheme();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleExport = () => {
-    exportJsonSnapshot(questions, activeSubjectId);
-    onShowToast(`Exported ${questions.length} questions backup!`, 'success');
-  };
+  // Find closest upcoming exam for the navbar ticker
+  const nearestCountdown = React.useMemo(() => {
+    let nearest: { subject: SubjectMeta; text: string } | null = null;
+    let minSeconds = Infinity;
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const imported = await importJsonSnapshot(file);
-      onImportQuestions(imported);
-      onShowToast(`Imported ${imported.length} questions successfully!`, 'success');
-    } catch (err: any) {
-      onShowToast('Could not import backup file', 'error');
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    for (const sub of subjects) {
+      const cd = calculateCountdown(sub.examDate);
+      if (cd.totalSeconds > 0 && cd.totalSeconds < minSeconds) {
+        minSeconds = cd.totalSeconds;
+        nearest = { subject: sub, text: `${sub.code}: ${cd.days}d ${cd.hours}h ${cd.minutes}m` };
+      }
     }
-  };
+    return nearest;
+  }, [subjects]);
+
+  const activeSubject = subjects.find(s => s.id === activeSubjectId) || subjects[0];
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-xl border-b border-day-border dark:border-cyber-border bg-white/85 dark:bg-[#06090E]/85 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-[#0A0F24]/80 dark:bg-[#0A0F24]/80 border-b border-white/10 print:hidden transition-colors">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         
-        {/* Brand */}
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-[#00E599]/15 dark:bg-[#00E599]/20 border border-[#00E599]/40 flex items-center justify-center text-[#00E599] shadow-glow-emerald">
-            <Sparkles className="w-5 h-5 text-emerald-600 dark:text-[#00E599]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-base sm:text-lg tracking-tight text-day-text dark:text-white">
-                Pyq<span className="text-emerald-600 dark:text-[#00E599]">Ranker</span>
-              </span>
-              <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-[#00E599] border border-emerald-500/20">
-                AI Companion
-              </span>
+        {/* Brand Logo & Ticker */}
+        <div className="flex items-center gap-4 shrink-0">
+          <div 
+            onClick={() => onSelectView('overview')}
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-400 to-emerald-400 p-0.5 shadow-neon-cyan group-hover:scale-105 transition-transform">
+              <div className="w-full h-full bg-[#0A0F24] rounded-[10px] flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-extrabold text-white tracking-tight flex items-center gap-1.5">
+                Pyq<span className="text-cyan-400">Ranker</span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-400/20 text-cyan-300 font-bold">
+                  HUD 2.0
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 hidden sm:block">
+                Exam Command Center & Study Hub
+              </div>
             </div>
           </div>
+
+          {/* Next Exam Mini Ticker in Navbar */}
+          {nearestCountdown && (
+            <div 
+              onClick={() => onSelectView('overview')}
+              className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-xl bg-black/40 border border-white/10 hover:border-cyan-400 cursor-pointer text-xs transition-colors"
+            >
+              <Clock className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="text-slate-400 font-medium">Nearest Exam:</span>
+              <span className="font-mono font-bold text-cyan-300">
+                {nearestCountdown.text}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* 3 Simple Modes Selector (Center) */}
-        <nav className="flex items-center p-1 rounded-2xl border border-day-border dark:border-cyber-border bg-slate-100/80 dark:bg-[#0F1722]/90 backdrop-blur-md">
+        {/* Center: Main Navigation Modes */}
+        <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto py-1">
           <button
-            onClick={() => onSelectMode('study')}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              currentMode === 'study'
-                ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
-                : 'text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white'
+            onClick={() => onSelectView('overview')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              currentView === 'overview'
+                ? 'bg-cyan-500 text-black shadow-neon-cyan'
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            <span>1. Study Top Questions</span>
+            <Layers className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">1.</span> Command Center
           </button>
 
           <button
-            onClick={() => onSelectMode('scanner')}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              currentMode === 'scanner'
-                ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
-                : 'text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white'
+            onClick={() => onSelectView('workspace')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              currentView === 'workspace'
+                ? 'bg-cyan-500 text-black shadow-neon-cyan'
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
-            <Search className="w-4 h-4" />
-            <span>2. Scanner & PDF</span>
+            <Compass className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">2.</span> {activeSubject ? activeSubject.code : 'Subject'} Hub
           </button>
 
           <button
-            onClick={() => onSelectMode('cheat')}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-              currentMode === 'cheat'
-                ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
-                : 'text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white'
+            onClick={() => onSelectView('scanner')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              currentView === 'scanner'
+                ? 'bg-cyan-500 text-black shadow-neon-cyan'
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
-            <FileText className="w-4 h-4" />
-            <span>3. Cheat Sheet</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">3.</span> Topic Scanner
+          </button>
+
+          <button
+            onClick={() => onSelectView('cheatsheet')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              currentView === 'cheatsheet'
+                ? 'bg-cyan-500 text-black shadow-neon-cyan'
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">4.</span> Cheat Sheet
           </button>
         </nav>
 
-        {/* Right Actions: Get Extension, Day/Night Toggle, Backup */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {/* Right Actions: Add Subject, Extension, Reset, Theme Toggle */}
+        <div className="flex items-center gap-2 shrink-0">
           
-          {/* Get Browser Extension Button */}
           <button
-            onClick={onOpenExtensionInstaller}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#00E599]/15 dark:bg-[#00E599]/20 hover:bg-[#00E599]/25 text-emerald-800 dark:text-[#00E599] border border-[#00E599]/40 shadow-sm transition-all active:scale-95"
+            onClick={onOpenAddSubject}
+            className="hidden md:flex px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold items-center gap-1.5 transition-colors"
           >
-            <Chrome className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Get Extension</span>
+            <Plus className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Subject</span>
           </button>
 
-          {/* Backup Tools */}
-          <div className="hidden md:flex items-center gap-1 border-l border-day-border dark:border-cyber-border pl-2">
-            <button
-              onClick={handleExport}
-              title="Save Backup"
-              className="p-1.5 rounded-lg text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              title="Restore Backup"
-              className="p-1.5 rounded-lg text-day-muted dark:text-cyber-muted hover:text-day-text dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              <Upload className="w-3.5 h-3.5" />
-            </button>
-            <input 
-              ref={fileInputRef} 
-              type="file" 
-              accept=".json" 
-              className="hidden" 
-              onChange={handleFileChange} 
-            />
-          </div>
+          <button
+            onClick={onOpenExtensionModal}
+            className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-cyan-400/10 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/20 transition-colors items-center gap-1"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Browser Extension</span>
+          </button>
 
-          {/* Day / Night Mode Pill Switch */}
+          <button
+            onClick={onResetData}
+            className="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-white/10 transition-colors"
+            title="Reset to pristine university demo data"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+
+          {/* Futuristic Day / Night Pill Toggle */}
           <button
             onClick={toggleTheme}
-            aria-label="Toggle Theme"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-day-border dark:border-cyber-border bg-white dark:bg-[#0F1722] text-xs font-semibold text-day-text dark:text-white shadow-sm hover:border-[#00E599] transition-all"
-            title={theme === 'dark' ? 'Switch to Daylight Alabaster' : 'Switch to Obsidian Titanium'}
+            className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+            title={`Switch to ${theme === 'dark' ? 'Holographic Pearl Day' : 'Aurora HUD Night'} mode`}
           >
             {theme === 'dark' ? (
-              <>
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden lg:inline text-[11px] font-medium text-cyber-muted">Day</span>
-              </>
+              <Sun className="w-4 h-4 text-amber-300 animate-spin-slow" />
             ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden lg:inline text-[11px] font-medium text-day-muted">Night</span>
-              </>
+              <Moon className="w-4 h-4 text-cyan-400" />
             )}
           </button>
 

@@ -1,4 +1,4 @@
-export type SubjectId = 'os' | 'dbms' | 'cn' | 'dsa' | string;
+export type SubjectId = string;
 
 export type QuestionMarks = 2 | 5 | 10;
 
@@ -26,6 +26,7 @@ export interface PYQQuestion {
   lastAttemptScore?: number;
   lastAttemptAnswer?: string;
   bookmarked?: boolean;
+  isCustom?: boolean;
 }
 
 export interface SubjectMeta {
@@ -34,10 +35,76 @@ export interface SubjectMeta {
   name: string;
   semester: string;
   iconName: string;
+  accentColor: string; // e.g. '#00F0FF', '#FFB800', '#FF3366', '#00F5A0', '#38BDF8'
+  examDate: string; // ISO datetime string: 'YYYY-MM-DDTHH:mm'
   units: {
     unit: number;
     title: string;
   }[];
+}
+
+export interface StudyTask {
+  id: string;
+  subjectId: SubjectId;
+  text: string;
+  completed: boolean;
+  isMission: boolean;
+  category: 'pyq' | 'video' | 'pdf' | 'concept' | 'custom';
+  createdAt: number;
+}
+
+export interface VideoResource {
+  id: string;
+  subjectId: SubjectId;
+  title: string;
+  youtubeUrl: string;
+  videoId: string;
+  notes: string;
+  isWatched: boolean;
+  addedAt: number;
+}
+
+export interface PdfResource {
+  id: string;
+  subjectId: SubjectId;
+  fileName: string;
+  uploadDate: string;
+  fileSize: string;
+  extractedText: string;
+  summary: string;
+  extractedQuestions: string[];
+}
+
+export interface ConceptExplainer {
+  topic: string;
+  unitTitle: string;
+  subjectId: SubjectId;
+  analogy: {
+    title: string;
+    story: string;
+    keyTakeaway: string;
+  };
+  architectureFlow: {
+    title: string;
+    steps: string[];
+    formulaOrRule: string;
+  };
+  examPoints: string[];
+  rubricKeywords: string[];
+  flashcards: {
+    question: string;
+    answer: string;
+  }[];
+}
+
+export interface CountdownTime {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalSeconds: number;
+  urgency: 'critical' | 'high' | 'normal' | 'passed';
+  label: string;
 }
 
 export interface EvaluationResult {
@@ -53,6 +120,7 @@ export interface EvaluationResult {
 export interface SyncPayload {
   version: string;
   timestamp: number;
+  subjects: SubjectMeta[];
   questions: PYQQuestion[];
   activeSubjectId: SubjectId;
   theme: 'light' | 'dark';

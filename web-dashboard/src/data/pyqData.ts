@@ -1,5 +1,12 @@
 import { SubjectMeta, PYQQuestion } from '../types';
 
+const nowTime = Date.now();
+const defaultDate = (days: number, hours: number) => {
+  const d = new Date(nowTime + (days * 24 + hours) * 3600 * 1000);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const INITIAL_SUBJECTS: SubjectMeta[] = [
   {
     id: 'os',
@@ -7,6 +14,8 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     name: 'Operating Systems',
     semester: '5th Sem',
     iconName: 'Cpu',
+    accentColor: '#00F0FF', // Electric Cyan
+    examDate: defaultDate(3, 8),
     units: [
       { unit: 1, title: 'Process Scheduling' },
       { unit: 2, title: 'Synchronization & Deadlocks' },
@@ -21,6 +30,8 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     name: 'Database Systems',
     semester: '5th Sem',
     iconName: 'Database',
+    accentColor: '#00F5A0', // Hyper Emerald
+    examDate: defaultDate(6, 14),
     units: [
       { unit: 1, title: 'Relational Model & Algebra' },
       { unit: 2, title: 'SQL & Normalization' },
@@ -35,6 +46,8 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     name: 'Computer Networks',
     semester: '5th Sem',
     iconName: 'Network',
+    accentColor: '#FFB800', // Solar Gold
+    examDate: defaultDate(10, 9),
     units: [
       { unit: 1, title: 'OSI Model & Physical Layer' },
       { unit: 2, title: 'Data Link Layer & Framing' },
@@ -49,6 +62,8 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
     name: 'Data Structures & Algorithms',
     semester: '3rd Sem',
     iconName: 'Code',
+    accentColor: '#FF3366', // Neon Coral
+    examDate: defaultDate(15, 11),
     units: [
       { unit: 1, title: 'Asymptotic Analysis & Lists' },
       { unit: 2, title: 'Trees & AVL Balancing' },

@@ -1,52 +1,73 @@
-# PyqRanker: Smart University PYQ Matcher & In-Page Study Companion
+# PyqRanker: Personal College Exam Command Center & PYQ Study Hub
 
 [![Manifest V3](https://img.shields.io/badge/Chrome%20Extension-Manifest%20V3-blue.svg)](https://developer.chrome.com/docs/extensions/mv3/)
 [![React 18](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-6.1-646CFF.svg)](https://vitejs.dev/)
-[![Cyber Emerald Theme](https://img.shields.io/badge/Design-Cyber%20Emerald%20%26%20Obsidian-00e599.svg)]()
+[![Design](https://img.shields.io/badge/UI-Aurora%20HUD%20Command%20Center-00F0FF.svg)]()
 [![Zero External Keys](https://img.shields.io/badge/Setup-100%25%20Local%20%26%20Self--Contained-emerald.svg)]()
 
-> **PyqRanker** is a futuristic, distraction-free exam intelligence platform and in-page study companion for Computer Science students. It predicts high-probability exam questions, extracts PYQs from question papers, provides 3-bullet model exam answers with diagram tips, and injects an isolated Shadow DOM study sidebar into any webpage (Wikipedia, GeeksforGeeks, MDN, YouTube, etc.) to match past exam questions with the topic being read.
+> **PyqRanker** is an Apple VisionOS & Cyberpunk HUD-inspired **Personal College Exam Command Center & PYQ Study Hub** for university students. It combines real-time ticking exam countdowns for every subject, dynamic custom subject creation/deletion, a smart AI-style study coach, an embedded YouTube lecture vault with side-by-side timestamps & notes, a client-side PDF document vault, 4-card deep concept explainers with 3D memory flashcards, and a high-repeat university PYQ bank with inline active recall testing.
 
-**Live Demo on GitHub Pages:** [https://anything14907-byte.github.io/creative/](https://anything14907-byte.github.io/creative/)
+**Live Deployment on GitHub Pages:** [https://anything14907-byte.github.io/creative/](https://anything14907-byte.github.io/creative/)
 
 ---
 
-## 🎨 Futuristic Design System (Obsidian Titanium & Cyber Emerald)
+## 🎨 Futuristic Holographic Theme: Aurora HUD Command Center
 
-PyqRanker features a sleek, high-immersion visual language with zero purple or indigo clutter:
-
-| Mode | Theme Name | Background | Primary Accent | Surfaces |
+| Mode | Theme Name | Canvas Background | Accents | Card Surfaces |
 | :--- | :--- | :--- | :--- | :--- |
-| 🌙 **Night Mode** (Default) | **Obsidian Titanium** | Deep Carbon Obsidian (`#06090E`) with Electric Emerald glow | Electric Emerald (`#00E599`) & Ice Cyan (`#38BDF8`) | Frosted Titanium Glass (`rgba(15, 23, 34, 0.78)`) with `1px solid rgba(255, 255, 255, 0.08)` borders |
-| ☀️ **Day Mode** | **Arctic Studio** | Daylight Alabaster (`#F3F6FA`) | Deep Cyber Teal (`#059669`) & Ocean Cyan (`#0284C7`) | Crisp White Cards (`#FFFFFF`) with subtle Slate borders |
+| 🌙 **Night Mode** (Default) | **Aurora HUD Command Center** | Deep Cosmic Navy (`#0A0F24`) with animated multi-color radial Aurora mesh and perspective HUD grid | Electric Cyan (`#00F0FF`), Solar Gold (`#FFB800`), Neon Coral (`#FF3366`), Hyper Emerald (`#00F5A0`) | Translucent 3D frosted panels (`rgba(17, 25, 54, 0.72)`) with `backdrop-filter: blur(20px)` and neon hover lift |
+| ☀️ **Day Mode** | **Holographic Pearl Studio** | Luminous Pearl Ice (`#EEF4FF`) with soft sky-cyan, amber, and coral glows | Deep Cyber Cyan (`#0284C7`), Cyber Emerald (`#059669`), and Solar Gold (`#D97706`) | Crisp frosted glass white (`rgba(255, 255, 255, 0.90)`) with deep navy text (`#0A0F24`) |
 
 ---
 
-## ⚡ Radical UX Simplification: 3-Step Student Flow
+## ⚡ Key Feature Tour
 
-PyqRanker removes technical jargon and confusing multi-panel filters, replacing them with a glass top navigation bar offering **3 Simple Modes**:
+### 1. ⏰ Live Exam Countdown Timers (Ticking Every Second)
+- **Global "Next Upcoming Exam" Hero HUD Banner:**
+  - Displayed at the top of the command center showing the nearest subject exam.
+  - Live ticking clock: `DAYS : HOURS : MINUTES : SECONDS` updating every second.
+  - Urgency indicators: `🚨 CRITICAL < 3 DAYS`, `⚡ HIGH PRIORITY < 7 DAYS`, `🟢 ON TRACK > 7 DAYS`.
+  - 1-Click "Jump Straight into Subject" quick launcher.
+- **Per-Subject Countdown Timers & Editable Dates:**
+  - Every single subject card features an independent live ticking clock (`DD : HH : MM : SS`).
+  - **"⏰ Edit Exam Time"** control: Select any target exam date and time (`<input type="datetime-local">`) to immediately update countdowns, urgency statuses, and daily study plans saved to `localStorage`.
 
-### Mode 1: "1. Study Top Questions" (Default Home)
-- **Hero Subject Selector:** 4 interactive cards (**Operating Systems**, **Database Systems**, **Computer Networks**, **Data Structures**) with live circular mastery progress rings.
-- **One-Click Filter Pills:** `All Questions`, `🔥 Most Repeated (Must Study)`, `10-Mark Long Answers`, `2 & 5-Mark Short Answers` + clean topic search bar.
-- **Redesigned Question Cards:**
-  - **Repeat & Marks Badges:** `Asked 4x (2021, 2022, 2024, 2025)` and `10 Marks`.
-  - **📖 Show Ideal Exam Answer:** Expands 3–4 crisp bullet points, key diagram/formula exam tip, and glowing emerald keyword pills.
-  - **✍️ Test Yourself:** Instant inline recall sandbox that scores answers out of 10 and highlights missing rubric keywords.
-  - **✅ Mark as Mastered:** 1-click toggle with micro-animation that updates the subject circular mastery ring.
+### 2. 🗂️ Dynamic Subject Manager (+Add, Edit & Delete Any Subject)
+- Full student control over university courses:
+  - **"+ Add New Subject" Modal:** Create subjects with custom name, code, neon accent color (Cyan, Emerald, Gold, Coral, Sky Blue), target exam date & time, and custom syllabus units.
+  - **"Edit Subject" & "Delete Subject" Controls:** Edit or delete courses with safe confirmation.
 
-### Mode 2: "2. Topic Scanner & PDF Upload"
-- **Left Card ("Paste Study Topic or Notes"):** Clean text area with **3 Quick-Try Sample Buttons** (`"Try Sample: OS Deadlock Notes"`, `"Try Sample: DBMS Normalization"`, `"Try Sample: OSI Model"`) for instant 1-click demonstration of real-time matching.
-- **Right Card ("Drop Question Paper PDF"):** Futuristic drag-and-drop zone with client-side PDF parsing (`pdfjs-dist`) that extracts questions and adds them to your Question Bank automatically.
+### 3. 🧠 Smart "What To Do Next" Study Coach & Action Plan
+- Inside every subject workspace, an intelligent AI-style study coach adapts missions based on time remaining:
+  - **Crunch Mode (< 3 Days Remaining):** Recommends focusing exclusively on guaranteed 10-Mark repeated PYQs, reviewing diagram tips, and watching 15-min crash revision videos at 1.5x speed.
+  - **Active Practice Mode (3–7 Days Remaining):** Recommends solving unmastered PYQs from memory, testing rubric keywords, and reviewing PDF summaries.
+  - **Deep Mastery Mode (> 7 Days Remaining):** Recommends exploring Real-World Analogies and watching comprehensive lecture series.
+- **Interactive Checklist:** Pre-populated actionable missions + student can add custom tasks, check them off with animated progress bars, and delete completed items.
 
-### Mode 3: "3. Last-Minute Cheat Sheet"
-- A distraction-free **Night-Before-Exam Quick Revision View** listing the top repeated questions with their 3-bullet model answers and must-draw diagrams.
-- Includes a **1-click "Print / Save as PDF"** button formatted cleanly for `@media print`.
+### 4. 📚 4-Tab Multimedia Study Hub Per Subject
+When clicking into any subject:
+1. **Tab 1: 🎯 Smart Action Plan & Deep Concept Explainer:**
+   - Real-world 4-Card breakdowns for top university concepts:
+     1. 💡 Simple Intuition & Real-World Analogy (e.g. Traffic intersection deadlock, ATM withdrawal ACID).
+     2. 📐 Visual Architecture & Step-by-Step Flow (governing formulas & algorithms).
+     3. 📝 Exam-Ready 5M / 10M Bullet Points & Rubric Keywords.
+     4. 🃏 Interactive 3D Flashcard Flip (click to reveal answer key and test recall).
+2. **Tab 2: 🎬 Video Learning Hub (Add & Watch YouTube Lectures):**
+   - Embed YouTube lectures directly in the dashboard via URL (`youtube.com/watch?v=...`, `youtu.be/...`).
+   - In-app playable video theatre with side-by-side persistent notes & timestamps editor.
+   - Tag videos as "Watched ✅" and organize by course.
+3. **Tab 3: 📄 PDF & Study Material Vault:**
+   - Client-side PDF text extraction (`pdf.js`) with instant **Key Points Summary & Extracted Exam Questions**.
+   - Full-text reader modal and custom note creator.
+4. **Tab 4: 🔥 High-Repeat PYQ Bank & Answer Tester:**
+   - Filter pills (`All`, `🔥 4+ Repeats`, `10M`, `2M & 5M`) and topic search.
+   - "+ Add Custom PYQ" button to add questions for any subject.
+   - 1-Click "📖 Reveal Model Exam Answer", "✍️ Test Yourself", and "✅ Mark Mastered" with celebratory confetti.
 
 ---
 
-## 📁 Workspace Structure
+## 📁 Repository Structure
 
 ```
 /Users/yogeshkumar/Creative/
@@ -57,31 +78,41 @@ PyqRanker removes technical jargon and confusing multi-panel filters, replacing 
 │
 ├── web-dashboard/                   # React + TypeScript + Vite Source Code
 │   ├── vite.config.ts               # Base relative path configuration (base: './')
-│   ├── tailwind.config.js           # Obsidian Titanium & Cyber Emerald design palette
+│   ├── tailwind.config.js           # Aurora HUD Command Center design tokens
 │   ├── src/
-│   │   ├── App.tsx                  # 3-Mode root view orchestrator
-│   │   ├── index.css                # Obsidian mesh glow, custom scrollbars & print styles
+│   │   ├── App.tsx                  # Root Command Center orchestrator
+│   │   ├── index.css                # Multi-color Aurora Mesh, perspective grid & glassmorphism
+│   │   ├── types.ts                 # TypeScript schemas for subjects, countdowns, videos, PDFs
 │   │   ├── components/
-│   │   │   ├── Navbar.tsx           # 3-Mode top switcher, Day/Night pill & Extension button
-│   │   │   ├── StudyHomeView.tsx    # Hero subject cards, progress rings & filter pills
-│   │   │   ├── QuestionCard.tsx     # 3-Bullet model answers, diagram tips & inline test
-│   │   │   ├── TopicScannerView.tsx # 3 Quick samples & drag-drop PDF uploader
+│   │   │   ├── Navbar.tsx           # Global exam ticker, 4 main view switchers, theme toggle
+│   │   │   ├── CommandCenterOverview.tsx # Next Upcoming Exam Hero HUD & subject cards
+│   │   │   ├── SubjectWorkspace.tsx # Top subject banner, live countdown & 4 multimedia tabs
+│   │   │   ├── SmartActionPlanTab.tsx # AI Study Coach & 4-card concept explainer
+│   │   │   ├── VideoLearningTab.tsx # In-app YouTube player & side-by-side notes
+│   │   │   ├── PdfVaultTab.tsx      # Client-side PDF extractor & document library
+│   │   │   ├── PyqBankTab.tsx       # Filterable PYQ bank with custom question creator
+│   │   │   ├── QuestionCard.tsx     # 3-Bullet model answers & inline recall tester
+│   │   │   ├── AddSubjectModal.tsx  # Custom subject creation modal
+│   │   │   ├── EditSubjectModal.tsx # Subject & syllabus editor with safe deletion
+│   │   │   ├── EditExamDateModal.tsx# Live exam date & countdown picker
+│   │   │   ├── AddCustomPyqModal.tsx# Custom past question creator
+│   │   │   ├── TopicScannerView.tsx # Real-time topic matcher & PDF paper parser
 │   │   │   ├── CheatSheetView.tsx   # Night-before exam revision & 1-click print
-│   │   │   ├── ExtensionInstallerModal.tsx # In-app browser extension loader guide
-│   │   │   └── Toast.tsx            # Non-intrusive toast messages
+│   │   │   └── ExtensionInstallerModal.tsx # In-app browser extension loader guide
 │   │   ├── data/
-│   │   │   └── pyqData.ts           # University CS questions (2021-2025) with bullet answers
+│   │   │   ├── pyqData.ts           # University CS questions (2021-2025)
+│   │   │   └── conceptExplainerData.ts # Curated 4-card conceptual breakdowns
 │   │   └── utils/
-│   │       ├── rubricEvaluator.ts   # Real-time keyword scoring
+│   │       ├── storageService.ts    # Persistent storage & live countdown calculator
 │   │       ├── pdfExtractor.ts      # Client-side PDF text extraction
-│   │       └── syncBridge.ts        # Broadcast sync with browser extension
+│   │       └── rubricEvaluator.ts   # Keyword scoring engine
 │
 ├── extension/                       # Manifest V3 Browser Extension
 │   ├── manifest.json                # V3 manifest with commands & host permissions
 │   ├── content.js                   # Shadow DOM sidebar & in-page topic matcher
 │   ├── popup.html                   # Extension popup UI
 │   ├── popup.js                     # Popup state & scan actions
-│   ├── styles.css                   # Cyber Emerald & Ice Cyan extension styling
+│   ├── styles.css                   # Aurora HUD extension styling
 │   └── data/
 │       └── pyqData.js               # Offline dataset bundle
 └── README.md
@@ -92,11 +123,11 @@ PyqRanker removes technical jargon and confusing multi-panel filters, replacing 
 ## 🚀 Running Locally
 
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/anything14907-byte/creative.git
 cd creative/web-dashboard
 
-# 2. Run local dev server
+# 2. Run local development server
 npm run dev
 
 # App runs at: http://localhost:5173
@@ -104,9 +135,9 @@ npm run dev
 
 ---
 
-## 🧩 Loading the Browser Extension (`/extension`)
+## 🧩 Browser Extension (`/extension`)
 
-1. Open Chrome, Brave, or Edge and go to `chrome://extensions`.
-2. Toggle on **"Developer mode"** (top right).
-3. Click **"Load unpacked"** and select the `/extension` directory.
-4. Pin the extension and press **`Alt + Q`** on any webpage to open the in-page study companion.
+1. Open Chrome/Brave/Edge and navigate to `chrome://extensions`.
+2. Enable **"Developer mode"** in the top right.
+3. Click **"Load unpacked"** and select the `/extension` folder.
+4. Press **`Alt + Q`** on any study webpage (Wikipedia, GeeksforGeeks, MDN) to open your in-page study companion.

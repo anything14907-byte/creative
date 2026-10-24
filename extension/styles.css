@@ -12,10 +12,10 @@ body {
   transition: background-color 0.2s, color 0.2s;
 }
 
-/* Day Mode: Arctic Studio & Teal */
+/* Day Mode: Holographic Pearl Studio */
 body.theme-light {
-  background: #F3F6FA;
-  color: #090D16;
+  background: #EEF4FF;
+  color: #0A0F24;
 }
 body.theme-light .popup-header {
   background: #FFFFFF;
@@ -28,13 +28,13 @@ body.theme-light .stat-card {
 }
 body.theme-light .styled-select {
   background: #F8FAFC;
-  color: #090D16;
+  color: #0A0F24;
   border: 1px solid #CBD5E1;
 }
 body.theme-light .secondary-btn {
   background: #FFFFFF;
   border: 1px solid #CBD5E1;
-  color: #090D16;
+  color: #0A0F24;
 }
 body.theme-light .secondary-btn:hover {
   background: #F1F5F9;
@@ -46,32 +46,32 @@ body.theme-light .shortcut-tip {
   color: #475569;
 }
 
-/* Night Mode: Obsidian Titanium & Cyber Emerald (Default) */
+/* Night Mode: Aurora HUD Command Center (Default) */
 body.theme-dark {
-  background: #06090E;
+  background: #0A0F24;
   color: #F3F6FA;
 }
 body.theme-dark .popup-header {
-  background: #0F1722;
+  background: #111936;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 body.theme-dark .subject-card,
 body.theme-dark .stat-card {
-  background: #0F1722;
+  background: #111936;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 body.theme-dark .styled-select {
-  background: #06090E;
+  background: #0A0F24;
   color: #F3F6FA;
   border: 1px solid #1E293B;
 }
 body.theme-dark .secondary-btn {
-  background: #0F1722;
+  background: #111936;
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #F3F6FA;
 }
 body.theme-dark .secondary-btn:hover {
-  background: #182232;
+  background: #1A254D;
 }
 body.theme-dark .meta-label,
 body.theme-dark .stat-label,
@@ -103,19 +103,19 @@ body.theme-dark .shortcut-tip {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #00E599;
-  color: #06090E;
+  background: rgba(0, 240, 255, 0.15);
+  border: 1px solid rgba(0, 240, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #00F0FF;
+  font-weight: 800;
   font-size: 14px;
-  font-weight: 900;
-  box-shadow: 0 0 15px rgba(0, 229, 153, 0.35);
 }
 .brand-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.02em;
 }
 .brand-subtitle {
   font-size: 10px;
@@ -123,10 +123,15 @@ body.theme-dark .shortcut-tip {
 .icon-btn {
   background: transparent;
   border: none;
-  font-size: 14px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 6px;
+  border-radius: 8px;
+  color: inherit;
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.icon-btn:hover {
+  background: rgba(148, 163, 184, 0.15);
 }
 
 /* Subject Card */
@@ -134,14 +139,15 @@ body.theme-dark .shortcut-tip {
   margin: 0 16px;
   padding: 10px 12px;
   border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .meta-label {
-  display: block;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 6px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
 }
 .styled-select {
   width: 100%;
@@ -167,10 +173,10 @@ body.theme-dark .shortcut-tip {
 .stat-val {
   font-size: 19px;
   font-weight: 900;
-  color: #00E599;
+  color: #00F0FF;
 }
 .stat-val.text-amber {
-  color: #F59E0B;
+  color: #FFB800;
 }
 .stat-label {
   font-size: 10px;
@@ -188,26 +194,24 @@ body.theme-dark .shortcut-tip {
   width: 100%;
   padding: 10px;
   border-radius: 10px;
-  background: #00E599;
-  color: #06090E;
+  background: #00F0FF;
+  color: #0A0F24;
   border: none;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 229, 153, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 240, 255, 0.35);
   transition: all 0.15s;
 }
 .primary-btn:hover {
-  background: #00C782;
-}
-.primary-btn:active {
-  transform: scale(0.98);
+  background: #38BDF8;
+  transform: translateY(-1px);
 }
 .secondary-btn {
   width: 100%;
-  padding: 9px;
+  padding: 8px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
@@ -216,56 +220,59 @@ body.theme-dark .shortcut-tip {
 /* Footer Sync */
 .footer-sync {
   margin: 0 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 10px;
 }
 .sync-indicator {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  font-weight: 600;
 }
 .status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #00E599;
-  box-shadow: 0 0 8px #00E599;
+  background: #00F5A0;
+  box-shadow: 0 0 8px #00F5A0;
 }
 .file-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 .text-link {
-  background: none;
+  background: transparent;
   border: none;
-  color: #00E599;
+  color: inherit;
+  font-size: 10px;
   cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 0;
+  opacity: 0.75;
+  transition: opacity 0.15s;
 }
 .text-link:hover {
+  opacity: 1;
   text-decoration: underline;
 }
 .divider {
-  color: #8B9BB4;
-  font-size: 10px;
+  opacity: 0.3;
 }
 
+/* Shortcut Tip */
 .shortcut-tip {
+  margin: 0 16px;
   text-align: center;
   font-size: 10px;
-  margin-top: 4px;
 }
 kbd {
-  background: rgba(148, 163, 184, 0.2);
-  padding: 1px 4px;
+  background: rgba(148, 163, 184, 0.15);
+  padding: 2px 5px;
   border-radius: 4px;
   font-family: monospace;
   font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.25);
 }

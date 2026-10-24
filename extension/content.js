@@ -907,11 +907,15 @@
       const payload = event.data.payload;
       if (payload && Array.isArray(payload.questions)) {
         currentQuestions = payload.questions;
+        if (Array.isArray(payload.subjects)) {
+          currentSubjects = payload.subjects;
+        }
         activeSubjectId = payload.activeSubjectId || activeSubjectId;
         activeTheme = payload.theme || activeTheme;
 
         chrome.storage.local.set({
           pyq_questions: currentQuestions,
+          pyq_subjects: currentSubjects,
           pyq_active_subject: activeSubjectId,
           pyq_theme: activeTheme,
           pyq_last_synced: Date.now()

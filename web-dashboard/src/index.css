@@ -8,9 +8,10 @@
   }
   
   body {
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 0;
+    min-height: 100vh;
   }
 
   /* Custom Clean Scrollbar */
@@ -26,29 +27,96 @@
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 229, 153, 0.4);
+    background: rgba(0, 240, 255, 0.45);
   }
 }
 
-/* Futuristic Ambient Mesh Glow in Dark Mode */
+/* =========================================================================
+   FUTURISTIC NIGHT MODE: AURORA HUD COMMAND CENTER (#0A0F24)
+   Multi-color radial mesh: Cyan (#00F0FF), Gold (#FFB800), Coral (#FF3366), Emerald (#00F5A0)
+   ========================================================================= */
 .dark body {
-  background-color: #06090E;
+  background-color: #0A0F24;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(0, 229, 153, 0.06) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.05) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(0, 229, 153, 0.04) 0px, transparent 50%);
+    /* Perspective HUD Grid overlay */
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    /* Multi-color Aurora Mesh gradients */
+    radial-gradient(ellipse at 15% 10%, rgba(0, 240, 255, 0.12) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 15%, rgba(255, 51, 102, 0.10) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 184, 0, 0.07) 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 85%, rgba(0, 245, 160, 0.09) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 90%, rgba(56, 189, 248, 0.08) 0%, transparent 45%);
+  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
   background-attachment: fixed;
+  color: #F3F6FA;
 }
 
+/* =========================================================================
+   FUTURISTIC DAY MODE: HOLOGRAPHIC PEARL STUDIO (#EEF4FF)
+   ========================================================================= */
 .light body {
-  background-color: #F3F6FA;
+  background-color: #EEF4FF;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.04) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.04) 0px, transparent 50%);
+    linear-gradient(rgba(0, 150, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 150, 255, 0.02) 1px, transparent 1px),
+    radial-gradient(ellipse at 20% 10%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 15%, rgba(255, 51, 102, 0.06) 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 80%, rgba(0, 245, 160, 0.07) 0%, transparent 50%);
+  background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%, 100% 100%;
   background-attachment: fixed;
+  color: #0A0F24;
 }
 
-/* Print Optimization for Night-Before Cheat Sheet */
+/* Glassmorphic Panel Helper Classes */
+.hud-glass-panel {
+  background: rgba(17, 25, 54, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.light .hud-glass-panel {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04);
+}
+
+.hud-glass-panel:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 240, 255, 0.4);
+  box-shadow: 0 12px 30px -8px rgba(0, 240, 255, 0.25);
+}
+
+.light .hud-glass-panel:hover {
+  border-color: #38BDF8;
+  box-shadow: 0 12px 30px -8px rgba(56, 189, 248, 0.2);
+}
+
+/* Ticking Countdown Number Digits */
+.countdown-digit {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+/* Interactive Flashcard 3D flip */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Print Optimization */
 @media print {
   body {
     background: white !important;
