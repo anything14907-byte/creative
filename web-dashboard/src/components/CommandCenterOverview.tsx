@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { SubjectMeta, PYQQuestion, StudyTask, CountdownTime } from '../types';
-import { calculateCountdown } from '../utils/storageService';
+import { SubjectMeta, PYQQuestion, StudyTask } from '../types';
+import { getExamUrgencyColor } from '../utils/storageService';
 import { EditExamDateModal } from './EditExamDateModal';
 import { 
-  Clock, Flame, Plus, Sparkles, ArrowRight, BookOpen, AlertTriangle, 
-  CheckCircle2, Cpu, Database, Network, Code, Layers 
+  Clock, Calendar, Plus, ArrowRight, Trash2, CheckCircle2, 
+  Cpu, Database, Network, Code, BookOpen, AlertCircle, Sparkles 
 } from 'lucide-react';
 
 interface CommandCenterOverviewProps {
@@ -14,6 +14,7 @@ interface CommandCenterOverviewProps {
   onSelectSubject: (id: string) => void;
   onOpenAddSubject: () => void;
   onUpdateSubject: (subject: SubjectMeta) => void;
+  onDeleteSubject: (id: string) => void;
 }
 
 export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
@@ -22,26 +23,26 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
   tasks,
   onSelectSubject,
   onOpenAddSubject,
-  onUpdateSubject
+  onUpdateSubject,
+  onDeleteSubject
 }) => {
-  // Modal state for editing date from an individual card
   const [editingDateSubject, setEditingDateSubject] = useState<SubjectMeta | null>(null);
+  const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null);
 
-  // Find the nearest upcoming subject exam
-  const nearestSubjectWithCountdown = React.useMemo(() => {
-    let nearest: { subject: SubjectMeta; countdown: CountdownTime } | null = null;
-    let minSeconds = Infinity;
+  // Find nearest upcoming subject exam
+  const nearestSubjectWithUrgency = React.useMemo(() => {
+    let nearest: { subject: SubjectMeta; urgency: ReturnType<typeof getExamUrgencyColor> } | null = null;
+    let minDays = Infinity;
 
     for (const sub of subjects) {
-      const cd = calculateCountdown(sub.examDate);
-      if (cd.totalSeconds > 0 && cd.totalSeconds < minSeconds) {
-        minSeconds = cd.totalSeconds;
-        nearest = { subject: sub, countdown: cd };
+      const u = getExamUrgencyColor(sub.examDate);
+      if (u.fractionalDays > 0 && u.fractionalDays < minDays) {
+        minDays = u.fractionalDays;
+        nearest = { subject: sub, urgency: u };
       }
     }
-    // Fallback if all passed or none set
     if (!nearest && subjects.length > 0) {
-      nearest = { subject: subjects[0], countdown: calculateCountdown(subjects[0].examDate) };
+      nearest = { subject: subjects[0], urgency: getExamUrgencyColor(subjects[0].examDate) };
     }
     return nearest;
   }, [subjects]);
@@ -57,93 +58,87 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-slide-up">
       
-      {/* =========================================================================
-          1. GLOBAL "NEXT UPCOMING EXAM" HERO COUNTDOWN HUD BANNER
-          ========================================================================= */}
-      {nearestSubjectWithCountdown && (
+      {/* 1. TOP HERO: NEAREST UPCOMING EXAM WITH DYNAMIC URGENCY SHIFT */}
+      {nearestSubjectWithUrgency && (
         <div 
-          className="p-6 sm:p-8 rounded-3xl hud-glass-panel relative overflow-hidden border"
+          className={`p-6 sm:p-7 rounded-3xl bg-paper-card dark:bg-night-card border transition-all duration-700 shadow-paper-card dark:shadow-night-card relative overflow-hidden ${nearestSubjectWithUrgency.urgency.isUrgent ? 'pulse-urgent-exam' : ''}`}
           style={{ 
-            borderColor: `${nearestSubjectWithCountdown.subject.accentColor}55`,
-            boxShadow: `0 0 40px -10px ${nearestSubjectWithCountdown.subject.accentColor}33`
+            borderColor: nearestSubjectWithUrgency.urgency.hslColor,
+            borderTopWidth: '5px'
           }}
         >
-          {/* Subtle Ambient Glow */}
-          <div 
-            className="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-3xl opacity-25 pointer-events-none"
-            style={{ backgroundColor: nearestSubjectWithCountdown.subject.accentColor }}
-          />
-
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             
-            {/* Left: Next Exam Info */}
+            {/* Left: Exam Info & Exact Date */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 animate-pulse">
-                  <Flame className="w-3.5 h-3.5 fill-current" />
-                  Next Priority Exam Alert
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span 
+                  className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors duration-500"
+                  style={{ 
+                    color: nearestSubjectWithUrgency.urgency.hslColor,
+                    backgroundColor: `${nearestSubjectWithUrgency.urgency.hslColor}18`
+                  }}
+                >
+                  <Clock className="w-3.5 h-3.5 animate-pulse" />
+                  {nearestSubjectWithUrgency.urgency.statusLabel}
                 </span>
-                <span className="text-xs text-slate-400 font-mono font-bold">
-                  {nearestSubjectWithCountdown.subject.code} • {nearestSubjectWithCountdown.subject.semester}
+
+                <span className="text-xs text-paper-muted dark:text-night-muted font-medium flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  {nearestSubjectWithUrgency.urgency.formattedExamDate}
                 </span>
               </div>
 
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-                {nearestSubjectWithCountdown.subject.name}
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-paper-ink dark:text-night-text tracking-tight">
+                {nearestSubjectWithUrgency.subject.name}
               </h2>
-              
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-                Scheduled for {new Date(nearestSubjectWithCountdown.subject.examDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.
+
+              <p className="text-xs sm:text-sm text-paper-body dark:text-night-muted mt-1 max-w-xl">
+                {nearestSubjectWithUrgency.urgency.fractionalDays <= 5 
+                  ? '🚨 Critical revision window! Focus strictly on the highest-repeated past questions.'
+                  : 'Prepare comfortably with unit-by-unit study missions and video lectures.'}
               </p>
             </div>
 
-            {/* Right: Live Ticking Countdown HUD & Quick Jump Button */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            {/* Right: Live Ticking Countdown HUD & Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               
-              {/* Ticking Clock HUD Box */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-black/50 border border-white/15 backdrop-blur-md shadow-2xl">
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                  Live Ticking Timer
+              {/* Ticking Timer Box */}
+              <div 
+                className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border transition-colors duration-500 shadow-sm"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted mb-1 flex items-center gap-1">
+                  <span>Time Remaining:</span>
                 </div>
                 
                 <div 
-                  className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight countdown-digit"
-                  style={{ color: nearestSubjectWithCountdown.subject.accentColor }}
+                  className="text-2xl sm:text-3xl font-extrabold countdown-digit"
+                  style={{ color: nearestSubjectWithUrgency.urgency.hslColor }}
                 >
-                  <span className="px-1.5 py-1 rounded-md bg-white/5">{nearestSubjectWithCountdown.countdown.days}d</span> :{' '}
-                  <span className="px-1.5 py-1 rounded-md bg-white/5">{nearestSubjectWithCountdown.countdown.hours}h</span> :{' '}
-                  <span className="px-1.5 py-1 rounded-md bg-white/5">{nearestSubjectWithCountdown.countdown.minutes}m</span> :{' '}
-                  <span className="px-1.5 py-1 rounded-md bg-white/5">{nearestSubjectWithCountdown.countdown.seconds}s</span>
-                </div>
-
-                <div className="mt-2 text-right">
-                  {nearestSubjectWithCountdown.countdown.urgency === 'critical' && (
-                    <span className="text-[11px] font-bold text-rose-400">🚨 CRITICAL (&lt; 3 DAYS LEFT)</span>
-                  )}
-                  {nearestSubjectWithCountdown.countdown.urgency === 'high' && (
-                    <span className="text-[11px] font-bold text-amber-400">⚡ HIGH PRIORITY (&lt; 7 DAYS LEFT)</span>
-                  )}
-                  {nearestSubjectWithCountdown.countdown.urgency === 'normal' && (
-                    <span className="text-[11px] font-bold text-emerald-400">🟢 ON TRACK (&gt; 7 DAYS LEFT)</span>
-                  )}
+                  {nearestSubjectWithUrgency.urgency.formattedCountdown}
                 </div>
               </div>
 
-              {/* Jump Straight into Subject */}
-              <button
-                onClick={() => onSelectSubject(nearestSubjectWithCountdown.subject.id)}
-                className="px-6 py-4 rounded-2xl text-black font-extrabold text-sm flex items-center gap-2 shadow-2xl transition-all duration-300 hover:scale-105"
-                style={{ 
-                  backgroundColor: nearestSubjectWithCountdown.subject.accentColor,
-                  boxShadow: `0 0 25px -4px ${nearestSubjectWithCountdown.subject.accentColor}`
-                }}
-              >
-                <span>Jump Straight into {nearestSubjectWithCountdown.subject.code}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => onSelectSubject(nearestSubjectWithUrgency.subject.id)}
+                  className="px-5 py-3 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm btn-tactile btn-shimmer"
+                  style={{ backgroundColor: nearestSubjectWithUrgency.urgency.hslColor }}
+                >
+                  <span>Open Subject</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => setEditingDateSubject(nearestSubjectWithUrgency.subject)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text hover:border-emerald-500 transition-colors btn-tactile text-center"
+                >
+                  Change Date
+                </button>
+              </div>
 
             </div>
 
@@ -151,152 +146,147 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
         </div>
       )}
 
-      {/* =========================================================================
-          2. SUBJECTS GRID: LIVE COUNTDOWN, MASTERY RING & STUDY COACH SUMMARY
-          ========================================================================= */}
+      {/* 2. SUBJECT CARDS GRID (CLEAN, SPACIOUS, 100% CONTRAST) */}
       <div>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-xl font-extrabold text-white dark:text-white flex items-center gap-2">
-              <Layers className="w-5 h-5 text-cyan-400" />
-              Your Active Exam Command Tracks ({subjects.length} Subjects)
+            <h3 className="text-xl font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
+              <span>Your Subjects</span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted font-bold font-mono">
+                {subjects.length} Active
+              </span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Click any subject to open its deep concept explainer, YouTube video vault, PDF summaries, and PYQ bank.
+            <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
+              Each subject shows its live countdown, exact exam date, and smooth Green → Yellow → Red urgency shift.
             </p>
           </div>
 
           <button
             onClick={onOpenAddSubject}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-400 text-black hover:bg-cyan-300 flex items-center gap-1.5 transition-transform hover:scale-105"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg flex items-center gap-1.5 btn-tactile shadow-sm"
           >
-            <Plus className="w-4 h-4" /> Add New Subject
+            <Plus className="w-4 h-4" /> + Add Subject
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {subjects.map(subject => {
-            const countdown = calculateCountdown(subject.examDate);
+            const urgency = getExamUrgencyColor(subject.examDate);
             const subQuestions = questions.filter(q => q.subjectId === subject.id);
             const masteredCount = subQuestions.filter(q => q.userStatus === 'mastered').length;
-            const masteryPercent = subQuestions.length > 0 
-              ? Math.round((masteredCount / subQuestions.length) * 100) 
-              : 0;
-
             const subTasks = tasks.filter(t => t.subjectId === subject.id);
-            const pendingTasks = subTasks.filter(t => !t.completed).length;
+
+            // Recommended single next action based on time remaining
+            let nextAction = 'Solve 2 repeated PYQs today';
+            if (urgency.fractionalDays <= 3) {
+              nextAction = '🚨 Master top 3 repeat 10M questions';
+            } else if (urgency.fractionalDays <= 7) {
+              nextAction = '⚡ Practice 5M questions from memory';
+            } else if (urgency.fractionalDays <= 12) {
+              nextAction = '📖 Watch video lectures for Unit 2 & 3';
+            } else {
+              nextAction = '🟢 Read syllabus notes & outline questions';
+            }
 
             return (
               <div
                 key={subject.id}
-                className="p-5 rounded-2xl hud-glass-panel border transition-all duration-300 flex flex-col justify-between group hover:border-cyan-400 relative"
-                style={{ borderColor: `${subject.accentColor}35` }}
+                className={`p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-all duration-500 hover:shadow-md relative overflow-hidden group ${urgency.isUrgent ? 'pulse-urgent-exam' : ''}`}
+                style={{ 
+                  borderTop: `4px solid ${urgency.hslColor}`
+                }}
               >
                 <div>
                   
-                  {/* Card Top: Icon, Code & Editable Clock */}
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div 
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ 
-                        backgroundColor: `${subject.accentColor}25`, 
-                        color: subject.accentColor,
-                        boxShadow: `0 0 15px -3px ${subject.accentColor}40`
-                      }}
-                    >
-                      {getSubjectIcon(subject.iconName)}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-white/10 text-slate-300">
-                        {subject.code}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingDateSubject(subject);
-                        }}
-                        className="p-1 rounded-md text-slate-400 hover:text-cyan-300 hover:bg-white/10 transition-colors"
-                        title="Edit Target Exam Date & Time"
-                      >
-                        <Clock className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Title & Units */}
-                  <h4 
-                    onClick={() => onSelectSubject(subject.id)}
-                    className="text-base font-bold text-white group-hover:text-cyan-300 cursor-pointer transition-colors"
-                  >
-                    {subject.name}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 mb-4">
-                    {subject.units.length} Syllabus Units • {subQuestions.length} High-Yield PYQs
-                  </p>
-
-                  {/* Per-Subject Live Countdown Box */}
-                  <div 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingDateSubject(subject);
-                    }}
-                    className="p-3 rounded-xl bg-black/40 border border-white/10 cursor-pointer hover:border-cyan-400/50 transition-colors mb-4"
-                  >
-                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between mb-1">
-                      <span>Countdown to Exam:</span>
-                      <span className="text-cyan-400 text-[10px]">Edit ⏰</span>
-                    </div>
-
-                    <div 
-                      className="text-base font-extrabold font-mono countdown-digit"
-                      style={{ color: subject.accentColor }}
-                    >
-                      {countdown.days}d : {countdown.hours}h : {countdown.minutes}m : {countdown.seconds}s
-                    </div>
-
-                    <div className="text-[10px] mt-1 font-semibold">
-                      {countdown.urgency === 'critical' && (
-                        <span className="text-rose-400">🚨 Crunch Mode (&lt; 3d left)</span>
-                      )}
-                      {countdown.urgency === 'high' && (
-                        <span className="text-amber-400">⚡ Practice Mode (3–7d left)</span>
-                      )}
-                      {countdown.urgency === 'normal' && (
-                        <span className="text-emerald-400">🟢 Deep Learning (&gt; 7d left)</span>
-                      )}
-                      {countdown.urgency === 'passed' && (
-                        <span className="text-slate-400">🏁 Completed / Today</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Mastery Progress Bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-[11px] text-slate-300 font-semibold mb-1">
-                      <span>Mastery Progress</span>
-                      <span className="font-mono">{masteredCount}/{subQuestions.length} ({masteryPercent}%)</span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-black/40 overflow-hidden">
+                  {/* Card Header: Icon, Name & Delete */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2.5">
                       <div 
-                        className="h-full rounded-full transition-all duration-500"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
                         style={{ 
-                          width: `${masteryPercent}%`,
-                          backgroundColor: subject.accentColor 
+                          backgroundColor: `${urgency.hslColor}18`,
+                          color: urgency.hslColor
                         }}
-                      />
+                      >
+                        {getSubjectIcon(subject.iconName)}
+                      </div>
+                      <div>
+                        <h4 
+                          onClick={() => onSelectSubject(subject.id)}
+                          className="text-base font-bold text-paper-ink dark:text-night-text group-hover:text-emerald-600 dark:group-hover:text-emerald-400 cursor-pointer transition-colors line-clamp-1"
+                        >
+                          {subject.name}
+                        </h4>
+                        <span className="text-[11px] text-paper-muted dark:text-night-muted font-medium">
+                          {subject.units.length} Units • {subQuestions.length} Questions
+                        </span>
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => setSubjectToDelete(subject.id)}
+                      className="p-1.5 text-paper-muted dark:text-night-muted hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors"
+                      title="Delete Subject"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* 1. Visible Exam Date with 1-Click "Change Date" Picker */}
+                  <div className="my-3 p-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs text-paper-body dark:text-night-text">
+                      <Calendar className="w-3.5 h-3.5 text-paper-muted dark:text-night-muted shrink-0" />
+                      <span className="font-semibold text-[11px] line-clamp-1">
+                        {urgency.formattedExamDate}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setEditingDateSubject(subject)}
+                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0 btn-tactile"
+                    >
+                      Change Date
+                    </button>
+                  </div>
+
+                  {/* 2. Live Countdown Timer with Smooth Color Shift */}
+                  <div 
+                    className="p-3 rounded-xl mb-3 text-center border transition-all duration-600"
+                    style={{ 
+                      backgroundColor: `${urgency.hslColor}10`,
+                      borderColor: `${urgency.hslColor}35`
+                    }}
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted mb-0.5">
+                      Time Remaining
+                    </div>
+                    <div 
+                      className="text-lg font-extrabold countdown-digit"
+                      style={{ color: urgency.hslColor }}
+                    >
+                      {urgency.formattedCountdown}
+                    </div>
+                  </div>
+
+                  {/* 3. Recommended Next Action */}
+                  <div className="p-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border mb-4 text-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted block mb-0.5">
+                      Next Step:
+                    </span>
+                    <span className="text-paper-ink dark:text-night-text font-medium text-[11px] line-clamp-2">
+                      {nextAction}
+                    </span>
                   </div>
 
                 </div>
 
-                {/* Card Action Button */}
+                {/* Open Subject Button with Tactile Animation */}
                 <button
                   onClick={() => onSelectSubject(subject.id)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all text-black hover:opacity-95"
-                  style={{ backgroundColor: subject.accentColor }}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-sm btn-tactile btn-shimmer transition-transform"
+                  style={{ backgroundColor: urgency.hslColor }}
                 >
-                  <span>Open Study Command Hub</span>
+                  <span>Open Subject</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
 
@@ -304,23 +294,23 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
             );
           })}
 
-          {/* Add Subject Card placeholder */}
+          {/* Add Subject Card */}
           <div
             onClick={onOpenAddSubject}
-            className="p-6 rounded-2xl border border-dashed border-white/20 hover:border-cyan-400 bg-white/5 hover:bg-white/10 cursor-pointer transition-all flex flex-col items-center justify-center text-center group min-h-[280px]"
+            className="p-6 rounded-2xl border-2 border-dashed border-paper-border dark:border-night-border hover:border-emerald-500 dark:hover:border-emerald-400 bg-paper-card/60 dark:bg-night-card/60 hover:bg-paper-card dark:hover:bg-night-card cursor-pointer transition-all flex flex-col items-center justify-center text-center group min-h-[290px] btn-tactile"
           >
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
               <Plus className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-bold text-white mb-1">+ Add Custom Subject</h4>
-            <p className="text-xs text-slate-400 max-w-[200px]">
-              Set custom exam dates, syllabus units, and custom PYQ banks for any course.
+            <h4 className="text-sm font-bold text-paper-ink dark:text-night-text mb-1">+ Add Subject</h4>
+            <p className="text-xs text-paper-muted dark:text-night-muted max-w-[200px]">
+              Set your exam date to track live countdowns and practice questions.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Edit Date Modal for quick card clock trigger */}
+      {/* Edit Date Modal */}
       {editingDateSubject && (
         <EditExamDateModal
           subject={editingDateSubject}
@@ -330,6 +320,38 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
             onUpdateSubject({ ...editingDateSubject, examDate: newDate });
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {subjectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
+          <div className="w-full max-w-sm p-6 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-xl">
+            <div className="flex items-center gap-3 mb-3 text-rose-600 dark:text-rose-400">
+              <AlertCircle className="w-6 h-6" />
+              <h3 className="text-base font-bold">Delete Subject?</h3>
+            </div>
+            <p className="text-xs text-paper-muted dark:text-night-muted mb-5 leading-relaxed">
+              Are you sure you want to remove this subject and its saved questions? This action cannot be undone.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setSubjectToDelete(null)}
+                className="flex-1 py-2 rounded-xl border border-paper-border dark:border-night-border text-xs font-semibold text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteSubject(subjectToDelete);
+                  setSubjectToDelete(null);
+                }}
+                className="flex-1 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 btn-tactile"
+              >
+                Delete Subject
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

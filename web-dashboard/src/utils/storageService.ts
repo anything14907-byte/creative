@@ -1,4 +1,4 @@
-import { SubjectMeta, PYQQuestion, StudyTask, VideoResource, PdfResource, CountdownTime, ConceptExplainer } from '../types';
+import { SubjectMeta, PYQQuestion, StudyTask, VideoResource, PdfResource, ExamUrgency, CountdownTime } from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
 
 // Helper to format ISO date string for datetime-local: YYYY-MM-DDTHH:mm
@@ -14,103 +14,93 @@ export function toDatetimeLocalString(date: Date): string {
 
 // Generate realistic default exam dates based on current time
 const now = Date.now();
-const DEFAULT_OS_EXAM = toDatetimeLocalString(new Date(now + (3 * 24 + 8) * 3600 * 1000));   // 3 days 8h (Crunch Mode)
-const DEFAULT_DBMS_EXAM = toDatetimeLocalString(new Date(now + (6 * 24 + 14) * 3600 * 1000)); // 6 days 14h (Active Practice)
-const DEFAULT_CN_EXAM = toDatetimeLocalString(new Date(now + (10 * 24 + 9) * 3600 * 1000));   // 10 days (Deep Learning)
-const DEFAULT_DSA_EXAM = toDatetimeLocalString(new Date(now + (15 * 24 + 11) * 3600 * 1000)); // 15 days (Deep Learning)
+const DEFAULT_OS_EXAM = toDatetimeLocalString(new Date(now + (3 * 24 + 8) * 3600 * 1000));   // ~3.3 days (Urgent Red/Orange < 5d)
+const DEFAULT_DBMS_EXAM = toDatetimeLocalString(new Date(now + (7 * 24 + 6) * 3600 * 1000)); // ~7.2 days (Warm Yellow/Amber)
+const DEFAULT_CN_EXAM = toDatetimeLocalString(new Date(now + (11 * 24 + 9) * 3600 * 1000));  // ~11.4 days (Yellow-Green)
+const DEFAULT_DSA_EXAM = toDatetimeLocalString(new Date(now + (18 * 24 + 11) * 3600 * 1000)); // ~18.5 days (Safe Green > 15d)
 
 export const DEFAULT_SUBJECTS: SubjectMeta[] = [
   {
     id: 'os',
-    code: 'CS301',
     name: 'Operating Systems',
-    semester: '5th Semester',
-    iconName: 'Cpu',
-    accentColor: '#00F0FF', // Electric Cyan
+    accentColor: '#EF4444', // Will dynamically compute from urgency
     examDate: DEFAULT_OS_EXAM,
+    iconName: 'Cpu',
     units: [
-      { unit: 1, title: 'Process Scheduling' },
-      { unit: 2, title: 'Synchronization & Deadlocks' },
-      { unit: 3, title: 'Memory & Paging' },
-      { unit: 4, title: 'Storage & Disk Management' },
-      { unit: 5, title: 'Virtualization & Security' },
+      { unit: 1, title: 'Process Scheduling & CPU Algorithms' },
+      { unit: 2, title: 'Process Synchronization & Deadlocks' },
+      { unit: 3, title: 'Memory Management & Paging / TLB' },
+      { unit: 4, title: 'Storage & Disk Scheduling' },
+      { unit: 5, title: 'Virtualization & System Security' },
     ]
   },
   {
     id: 'dbms',
-    code: 'CS302',
     name: 'Database Systems',
-    semester: '5th Semester',
-    iconName: 'Database',
-    accentColor: '#00F5A0', // Hyper Emerald
+    accentColor: '#F59E0B',
     examDate: DEFAULT_DBMS_EXAM,
+    iconName: 'Database',
     units: [
-      { unit: 1, title: 'Relational Model & Algebra' },
-      { unit: 2, title: 'SQL & Normalization' },
-      { unit: 3, title: 'Transactions & Concurrency' },
-      { unit: 4, title: 'Indexing & B+ Trees' },
-      { unit: 5, title: 'Distributed Databases' },
+      { unit: 1, title: 'Relational Model & ER Architecture' },
+      { unit: 2, title: 'SQL & Normalization (1NF to BCNF)' },
+      { unit: 3, title: 'Transactions, ACID & Concurrency' },
+      { unit: 4, title: 'Indexing, B+ Trees & Query Plans' },
+      { unit: 5, title: 'Distributed DBs & WAL Recovery' },
     ]
   },
   {
     id: 'cn',
-    code: 'CS303',
     name: 'Computer Networks',
-    semester: '5th Semester',
-    iconName: 'Network',
-    accentColor: '#FFB800', // Solar Gold
+    accentColor: '#10B981',
     examDate: DEFAULT_CN_EXAM,
+    iconName: 'Network',
     units: [
-      { unit: 1, title: 'OSI Model & Physical Layer' },
-      { unit: 2, title: 'Data Link Layer & Framing' },
-      { unit: 3, title: 'Network Layer & Routing' },
-      { unit: 4, title: 'Transport Layer & TCP' },
-      { unit: 5, title: 'Application Layer & DNS' },
+      { unit: 1, title: 'OSI 7-Layer vs TCP/IP Models' },
+      { unit: 2, title: 'Data Link Layer & Flow Control' },
+      { unit: 3, title: 'Network Layer & Routing Protocols' },
+      { unit: 4, title: 'Transport Layer & TCP Congestion' },
+      { unit: 5, title: 'Application Layer & DNS Resolution' },
     ]
   },
   {
     id: 'dsa',
-    code: 'CS304',
     name: 'Data Structures & Algorithms',
-    semester: '3rd Semester',
-    iconName: 'Code',
-    accentColor: '#FF3366', // Neon Coral
+    accentColor: '#06B6D4',
     examDate: DEFAULT_DSA_EXAM,
+    iconName: 'Code',
     units: [
-      { unit: 1, title: 'Asymptotic Analysis & Lists' },
-      { unit: 2, title: 'Trees & AVL Balancing' },
-      { unit: 3, title: 'Heaps & Hashing' },
-      { unit: 4, title: 'Graphs & Dijkstra' },
-      { unit: 5, title: 'Dynamic Programming' },
+      { unit: 1, title: 'Asymptotic Analysis & Master Theorem' },
+      { unit: 2, title: 'Balanced Search Trees & AVL Rotations' },
+      { unit: 3, title: 'Priority Queues, Heaps & Hashing' },
+      { unit: 4, title: 'Graph Algorithms & Shortest Paths' },
+      { unit: 5, title: 'Dynamic Programming & 0/1 Knapsack' },
     ]
   }
 ];
 
 export const DEFAULT_TASKS: StudyTask[] = [
-  { id: 't-os-1', subjectId: 'os', text: 'Solve Banker\'s Algorithm 10-Mark safe sequence problem', completed: false, isMission: true, category: 'pyq', createdAt: Date.now() },
-  { id: 't-os-2', subjectId: 'os', text: 'Derive Effective Memory Access Time (EMAT) formula with TLB hit ratio', completed: false, isMission: true, category: 'concept', createdAt: Date.now() },
-  { id: 't-os-3', subjectId: 'os', text: 'Watch Gate Smashers 15-min crash revision on CPU Scheduling', completed: false, isMission: true, category: 'video', createdAt: Date.now() },
+  { id: 't-os-1', subjectId: 'os', text: 'Solve Banker\'s Algorithm 10-Mark safe sequence problem', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-os-2', subjectId: 'os', text: 'Derive Effective Memory Access Time (EMAT) formula with TLB hit ratio', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-os-3', subjectId: 'os', text: 'Watch 15-min crash revision video on CPU Scheduling Gantt Charts', completed: true, isMission: false, createdAt: Date.now() },
   
-  { id: 't-dbms-1', subjectId: 'dbms', text: 'Trace 1NF -> 2NF -> 3NF -> BCNF decomposition step-by-step', completed: false, isMission: true, category: 'concept', createdAt: Date.now() },
-  { id: 't-dbms-2', subjectId: 'dbms', text: 'Practice Conflict Serializability Precedence Graph cycle detection', completed: false, isMission: true, category: 'pyq', createdAt: Date.now() },
-  { id: 't-dbms-3', subjectId: 'dbms', text: 'Review 2PL Growing Phase vs Shrinking Phase lock points', completed: true, isMission: false, category: 'custom', createdAt: Date.now() },
+  { id: 't-dbms-1', subjectId: 'dbms', text: 'Practice 1NF -> 2NF -> 3NF -> BCNF decomposition table', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-dbms-2', subjectId: 'dbms', text: 'Precedence Graph conflict serializability cycle detection test', completed: false, isMission: true, createdAt: Date.now() },
 
-  { id: 't-cn-1', subjectId: 'cn', text: 'Draw TCP Congestion Control cwnd graph (Slow start, AIMD, 3 dup ACKs)', completed: false, isMission: true, category: 'pyq', createdAt: Date.now() },
-  { id: 't-cn-2', subjectId: 'cn', text: 'Memorize TCP 3-Way Handshake vs 4-Way Termination packet flow', completed: false, isMission: true, category: 'concept', createdAt: Date.now() },
+  { id: 't-cn-1', subjectId: 'cn', text: 'Draw TCP Congestion Control cwnd graph (Slow start, AIMD, 3 dup ACKs)', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-cn-2', subjectId: 'cn', text: 'Memorize TCP 3-Way Handshake vs 4-Way Termination packet ladder', completed: false, isMission: true, createdAt: Date.now() },
 
-  { id: 't-dsa-1', subjectId: 'dsa', text: 'Practice all 4 AVL Tree rotations (LL, RR, LR, RL) on sample key set', completed: false, isMission: true, category: 'pyq', createdAt: Date.now() },
-  { id: 't-dsa-2', subjectId: 'dsa', text: 'Trace 0/1 Knapsack dynamic programming table recurrence relation', completed: false, isMission: true, category: 'concept', createdAt: Date.now() },
+  { id: 't-dsa-1', subjectId: 'dsa', text: 'Practice all 4 AVL Tree rotations (LL, RR, LR, RL) on sample key set', completed: false, isMission: true, createdAt: Date.now() },
+  { id: 't-dsa-2', subjectId: 'dsa', text: 'Trace 0/1 Knapsack dynamic programming table recurrence relation', completed: false, isMission: true, createdAt: Date.now() },
 ];
 
 export const DEFAULT_VIDEOS: VideoResource[] = [
-  // OS
   {
     id: 'v-os-1',
     subjectId: 'os',
     title: "Banker's Algorithm with Safe Sequence Example — Gate Smashers",
     youtubeUrl: 'https://www.youtube.com/watch?v=7gmLZ2vgw5Y',
     videoId: '7gmLZ2vgw5Y',
-    notes: 'Key rule: Need = Max - Allocation. If Need <= Work, process finishes and releases Allocated resources back to Work vector.',
+    notes: 'Key formula: Need = Max - Allocation. If Need <= Work, process finishes and releases Allocated resources back to Work vector.',
     isWatched: false,
     addedAt: Date.now() - 3600000 * 24
   },
@@ -120,32 +110,20 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
     title: 'Preemptive vs Non-Preemptive CPU Scheduling Algorithms — Neso Academy',
     youtubeUrl: 'https://www.youtube.com/watch?v=EWkQD_WWmS4',
     videoId: 'EWkQD_WWmS4',
-    notes: 'TAT = Completion Time - Arrival Time. Waiting Time = TAT - Burst Time. Always draw a neat Gantt chart in the first 2 minutes!',
+    notes: 'TAT = Completion Time - Arrival Time. Waiting Time = TAT - Burst Time. Always draw a neat Gantt chart in the first 2 minutes of the exam.',
     isWatched: true,
     addedAt: Date.now() - 3600000 * 48
   },
-  // DBMS
   {
     id: 'v-dbms-1',
     subjectId: 'dbms',
     title: 'Normalization (1NF, 2NF, 3NF, BCNF) Made Easy — Gate Smashers',
     youtubeUrl: 'https://www.youtube.com/watch?v=5fs1hdkhms8',
     videoId: '5fs1hdkhms8',
-    notes: 'BCNF condition: For every X -> Y, X MUST be a superkey. If not, split table into (X, Y) and (X, Rest).',
+    notes: 'BCNF condition: For every non-trivial FD X -> Y, X MUST be a Superkey. If not, decompose table into (X, Y) and (X, Rest).',
     isWatched: false,
     addedAt: Date.now() - 3600000 * 12
   },
-  {
-    id: 'v-dbms-2',
-    subjectId: 'dbms',
-    title: 'ACID Properties in Database Management Systems — Gate Smashers',
-    youtubeUrl: 'https://www.youtube.com/watch?v=pmsYpLkyh1Q',
-    videoId: 'pmsYpLkyh1Q',
-    notes: 'Atomicity: all-or-nothing (WAL log). Consistency: integrity constraints. Isolation: Concurrency control. Durability: committed data persists.',
-    isWatched: false,
-    addedAt: Date.now() - 3600000 * 18
-  },
-  // CN
   {
     id: 'v-cn-1',
     subjectId: 'cn',
@@ -157,17 +135,6 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
     addedAt: Date.now() - 3600000 * 30
   },
   {
-    id: 'v-cn-2',
-    subjectId: 'cn',
-    title: 'OSI 7 Layers Explained Simply with Examples — Neso Academy',
-    youtubeUrl: 'https://www.youtube.com/watch?v=vv4y_uOneC8',
-    videoId: 'vv4y_uOneC8',
-    notes: 'Mnemonics: Please Do Not Throw Sausage Pizza Away (Physical -> Data Link -> Network -> Transport -> Session -> Presentation -> Application).',
-    isWatched: false,
-    addedAt: Date.now() - 3600000 * 40
-  },
-  // DSA
-  {
     id: 'v-dsa-1',
     subjectId: 'dsa',
     title: 'AVL Tree Insertion & 4 Rotations (LL, RR, LR, RL) — Abdul Bari',
@@ -176,16 +143,6 @@ export const DEFAULT_VIDEOS: VideoResource[] = [
     notes: 'Balance Factor = Height(L) - Height(R). Must be strictly in {-1, 0, +1}. Single rotation for LL/RR, Double rotation for LR/RL.',
     isWatched: false,
     addedAt: Date.now() - 3600000 * 50
-  },
-  {
-    id: 'v-dsa-2',
-    subjectId: 'dsa',
-    title: "Dijkstra's Shortest Path Algorithm Step-by-Step — Abdul Bari",
-    youtubeUrl: 'https://www.youtube.com/watch?v=XB4MIexjvY0',
-    videoId: 'XB4MIexjvY0',
-    notes: 'Greedy choice: always pick unvisited vertex with minimum distance. Fails on negative weights because visited vertices are never reconsidered.',
-    isWatched: false,
-    addedAt: Date.now() - 3600000 * 60
   }
 ];
 
@@ -193,7 +150,7 @@ export const DEFAULT_PDFS: PdfResource[] = [
   {
     id: 'pdf-os-1',
     subjectId: 'os',
-    fileName: 'OS_Unit2_Deadlocks_Synchronization_Summary.pdf',
+    fileName: 'OS_Deadlocks_Synchronization_Summary.pdf',
     uploadDate: new Date(Date.now() - 86400000).toLocaleDateString(),
     fileSize: '1.4 MB',
     extractedText: 'Banker algorithm for deadlock avoidance. Safety state algorithm. Semaphores Wait() and Signal() operations. Peterson algorithm for mutual exclusion.',
@@ -207,15 +164,14 @@ export const DEFAULT_PDFS: PdfResource[] = [
   {
     id: 'pdf-dbms-1',
     subjectId: 'dbms',
-    fileName: 'DBMS_Normalization_Transactions_CheatSheet.pdf',
+    fileName: 'DBMS_Normalization_CheatSheet.pdf',
     uploadDate: new Date(Date.now() - 172800000).toLocaleDateString(),
     fileSize: '2.1 MB',
     extractedText: 'Functional dependencies, 1NF atomic attributes, 2NF partial dependencies, 3NF transitive dependencies, BCNF superkey condition. ACID transactions, conflict serializability, 2PL lock point.',
     summary: 'High-yield exam review sheet detailing normalization closure calculations, candidate key identification, and 2-Phase Locking growing vs shrinking phase.',
     extractedQuestions: [
       'Decompose relation R into BCNF and verify if dependency is preserved.',
-      'Explain Conflict Serializability with a Precedence Graph.',
-      'Why is B+ Tree index preferred over B-Tree in modern DBMS?'
+      'Explain Conflict Serializability with a Precedence Graph.'
     ]
   }
 ];
@@ -227,57 +183,114 @@ export function extractYoutubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-// Helper: Calculate live ticking countdown for an exam date
-export function calculateCountdown(examDateString: string): CountdownTime {
-  if (!examDateString) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, urgency: 'normal', label: 'No Date Set' };
-  }
+/**
+ * Requirement 2: Smooth Continuous Exam Urgency Color Shift (Green -> Yellow -> Red)
+ * Calculates exact fractional daysRemaining and smoothly interpolates HSL color:
+ * - daysRemaining >= 15: Safe Green (hue = 145)
+ * - 5 < daysRemaining < 15: Green (145) -> Yellow-Green (95) -> Warm Yellow/Amber (45) -> Orange (20)
+ * - daysRemaining <= 5: Orange (20) -> Urgent Crimson Red (0) with pulse animation
+ */
+export function getExamUrgencyColor(examDateString: string): ExamUrgency {
+  const fallbackDate = new Date(Date.now() + 7 * 86400 * 1000);
+  const target = examDateString ? new Date(examDateString).getTime() : fallbackDate.getTime();
+  const diffMs = target - Date.now();
 
-  const target = new Date(examDateString).getTime();
-  const diff = target - Date.now();
+  // Formatted date string for user
+  const targetObj = new Date(target);
+  const formattedExamDate = isNaN(target) 
+    ? 'No Exam Date Set' 
+    : targetObj.toLocaleDateString(undefined, { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      }) + ' • ' + targetObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  if (isNaN(target)) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalSeconds: 0, urgency: 'normal', label: 'Invalid Date' };
-  }
-
-  if (diff <= 0) {
+  if (isNaN(target) || diffMs <= 0) {
     return {
       days: 0,
       hours: 0,
       minutes: 0,
       seconds: 0,
-      totalSeconds: 0,
-      urgency: 'passed',
-      label: 'Exam Today / Completed'
+      fractionalDays: 0,
+      hue: 0,
+      hslColor: 'hsl(0, 85%, 45%)', // Urgent Crimson
+      isUrgent: true,
+      statusLabel: 'Exam Today / Completed',
+      formattedCountdown: '0d : 0h : 0m : 0s',
+      formattedExamDate
     };
   }
 
-  const totalSeconds = Math.floor(diff / 1000);
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-  const minutes = Math.floor((diff / (1000 * 60)) % 60);
-  const seconds = Math.floor((diff / 1000) % 60);
+  const fractionalDays = diffMs / (1000 * 60 * 60 * 24);
+  const days = Math.floor(fractionalDays);
+  const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
+  const seconds = Math.floor((diffMs / 1000) % 60);
 
-  let urgency: 'critical' | 'high' | 'normal' = 'normal';
-  if (days < 3) {
-    urgency = 'critical';
-  } else if (days < 7) {
-    urgency = 'high';
+  let hue = 145;
+  let statusLabel = 'On Track';
+  let isUrgent = false;
+
+  if (fractionalDays >= 15) {
+    // Vibrant Safe Green
+    hue = 145;
+    statusLabel = 'On Track (> 15 Days)';
+  } else if (fractionalDays > 5) {
+    // Smooth transition from Green (145) down to Orange (20)
+    const t = (fractionalDays - 5) / (15 - 5); // 0 at 5 days, 1 at 15 days
+    hue = Math.round(20 + t * (145 - 20));
+    statusLabel = fractionalDays > 9 ? 'Active Prep' : 'Approaching Soon';
+  } else {
+    // Smooth transition from Orange (20) down to Urgent Red (0)
+    const t = Math.max(0, fractionalDays) / 5; // 0 at 0 days, 1 at 5 days
+    hue = Math.round(t * 20);
+    statusLabel = '🚨 Urgent (< 5 Days)';
+    isUrgent = true;
   }
 
-  const label = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-  return { days, hours, minutes, seconds, totalSeconds, urgency, label };
+  const hslColor = `hsl(${hue}, 85%, 45%)`;
+  const formattedCountdown = `${days}d : ${hours}h : ${minutes}m : ${seconds}s`;
+
+  return {
+    days,
+    hours,
+    minutes,
+    seconds,
+    fractionalDays,
+    hue,
+    hslColor,
+    isUrgent,
+    statusLabel,
+    formattedCountdown,
+    formattedExamDate
+  };
 }
 
-// STORAGE KEYS
+export function calculateCountdown(examDateString: string): CountdownTime {
+  const urgency = getExamUrgencyColor(examDateString);
+  let urgencyLevel: 'critical' | 'high' | 'normal' = 'normal';
+  if (urgency.fractionalDays <= 3) urgencyLevel = 'critical';
+  else if (urgency.fractionalDays <= 7) urgencyLevel = 'high';
+  return {
+    days: urgency.days,
+    hours: urgency.hours,
+    minutes: urgency.minutes,
+    seconds: urgency.seconds,
+    totalSeconds: Math.floor(urgency.fractionalDays * 86400),
+    label: urgency.formattedCountdown,
+    urgency: urgencyLevel
+  };
+}
+
+// STORAGE KEYS — BUMPED TO exam_hub_v3 AS REQUIRED
 const STORAGE_KEYS = {
-  SUBJECTS: 'pyq_hud_subjects_v2',
-  QUESTIONS: 'pyq_hud_questions_v2',
-  TASKS: 'pyq_hud_tasks_v2',
-  VIDEOS: 'pyq_hud_videos_v2',
-  PDFS: 'pyq_hud_pdfs_v2',
-  ACTIVE_SUBJECT: 'pyq_hud_active_subject_v2',
-  THEME: 'pyq_hud_theme_v2',
+  SUBJECTS: 'exam_hub_v3_subjects',
+  QUESTIONS: 'exam_hub_v3_questions',
+  TASKS: 'exam_hub_v3_tasks',
+  VIDEOS: 'exam_hub_v3_videos',
+  PDFS: 'exam_hub_v3_pdfs',
+  ACTIVE_SUBJECT: 'exam_hub_v3_active_subject',
+  THEME: 'exam_hub_v3_theme',
 };
 
 // Storage Service API
@@ -291,7 +304,7 @@ export const storageService = {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
-      console.warn('Error reading subjects from localStorage:', e);
+      console.warn('Error reading subjects:', e);
     }
     this.saveSubjects(DEFAULT_SUBJECTS);
     return DEFAULT_SUBJECTS;
@@ -325,7 +338,7 @@ export const storageService = {
     const updated = list.filter(s => s.id !== subjectId);
     this.saveSubjects(updated);
 
-    // Also cascade cleanup related questions, tasks, videos, pdfs
+    // Cascade cleanup
     this.saveQuestions(this.getQuestions().filter(q => q.subjectId !== subjectId));
     this.saveTasks(this.getTasks().filter(t => t.subjectId !== subjectId));
     this.saveVideos(this.getVideos().filter(v => v.subjectId !== subjectId));
@@ -343,7 +356,7 @@ export const storageService = {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {
-      console.warn('Error reading questions from localStorage:', e);
+      console.warn('Error reading questions:', e);
     }
     this.saveQuestions(INITIAL_QUESTIONS);
     return INITIAL_QUESTIONS;
@@ -546,7 +559,7 @@ export const storageService = {
       window.postMessage({
         type: 'PYQ_SYNC_DATA',
         payload: {
-          version: '2.0.0',
+          version: '3.0.0',
           timestamp: Date.now(),
           subjects,
           questions,
@@ -555,7 +568,7 @@ export const storageService = {
         }
       }, '*');
     } catch (e) {
-      console.warn('Extension broadcast error:', e);
+      console.warn('Extension broadcast notice:', e);
     }
   }
 };

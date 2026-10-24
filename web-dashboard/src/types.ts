@@ -31,16 +31,40 @@ export interface PYQQuestion {
 
 export interface SubjectMeta {
   id: SubjectId;
-  code: string;
   name: string;
-  semester: string;
-  iconName: string;
-  accentColor: string; // e.g. '#00F0FF', '#FFB800', '#FF3366', '#00F5A0', '#38BDF8'
+  code?: string;
+  semester?: string;
   examDate: string; // ISO datetime string: 'YYYY-MM-DDTHH:mm'
+  iconName: string;
+  accentColor: string; // Hex color: '#10B981', '#06B6D4', '#F59E0B', '#EF4444'
   units: {
     unit: number;
     title: string;
   }[];
+}
+
+export interface CountdownTime {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalSeconds: number;
+  label: string;
+  urgency: 'critical' | 'high' | 'normal';
+}
+
+export interface ExamUrgency {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  fractionalDays: number;
+  hue: number;
+  hslColor: string;
+  isUrgent: boolean; // fractionalDays <= 5
+  statusLabel: string;
+  formattedCountdown: string;
+  formattedExamDate: string;
 }
 
 export interface StudyTask {
@@ -49,8 +73,8 @@ export interface StudyTask {
   text: string;
   completed: boolean;
   isMission: boolean;
-  category: 'pyq' | 'video' | 'pdf' | 'concept' | 'custom';
   createdAt: number;
+  category?: string;
 }
 
 export interface VideoResource {
@@ -72,39 +96,21 @@ export interface PdfResource {
   fileSize: string;
   extractedText: string;
   summary: string;
-  extractedQuestions: string[];
+  extractedQuestions?: string[];
 }
 
 export interface ConceptExplainer {
-  topic: string;
-  unitTitle: string;
+  id: string;
   subjectId: SubjectId;
-  analogy: {
-    title: string;
-    story: string;
-    keyTakeaway: string;
-  };
+  unit: number;
+  topicTitle: string;
+  oneMinuteSummary: string;
   architectureFlow: {
     title: string;
     steps: string[];
-    formulaOrRule: string;
   };
   examPoints: string[];
   rubricKeywords: string[];
-  flashcards: {
-    question: string;
-    answer: string;
-  }[];
-}
-
-export interface CountdownTime {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  totalSeconds: number;
-  urgency: 'critical' | 'high' | 'normal' | 'passed';
-  label: string;
 }
 
 export interface EvaluationResult {

@@ -3,7 +3,7 @@ import { SubjectMeta, PYQQuestion } from '../types';
 import { QuestionCard } from './QuestionCard';
 import { AddCustomPyqModal } from './AddCustomPyqModal';
 import { 
-  Flame, Search, Plus, Filter, BookOpen, Sparkles, CheckCircle2 
+  Flame, Search, Plus, BookOpen, Sparkles 
 } from 'lucide-react';
 
 interface PyqBankTabProps {
@@ -29,7 +29,7 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Filter for this subject
+  // Filter questions for this subject
   const subjectQuestions = useMemo(() => {
     return questions.filter(q => q.subjectId === subject.id);
   }, [questions, subject.id]);
@@ -38,7 +38,7 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
   const filteredQuestions = useMemo(() => {
     return subjectQuestions.filter(q => {
       // Pill check
-      if (activePill === 'hot' && q.repeatCount < 4) return false;
+      if (activePill === 'hot' && q.repeatCount < 3) return false;
       if (activePill === '10m' && q.marks !== 10) return false;
       if (activePill === 'short' && q.marks === 10) return false;
 
@@ -58,40 +58,37 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
   const masteredCount = subjectQuestions.filter(q => q.userStatus === 'mastered').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-slide-up">
       
       {/* Top Controls Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl hud-glass-panel">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card">
         <div>
-          <div className="flex items-center gap-2">
-            <Flame className="w-5 h-5 text-amber-400" />
-            <h3 className="text-lg font-bold text-white">
-              {subject.name} • High-Repeat Exam Bank
-            </h3>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {subjectQuestions.length} Curated Questions • {masteredCount} Mastered
+          <h3 className="text-lg font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
+            <Flame className="w-5 h-5 text-amber-500 fill-amber-500" />
+            <span>Important Past Exam Questions</span>
+          </h3>
+          <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
+            {subjectQuestions.length} Questions indexed • {masteredCount} marked as mastered
           </p>
         </div>
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2 rounded-xl text-xs font-bold text-black flex items-center gap-1.5 transition-transform hover:scale-105 shrink-0"
-          style={{ backgroundColor: subject.accentColor }}
+          className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg flex items-center gap-1.5 btn-tactile shadow-sm shrink-0"
         >
-          <Plus className="w-4 h-4" /> Add Custom Exam Question
+          <Plus className="w-4 h-4" /> + Add Question
         </button>
       </div>
 
-      {/* Filter Pills & Search Bar */}
+      {/* Filter Pills & Clean Search Input */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActivePill('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors btn-tactile ${
               activePill === 'all'
-                ? 'bg-cyan-500 text-black font-bold shadow-neon-cyan'
-                : 'bg-white/10 hover:bg-white/15 text-slate-300'
+                ? 'bg-paper-ink text-white dark:bg-night-text dark:text-night-bg'
+                : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
             }`}
           >
             All Questions ({subjectQuestions.length})
@@ -99,22 +96,22 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
 
           <button
             onClick={() => setActivePill('hot')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 btn-tactile ${
               activePill === 'hot'
-                ? 'bg-amber-400 text-black font-bold shadow-neon-gold'
-                : 'bg-white/10 hover:bg-white/15 text-amber-300'
+                ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-night-bg'
+                : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-amber-700 dark:text-amber-400'
             }`}
           >
             <Flame className="w-3.5 h-3.5 fill-current" />
-            🔥 Most Repeated (4+ Times)
+            Most Repeated (3+ Times)
           </button>
 
           <button
             onClick={() => setActivePill('10m')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors btn-tactile ${
               activePill === '10m'
-                ? 'bg-rose-400 text-black font-bold shadow-neon-coral'
-                : 'bg-white/10 hover:bg-white/15 text-slate-300'
+                ? 'bg-paper-ink text-white dark:bg-night-text dark:text-night-bg'
+                : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
             }`}
           >
             10-Mark Long Answers
@@ -122,10 +119,10 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
 
           <button
             onClick={() => setActivePill('short')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-colors btn-tactile ${
               activePill === 'short'
-                ? 'bg-emerald-400 text-black font-bold shadow-neon-emerald'
-                : 'bg-white/10 hover:bg-white/15 text-slate-300'
+                ? 'bg-paper-ink text-white dark:bg-night-text dark:text-night-bg'
+                : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
             }`}
           >
             2 & 5-Mark Short Answers
@@ -136,12 +133,12 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
         <div className="relative w-full md:w-64">
           <input
             type="text"
-            placeholder="Search Deadlock, B+ Tree, TCP..."
+            placeholder="Search topic or keywords..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/20 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400"
+            className="w-full pl-8 pr-3 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted text-xs focus:outline-none focus:border-emerald-500"
           />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+          <Search className="w-3.5 h-3.5 text-paper-muted dark:text-night-muted absolute left-2.5 top-3" />
         </div>
       </div>
 
@@ -158,17 +155,17 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
         ))}
 
         {filteredQuestions.length === 0 && (
-          <div className="text-center py-16 px-4 rounded-2xl hud-glass-panel border border-dashed border-white/20">
-            <BookOpen className="w-10 h-10 text-slate-500 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-white mb-1">No matching questions found</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
-              Try switching your filter or search query, or add your own custom university question.
+          <div className="text-center py-16 px-4 rounded-2xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border">
+            <BookOpen className="w-10 h-10 text-paper-muted dark:text-night-muted mx-auto mb-2" />
+            <h4 className="text-sm font-bold text-paper-ink dark:text-night-text mb-1">No matching questions found</h4>
+            <p className="text-xs text-paper-muted dark:text-night-muted max-w-sm mx-auto mb-4">
+              Try switching your filter or search, or add a custom university question.
             </p>
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-cyan-400 text-black text-xs font-bold hover:bg-cyan-300"
+              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold btn-tactile"
             >
-              + Add First Question for {subject.name}
+              + Add Question
             </button>
           </div>
         )}
@@ -181,7 +178,7 @@ export const PyqBankTab: React.FC<PyqBankTabProps> = ({
         onClose={() => setIsAddModalOpen(false)}
         onAdd={(q) => {
           onAddQuestion(q);
-          onShowToast('Custom PYQ added to question bank! 🎯', 'success');
+          onShowToast('Question added to subject bank! 🎯', 'success');
         }}
       />
 

@@ -1,30 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { SubjectMeta, PYQQuestion, StudyTask, VideoResource, PdfResource } from './types';
-import { storageService, calculateCountdown } from './utils/storageService';
+import { storageService } from './utils/storageService';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Navbar, MainNavView } from './components/Navbar';
 import { CommandCenterOverview } from './components/CommandCenterOverview';
 import { SubjectWorkspace } from './components/SubjectWorkspace';
-import { TopicScannerView } from './components/TopicScannerView';
-import { CheatSheetView } from './components/CheatSheetView';
 import { AddSubjectModal } from './components/AddSubjectModal';
 import { ExtensionInstallerModal } from './components/ExtensionInstallerModal';
 import { Toast, ToastMessage } from './components/Toast';
 
 function DashboardContent() {
-  // 1. Core State loaded from Persistent Storage
+  // 1. Core State loaded from Persistent Storage (bumped to exam_hub_v3)
   const [subjects, setSubjects] = useState<SubjectMeta[]>(() => storageService.getSubjects());
   const [questions, setQuestions] = useState<PYQQuestion[]>(() => storageService.getQuestions());
   const [tasks, setTasks] = useState<StudyTask[]>(() => storageService.getTasks());
   const [videos, setVideos] = useState<VideoResource[]>(() => storageService.getVideos());
   const [pdfs, setPdfs] = useState<PdfResource[]>(() => storageService.getPdfs());
 
-  // Active navigation view: 'overview' (Command Center) | 'workspace' (Subject Hub) | 'scanner' | 'cheatsheet'
+  // Active navigation view: 'overview' (Command Center) | 'workspace' (Subject Hub)
   const [currentView, setCurrentView] = useState<MainNavView>('overview');
 
   // Currently focused subject
   const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
-    return localStorage.getItem('pyq_hud_active_subject_v2') || subjects[0]?.id || 'os';
+    return localStorage.getItem('exam_hub_v3_active_subject') || subjects[0]?.id || 'os';
   });
 
   // Modal states
@@ -57,14 +55,13 @@ function DashboardContent() {
 
   // Find active subject object
   const activeSubject = subjects.find(s => s.id === activeSubjectId) || subjects[0];
-  const activeCountdown = calculateCountdown(activeSubject?.examDate || '');
 
   // ==========================================
   // SUBJECT HANDLERS
   // ==========================================
   const handleSelectSubject = (id: string) => {
     setActiveSubjectId(id);
-    localStorage.setItem('pyq_hud_active_subject_v2', id);
+    localStorage.setItem('exam_hub_v3_active_subject', id);
     setCurrentView('workspace');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -73,6 +70,7 @@ function DashboardContent() {
     const updated = storageService.addSubject(newSubject);
     setSubjects(updated);
     setActiveSubjectId(newSubject.id);
+    localStorage.setItem('exam_hub_v3_active_subject', newSubject.id);
     setCurrentView('workspace');
     showToast(`Created new subject "${newSubject.name}"! 🚀`, 'success');
   };
@@ -80,7 +78,7 @@ function DashboardContent() {
   const handleUpdateSubject = (updatedSubject: SubjectMeta) => {
     const updated = storageService.updateSubject(updatedSubject);
     setSubjects(updated);
-    showToast(`Updated ${updatedSubject.code} settings & exam date!`, 'success');
+    showToast(`Updated ${updatedSubject.name} settings & exam date!`, 'success');
   };
 
   const handleDeleteSubject = (id: string) => {
@@ -92,6 +90,7 @@ function DashboardContent() {
     setPdfs(storageService.getPdfs());
     if (activeSubjectId === id && updated.length > 0) {
       setActiveSubjectId(updated[0].id);
+      localStorage.setItem('exam_hub_v3_active_subject', updated[0].id);
     }
   };
 
@@ -117,6 +116,7 @@ function DashboardContent() {
   const handleAddQuestion = (q: PYQQuestion) => {
     const updated = storageService.addQuestion(q);
     setQuestions(updated);
+    showToast('Question saved to subject bank! 🔥', 'success');
   };
 
   // ==========================================
@@ -191,7 +191,7 @@ function DashboardContent() {
   // RESET DEMO DATA
   // ==========================================
   const handleResetData = () => {
-    if (window.confirm('Reset all subjects, countdowns, videos, and questions to the default pristine university dataset?')) {
+    if (window.confirm('Reset all subjects, countdowns, videos, and questions to the default university study dataset?')) {
       const reset = storageService.resetToDefaultData();
       setSubjects(reset.subjects);
       setQuestions(reset.questions);
@@ -199,14 +199,15 @@ function DashboardContent() {
       setVideos(reset.videos);
       setPdfs(reset.pdfs);
       setActiveSubjectId(reset.subjects[0].id);
-      showToast('Reset to default university demo data!', 'info');
+      localStorage.setItem('exam_hub_v3_active_subject', reset.subjects[0].id);
+      showToast('Reset to default university study data!', 'info');
     }
   };
 
   return (
-    <div className="min-h-screen transition-colors duration-200">
+    <div className="min-h-screen bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
       
-      {/* Holographic Top Navigation Bar */}
+      {/* Top Header Bar */}
       <Navbar
         currentView={currentView}
         onSelectView={setCurrentView}
@@ -229,6 +230,7 @@ function DashboardContent() {
             onSelectSubject={handleSelectSubject}
             onOpenAddSubject={() => setIsAddSubjectOpen(true)}
             onUpdateSubject={handleUpdateSubject}
+            onDeleteSubject={handleDeleteSubject}
           />
         )}
 
@@ -236,7 +238,6 @@ function DashboardContent() {
         {currentView === 'workspace' && activeSubject && (
           <SubjectWorkspace
             subject={activeSubject}
-            countdown={activeCountdown}
             questions={questions}
             tasks={tasks}
             videos={videos}
@@ -257,33 +258,6 @@ function DashboardContent() {
             onDeleteSubject={handleDeleteSubject}
             onBackToOverview={() => setCurrentView('overview')}
             onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 3: TOPIC SCANNER & PDF EXTRACTOR */}
-        {currentView === 'scanner' && (
-          <TopicScannerView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            questions={questions}
-            onAddExtractedQuestions={(newQs) => {
-              newQs.forEach(q => storageService.addQuestion(q));
-              setQuestions(storageService.getQuestions());
-              showToast(`Imported ${newQs.length} extracted questions!`, 'success');
-            }}
-            onToggleMastered={handleToggleMastered}
-            onSaveAnswer={handleSaveAnswer}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 4: LAST-MINUTE CHEAT SHEET */}
-        {currentView === 'cheatsheet' && (
-          <CheatSheetView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            onSelectSubject={(id) => setActiveSubjectId(id)}
-            questions={questions}
           />
         )}
 

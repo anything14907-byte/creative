@@ -10,11 +10,9 @@ const defaultDate = (days: number, hours: number) => {
 export const INITIAL_SUBJECTS: SubjectMeta[] = [
   {
     id: 'os',
-    code: 'CS301',
     name: 'Operating Systems',
-    semester: '5th Sem',
     iconName: 'Cpu',
-    accentColor: '#00F0FF', // Electric Cyan
+    accentColor: '#EF4444',
     examDate: defaultDate(3, 8),
     units: [
       { unit: 1, title: 'Process Scheduling' },
@@ -26,12 +24,10 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
   },
   {
     id: 'dbms',
-    code: 'CS302',
     name: 'Database Systems',
-    semester: '5th Sem',
     iconName: 'Database',
-    accentColor: '#00F5A0', // Hyper Emerald
-    examDate: defaultDate(6, 14),
+    accentColor: '#F59E0B',
+    examDate: defaultDate(7, 4),
     units: [
       { unit: 1, title: 'Relational Model & Algebra' },
       { unit: 2, title: 'SQL & Normalization' },
@@ -42,12 +38,10 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
   },
   {
     id: 'cn',
-    code: 'CS303',
     name: 'Computer Networks',
-    semester: '5th Sem',
     iconName: 'Network',
-    accentColor: '#FFB800', // Solar Gold
-    examDate: defaultDate(10, 9),
+    accentColor: '#10B981',
+    examDate: defaultDate(11, 9),
     units: [
       { unit: 1, title: 'OSI Model & Physical Layer' },
       { unit: 2, title: 'Data Link Layer & Framing' },
@@ -58,12 +52,10 @@ export const INITIAL_SUBJECTS: SubjectMeta[] = [
   },
   {
     id: 'dsa',
-    code: 'CS304',
     name: 'Data Structures & Algorithms',
-    semester: '3rd Sem',
     iconName: 'Code',
-    accentColor: '#FF3366', // Neon Coral
-    examDate: defaultDate(15, 11),
+    accentColor: '#06B6D4',
+    examDate: defaultDate(18, 12),
     units: [
       { unit: 1, title: 'Asymptotic Analysis & Lists' },
       { unit: 2, title: 'Trees & AVL Balancing' },

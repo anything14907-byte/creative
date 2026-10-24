@@ -12,6 +12,7 @@
     margin: 0;
     padding: 0;
     min-height: 100vh;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   /* Custom Clean Scrollbar */
@@ -23,97 +24,112 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.25);
+    background: rgba(148, 163, 184, 0.35);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 240, 255, 0.45);
+    background: #10B981;
   }
 }
 
 /* =========================================================================
-   FUTURISTIC NIGHT MODE: AURORA HUD COMMAND CENTER (#0A0F24)
-   Multi-color radial mesh: Cyan (#00F0FF), Gold (#FFB800), Coral (#FF3366), Emerald (#00F5A0)
+   LIGHT MODE: WARM PAPER & DEEP INK (EYE-COMFORT ALABASTER: #F2EFE9)
    ========================================================================= */
-.dark body {
-  background-color: #0A0F24;
+.light body {
+  background-color: #F2EFE9;
+  color: #0F172A;
   background-image: 
-    /* Perspective HUD Grid overlay */
-    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-    /* Multi-color Aurora Mesh gradients */
-    radial-gradient(ellipse at 15% 10%, rgba(0, 240, 255, 0.12) 0%, transparent 45%),
-    radial-gradient(ellipse at 85% 15%, rgba(255, 51, 102, 0.10) 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 50%, rgba(255, 184, 0, 0.07) 0%, transparent 40%),
-    radial-gradient(ellipse at 80% 85%, rgba(0, 245, 160, 0.09) 0%, transparent 50%),
-    radial-gradient(ellipse at 20% 90%, rgba(56, 189, 248, 0.08) 0%, transparent 45%);
-  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.03) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.03) 0px, transparent 50%);
   background-attachment: fixed;
-  color: #F3F6FA;
 }
 
 /* =========================================================================
-   FUTURISTIC DAY MODE: HOLOGRAPHIC PEARL STUDIO (#EEF4FF)
+   NIGHT MODE: DEEP OCEAN & EMERALD GOLD (#0B131E)
    ========================================================================= */
-.light body {
-  background-color: #EEF4FF;
+.dark body {
+  background-color: #0B131E;
+  color: #F8FAFC;
   background-image: 
-    linear-gradient(rgba(0, 150, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 150, 255, 0.02) 1px, transparent 1px),
-    radial-gradient(ellipse at 20% 10%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 15%, rgba(255, 51, 102, 0.06) 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 80%, rgba(0, 245, 160, 0.07) 0%, transparent 50%);
-  background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%, 100% 100%;
+    radial-gradient(at 10% 10%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+    radial-gradient(at 90% 20%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, rgba(245, 158, 11, 0.04) 0px, transparent 50%);
   background-attachment: fixed;
-  color: #0A0F24;
 }
 
-/* Glassmorphic Panel Helper Classes */
-.hud-glass-panel {
-  background: rgba(17, 25, 54, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+/* =========================================================================
+   TACTILE BUTTON & CARD MICRO-ANIMATIONS (PRESS BOUNCE & HOVER LIFT)
+   ========================================================================= */
+.btn-tactile {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+.btn-tactile:hover {
+  transform: translateY(-2px);
+}
+.btn-tactile:active {
+  transform: scale(0.95);
 }
 
-.light .hud-glass-panel {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04);
+/* Subtle Light-Sweep Shimmer across primary action buttons */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  transition: all 0.65s ease;
+  pointer-events: none;
+}
+.btn-shimmer:hover::after {
+  left: 120%;
 }
 
-.hud-glass-panel:hover {
-  transform: translateY(-3px);
-  border-color: rgba(0, 240, 255, 0.4);
-  box-shadow: 0 12px 30px -8px rgba(0, 240, 255, 0.25);
+/* Smooth Tab / Card Fade Slide-Up */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.light .hud-glass-panel:hover {
-  border-color: #38BDF8;
-  box-shadow: 0 12px 30px -8px rgba(56, 189, 248, 0.2);
+/* Urgent Exam Countdown Pulse (< 5 Days) */
+@keyframes urgentExamPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+.pulse-urgent-exam {
+  animation: urgentExamPulse 1.8s infinite;
 }
 
-/* Ticking Countdown Number Digits */
+/* Monospace Numbers for Ticking Countdown */
 .countdown-digit {
   font-family: 'JetBrains Mono', monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-}
-
-/* Interactive Flashcard 3D flip */
-.perspective-1000 {
-  perspective: 1000px;
-}
-.transform-style-preserve-3d {
-  transform-style: preserve-3d;
-}
-.backface-hidden {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-.rotate-y-180 {
-  transform: rotateY(180deg);
+  letter-spacing: -0.03em;
 }
 
 /* Print Optimization */

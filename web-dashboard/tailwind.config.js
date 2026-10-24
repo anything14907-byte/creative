@@ -8,50 +8,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Holographic Aurora Command Center Palette
-        hud: {
-          bg: '#0A0F24',
-          bgLight: '#EEF4FF',
-          card: 'rgba(17, 25, 54, 0.75)',
-          cardLight: 'rgba(255, 255, 255, 0.90)',
-          cardElevated: '#131C3D',
-          border: 'rgba(255, 255, 255, 0.10)',
-          borderLight: '#E2E8F0',
-          cyan: '#00F0FF',
-          cyanGlow: 'rgba(0, 240, 255, 0.4)',
-          gold: '#FFB800',
-          goldGlow: 'rgba(255, 184, 0, 0.4)',
-          coral: '#FF3366',
-          coralGlow: 'rgba(255, 51, 102, 0.4)',
-          emerald: '#00F5A0',
-          emeraldGlow: 'rgba(0, 245, 160, 0.4)',
-          blue: '#38BDF8',
-          text: '#F3F6FA',
-          textMuted: '#94A3B8',
-          textDark: '#0A0F24',
+        // Eye-Comfort Light Mode ("Warm Paper & Deep Ink")
+        paper: {
+          bg: '#F2EFE9',         // Warm Alabaster/Paper (NEVER pure blinding white)
+          card: '#FFFFFF',       // Crisp Ivory White
+          cardElevated: '#FAF8F5',
+          border: '#CBD5E1',     // Solid visible border
+          borderHover: '#94A3B8',
+          ink: '#0F172A',        // Deep Charcoal Ink for headings
+          body: '#1E293B',       // Dark Slate body text
+          muted: '#475569',      // Muted Slate secondary labels
+        },
+        // Sleek Futuristic Night Mode ("Deep Ocean & Emerald Gold")
+        night: {
+          bg: '#0B131E',         // Deep Midnight Teal-Slate
+          card: '#131F2E',       // Elevated Slate Surface
+          cardElevated: '#18273A',
+          border: '#23354D',     // Crisp dark border
+          borderHover: '#3B82F6',
+          text: '#F8FAFC',       // Crisp Off-White
+          muted: '#CBD5E1',      // Soft Silver
+          emerald: '#10B981',    // Cyber Emerald
+          cyan: '#06B6D4',       // Ocean Cyan
+          amber: '#F59E0B',      // Solar Amber
+          red: '#EF4444',        // Urgent Crimson
         }
       },
       boxShadow: {
-        'neon-cyan': '0 0 25px -4px rgba(0, 240, 255, 0.4)',
-        'neon-emerald': '0 0 25px -4px rgba(0, 245, 160, 0.4)',
-        'neon-gold': '0 0 25px -4px rgba(255, 184, 0, 0.4)',
-        'neon-coral': '0 0 25px -4px rgba(255, 51, 102, 0.4)',
-        'hud-glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-        'hud-glass-light': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-      },
-      animation: {
-        'aurora-pulse': 'auroraGlow 12s ease-in-out infinite alternate',
-        'float-slow': 'floatSlow 4s ease-in-out infinite',
-      },
-      keyframes: {
-        auroraGlow: {
-          '0%': { transform: 'scale(1) rotate(0deg)' },
-          '100%': { transform: 'scale(1.15) rotate(15deg)' },
-        },
-        floatSlow: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-6px)' },
-        }
+        'paper-card': '0 4px 12px rgba(15, 23, 42, 0.06)',
+        'night-card': '0 8px 24px rgba(0, 0, 0, 0.35)',
+        'glow-emerald': '0 0 20px -3px rgba(16, 185, 129, 0.35)',
+        'glow-cyan': '0 0 20px -3px rgba(6, 182, 212, 0.35)',
+        'glow-amber': '0 0 20px -3px rgba(245, 158, 11, 0.35)',
+        'glow-red': '0 0 20px -3px rgba(239, 68, 68, 0.4)',
       }
     },
   },

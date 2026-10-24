@@ -6,15 +6,12 @@ import {
   ChevronUp, 
   PenTool, 
   BookOpen, 
-  Tag, 
   Sparkles, 
-  Lightbulb, 
   Check, 
-  X,
-  RotateCcw
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { PYQQuestion, QuestionStatus, EvaluationResult } from '../types';
+import { PYQQuestion, EvaluationResult } from '../types';
 import { evaluateAnswer } from '../utils/rubricEvaluator';
 
 interface QuestionCardProps {
@@ -41,12 +38,12 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
     onToggleMastered(question.id);
     if (!isMastered) {
       confetti({
-        particleCount: 45,
+        particleCount: 40,
         spread: 50,
         origin: { y: 0.8 },
-        colors: ['#00E599', '#38BDF8', '#F59E0B']
+        colors: ['#10B981', '#06B6D4', '#F59E0B']
       });
-      onShowToast('Marked as Mastered! Keep crushing it 🔥', 'success');
+      onShowToast('Marked as Mastered! Keep going 🔥', 'success');
     }
   };
 
@@ -57,236 +54,202 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 
     if (res.scoreOutOf10 >= 8.5) {
       confetti({
-        particleCount: 70,
+        particleCount: 60,
         spread: 60,
         origin: { y: 0.7 },
-        colors: ['#00E599', '#38BDF8', '#FFFFFF']
+        colors: ['#10B981', '#06B6D4', '#FFFFFF']
       });
-      onShowToast('🎉 Stellar Recall! 8.5+/10 on exam keywords!', 'success');
+      onShowToast('🎉 Excellent! 8.5+/10 on exam keywords!', 'success');
     }
   };
 
   return (
-    <div className={`rounded-2xl border transition-all duration-200 p-5 bg-white/90 dark:bg-[#0F1722]/80 backdrop-blur-md ${
+    <div className={`p-5 rounded-2xl bg-paper-card dark:bg-night-card border transition-all duration-200 shadow-paper-card dark:shadow-night-card ${
       isMastered 
-        ? 'border-emerald-500/40 shadow-sm'
-        : question.isHighProbability 
-        ? 'border-emerald-500/30 hover:border-[#00E599] shadow-sm hover:shadow-glow-emerald/10'
-        : 'border-day-border dark:border-cyber-border hover:border-slate-300 dark:hover:border-slate-700'
+        ? 'border-emerald-500/50 dark:border-emerald-500/40' 
+        : 'border-paper-border dark:border-night-border hover:border-paper-borderHover dark:hover:border-night-borderHover'
     }`}>
       
-      {/* Badges Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
+      {/* Badges Row */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Unit Badge */}
-          <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+          <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-body dark:text-night-text">
             Unit {question.unit}: {question.unitTitle}
           </span>
 
           {/* Marks Badge */}
-          <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
             question.marks === 10
-              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
               : question.marks === 5
-              ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
-              : 'bg-emerald-500/10 text-emerald-700 dark:text-[#00E599] border border-emerald-500/20'
+              ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20'
+              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
           }`}>
             {question.marks} Marks
           </span>
 
-          {/* Repeat Frequency Badge */}
+          {/* Repeat Badge */}
           {question.repeatCount >= 3 ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-              <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span>Asked {question.repeatCount}x ({question.yearsAsked.join(', ')})</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+              <Flame className="w-3.5 h-3.5 fill-current" />
+              Repeated {question.repeatCount}x ({question.yearsAsked.slice(-3).join(', ')})
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-lg text-xs text-day-muted dark:text-cyber-muted bg-slate-100/60 dark:bg-slate-800/40">
+            <span className="text-xs text-paper-muted dark:text-night-muted">
               Asked in {question.yearsAsked.join(', ')}
             </span>
           )}
-
         </div>
 
         {/* Mastered Toggle Button */}
         <button
           onClick={handleToggleMaster}
-          className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors btn-tactile ${
             isMastered
-              ? 'bg-emerald-600 text-white dark:bg-[#00E599] dark:text-[#06090E] shadow-sm'
-              : 'border border-day-border dark:border-cyber-border text-day-muted dark:text-cyber-muted hover:border-[#00E599] hover:text-day-text dark:hover:text-white'
+              ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-night-bg shadow-sm'
+              : 'bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-body dark:text-night-text hover:border-emerald-500'
           }`}
         >
-          <CheckCircle2 className={`w-3.5 h-3.5 ${isMastered ? 'text-white dark:text-[#06090E]' : 'text-slate-400'}`} />
-          <span>{isMastered ? 'Mastered' : 'Mark as Mastered'}</span>
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{isMastered ? 'Mastered ✅' : 'Mark Mastered'}</span>
         </button>
       </div>
 
-      {/* Question Text */}
-      <h3 className="text-sm sm:text-base font-bold text-day-text dark:text-white leading-relaxed mb-4">
+      {/* Question Text (100% Contrast) */}
+      <h4 className="text-base font-bold text-paper-ink dark:text-night-text leading-snug mb-4">
         {question.question}
-      </h3>
+      </h4>
 
-      {/* Action Buttons: Show Ideal Answer & Test Yourself */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-day-border/60 dark:border-cyber-border/60">
-        
-        {/* Toggle Ideal Exam Answer */}
+      {/* Action Buttons: "Show Easy Answer" & "Test Myself" */}
+      <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-paper-border dark:border-night-border">
         <button
-          onClick={() => setShowAnswer(!showAnswer)}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+          onClick={() => {
+            setShowAnswer(!showAnswer);
+            if (!showAnswer) setShowPractice(false);
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors btn-tactile ${
             showAnswer
-              ? 'bg-slate-200 dark:bg-slate-800 text-day-text dark:text-white'
-              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-[#00E599] border border-emerald-500/20'
+              ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-night-bg'
+              : 'bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-emerald-500'
           }`}
         >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>{showAnswer ? 'Hide Exam Answer' : '📖 Show Ideal Exam Answer'}</span>
-          {showAnswer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          <BookOpen className="w-4 h-4" />
+          <span>{showAnswer ? 'Hide Answer' : 'Show Easy Answer'}</span>
+          {showAnswer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Toggle Test Yourself Practice */}
         <button
-          onClick={() => setShowPractice(!showPractice)}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+          onClick={() => {
+            setShowPractice(!showPractice);
+            if (!showPractice) setShowAnswer(false);
+          }}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors btn-tactile ${
             showPractice
-              ? 'bg-slate-200 dark:bg-slate-800 text-day-text dark:text-white'
-              : 'border border-day-border dark:border-cyber-border text-day-text dark:text-white hover:border-[#00E599]'
+              ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-night-bg'
+              : 'bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-cyan-500'
           }`}
         >
-          <PenTool className="w-3.5 h-3.5 text-cyan-500" />
-          <span>{showPractice ? 'Close Practice' : '✍️ Test Yourself'}</span>
+          <PenTool className="w-4 h-4" />
+          <span>{showPractice ? 'Close Test' : 'Test Myself'}</span>
+          {showPractice ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
 
         {question.lastAttemptScore !== undefined && (
-          <span className="text-xs font-semibold text-day-muted dark:text-cyber-muted ml-auto">
-            Last Score: <strong className="text-emerald-600 dark:text-[#00E599]">{question.lastAttemptScore}/10</strong>
+          <span className="text-xs font-mono font-bold text-paper-muted dark:text-night-muted ml-auto">
+            Last score: {question.lastAttemptScore}/10
           </span>
         )}
       </div>
 
-      {/* EXPANDABLE 1: IDEAL EXAM ANSWER (3-4 Crisp Bullets + Diagram/Formula + Keywords) */}
+      {/* Expandable Model Exam Answer */}
       {showAnswer && (
-        <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-[#0A0F18] border border-emerald-500/30 space-y-4 animate-in fade-in duration-200">
-          
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-[#00E599] flex items-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#00E599]" />
-              Ideal 3–4 Bullet Points for Exam Full Marks
-            </div>
-            
-            <ul className="space-y-2 text-xs sm:text-sm text-day-text dark:text-slate-200 leading-relaxed">
-              {question.bullets.map((bullet, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-[#00E599] flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <span>{bullet}</span>
-                </li>
-              ))}
-            </ul>
+        <div className="mt-4 p-4 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border animate-fade-slide-up space-y-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+            <Sparkles className="w-4 h-4" />
+            <span>3 Clear Points to Write in Exam:</span>
           </div>
 
-          {/* Diagram / Formula Tip */}
-          {question.diagramFormulaTip && (
-            <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-xs">
-              <div className="font-bold text-sky-800 dark:text-sky-300 flex items-center gap-1.5 mb-1">
-                <Lightbulb className="w-3.5 h-3.5 text-sky-400" />
-                Must-Draw Diagram / Formula Tip:
+          <div className="space-y-2">
+            {question.bullets.map((b, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-paper-body dark:text-night-text leading-relaxed">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">•</span>
+                <span>{b}</span>
               </div>
-              <p className="text-day-muted dark:text-slate-300 leading-relaxed">
-                {question.diagramFormulaTip}
-              </p>
+            ))}
+          </div>
+
+          {/* Key Diagram / Formula Tip */}
+          {question.diagramFormulaTip && (
+            <div className="p-3 rounded-lg bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs text-paper-body dark:text-night-text">
+              <strong className="text-cyan-700 dark:text-cyan-400">📐 Diagram / Formula Tip: </strong>
+              {question.diagramFormulaTip}
             </div>
           )}
 
-          {/* Must-Include Keywords */}
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-day-muted dark:text-cyber-muted mb-1.5 flex items-center gap-1">
-              <Tag className="w-3 h-3 text-emerald-500" /> Essential Keywords Evaluator Looks For:
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {question.expectedKeywords.map(kw => (
-                <span 
-                  key={kw} 
-                  className="px-2 py-0.5 rounded-md text-xs font-semibold bg-[#00E599]/15 text-emerald-800 dark:text-[#00E599] border border-[#00E599]/30"
-                >
+          {/* Keywords */}
+          {question.expectedKeywords && question.expectedKeywords.length > 0 && (
+            <div className="pt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-bold text-paper-muted dark:text-night-muted">Keywords:</span>
+              {question.expectedKeywords.map((kw, i) => (
+                <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                   {kw}
                 </span>
               ))}
             </div>
-          </div>
-
+          )}
         </div>
       )}
 
-      {/* EXPANDABLE 2: TEST YOURSELF INLINE PRACTICE BOX */}
+      {/* Expandable "Test Myself" Recall Sandbox */}
       {showPractice && (
-        <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#0A0F18] border border-day-border dark:border-cyber-border space-y-3 animate-in fade-in duration-200">
-          
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-day-text dark:text-white flex items-center gap-1.5">
-              <PenTool className="w-3.5 h-3.5 text-cyan-400" />
-              Active Recall Test Box
-            </span>
-            <span className="text-day-muted dark:text-cyber-muted">
-              {practiceAnswer.split(/\s+/).filter(Boolean).length} words
+        <div className="mt-4 p-4 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border animate-fade-slide-up space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-paper-ink dark:text-night-text">
+              Type your answer from memory (without looking):
+            </label>
+            <span className="text-[11px] text-paper-muted dark:text-night-muted">
+              Scored against rubric keywords
             </span>
           </div>
 
           <textarea
-            value={practiceAnswer}
-            onChange={(e) => setPracticeAnswer(e.target.value)}
-            placeholder="Type your brief answers or bullet points from memory here to check your score..."
             rows={4}
-            className="w-full p-3 rounded-xl border border-day-border dark:border-cyber-border bg-white dark:bg-[#0F1722] text-xs sm:text-sm text-day-text dark:text-white outline-none focus:border-[#00E599] transition-all resize-y"
+            placeholder="Type key definitions, algorithm steps, or formulas..."
+            value={practiceAnswer}
+            onChange={e => setPracticeAnswer(e.target.value)}
+            className="w-full p-3 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text text-xs focus:outline-none focus:border-cyan-500"
           />
 
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => {
-                setPracticeAnswer('');
-                setEvalResult(null);
-              }}
-              className="text-xs text-day-muted dark:text-cyber-muted hover:text-day-text flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" /> Clear
-            </button>
-
+          <div className="flex justify-end">
             <button
               onClick={handleCheckRecall}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-[#00E599] dark:hover:bg-[#00C782] text-white dark:text-[#06090E] font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-95"
+              className="px-4 py-2 rounded-xl bg-cyan-600 text-white hover:bg-cyan-700 dark:bg-cyan-500 dark:text-night-bg text-xs font-bold btn-tactile"
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>Check My Answer Score</span>
+              Check Score
             </button>
           </div>
 
-          {/* Feedback Display */}
           {evalResult && (
-            <div className={`p-3 rounded-xl border text-xs space-y-2 ${
-              evalResult.scoreOutOf10 >= 8
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
-                : evalResult.scoreOutOf10 >= 5
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200'
-                : 'bg-rose-500/10 border-rose-500/30 text-rose-900 dark:text-rose-200'
-            }`}>
-              <div className="flex items-center justify-between font-bold text-sm">
-                <span>Score: {evalResult.scoreOutOf10} / 10</span>
-                <span>{evalResult.matchedKeywords.length}/{question.expectedKeywords.length} Keywords Hit</span>
+            <div className="p-3.5 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-paper-ink dark:text-night-text">
+                  Score: <span className="text-cyan-600 dark:text-cyan-400 text-sm">{evalResult.scoreOutOf10}/10</span> ({evalResult.wordCount} words)
+                </span>
+                <span className="text-xs font-semibold text-paper-muted dark:text-night-muted">
+                  {evalResult.matchedKeywords.length} of {question.expectedKeywords.length} Keywords Hit
+                </span>
               </div>
-              <p>{evalResult.feedback}</p>
 
-              {/* Missing Keywords Alert */}
               {evalResult.missingKeywords.length > 0 && (
-                <div className="pt-1 text-[11px]">
-                  <span className="font-bold">Missing Keywords: </span>
+                <div className="text-xs text-paper-body dark:text-night-muted">
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">Include next time: </span>
                   {evalResult.missingKeywords.join(', ')}
                 </div>
               )}
             </div>
           )}
-
         </div>
       )}
 
