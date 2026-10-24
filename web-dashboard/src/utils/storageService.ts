@@ -6,7 +6,14 @@ import {
   VideoResource, 
   PdfResource, 
   ExamUrgency, 
-  CountdownTime 
+  CountdownTime,
+  SyllabusTopic,
+  TopicMastery,
+  PomodoroSession,
+  Flashcard,
+  DayStudyPlan,
+  PlannerDayTopic,
+  FullBackupData
 } from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
 
@@ -213,6 +220,116 @@ export const DEFAULT_PDFS: PdfResource[] = [
   }
 ];
 
+export const DEFAULT_TOPICS: SyllabusTopic[] = [
+  // OS Topics
+  { id: 'top-os-1', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Process Scheduling (FCFS, SJF, Round Robin)', completed: true, mastery: 'strong', pyqCount: 4 },
+  { id: 'top-os-2', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Multilevel Queue & Feedback Queue Scheduling', completed: false, mastery: 'okay', pyqCount: 2 },
+  { id: 'top-os-3', subjectId: 'os', unitId: 'u1', unitNumber: 1, title: 'Convoy Effect & Context Switching Overhead', completed: false, mastery: 'weak', pyqCount: 3 },
+  { id: 'top-os-4', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Banker's Algorithm & Deadlock Safe Sequences", completed: false, mastery: 'weak', pyqCount: 5 },
+  { id: 'top-os-5', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: 'Semaphores (Wait/Signal) & Race Conditions', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-os-6', subjectId: 'os', unitId: 'u2', unitNumber: 2, title: "Peterson's Algorithm for Mutual Exclusion", completed: true, mastery: 'okay', pyqCount: 2 },
+  { id: 'top-os-7', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Paging, Inverted Page Tables & TLB Hit Ratio', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-os-8', subjectId: 'os', unitId: 'u3', unitNumber: 3, title: 'Page Replacement Algorithms (FIFO, LRU, Optimal)', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-os-9', subjectId: 'os', unitId: 'u4', unitNumber: 4, title: 'Disk Scheduling (SSTF, SCAN, C-SCAN)', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-os-10', subjectId: 'os', unitId: 'u5', unitNumber: 5, title: 'Virtualization Hypervisors & Security Rings', completed: false, mastery: 'okay', pyqCount: 1 },
+
+  // DBMS Topics
+  { id: 'top-db-1', subjectId: 'dbms', unitId: 'u1', unitNumber: 1, title: 'Relational Model & ER Architecture Mapping', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-db-2', subjectId: 'dbms', unitId: 'u2', unitNumber: 2, title: '1NF, 2NF, 3NF & BCNF Normalization', completed: false, mastery: 'weak', pyqCount: 5 },
+  { id: 'top-db-3', subjectId: 'dbms', unitId: 'u2', unitNumber: 2, title: 'Lossless Join & Functional Dependency Closure', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-db-4', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'ACID Properties & Transaction States', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-db-5', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'Conflict Serializability & Precedence Graphs', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-db-6', subjectId: 'dbms', unitId: 'u3', unitNumber: 3, title: 'Two-Phase Locking Protocol (Strict vs Rigorous 2PL)', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-db-7', subjectId: 'dbms', unitId: 'u4', unitNumber: 4, title: 'B+ Tree Index Insertion & Deletion Mechanics', completed: false, mastery: 'okay', pyqCount: 3 },
+  { id: 'top-db-8', subjectId: 'dbms', unitId: 'u5', unitNumber: 5, title: 'Write-Ahead Logging (WAL) & ARIES Recovery', completed: false, mastery: 'weak', pyqCount: 2 },
+
+  // CN Topics
+  { id: 'top-cn-1', subjectId: 'cn', unitId: 'u1', unitNumber: 1, title: 'OSI 7-Layer vs TCP/IP Architecture', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-cn-2', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'Sliding Window (Go-Back-N vs Selective Repeat)', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-cn-3', subjectId: 'cn', unitId: 'u2', unitNumber: 2, title: 'CRC Checksum & Hamming Error Detection Code', completed: true, mastery: 'okay', pyqCount: 3 },
+  { id: 'top-cn-4', subjectId: 'cn', unitId: 'u3', unitNumber: 3, title: 'IPv4 Subnetting, VLSM & CIDR Calculations', completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-cn-5', subjectId: 'cn', unitId: 'u3', unitNumber: 3, title: "Dijkstra's Link-State vs Distance Vector Routing", completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-cn-6', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP 3-Way Handshake & Connection Termination', completed: true, mastery: 'strong', pyqCount: 4 },
+  { id: 'top-cn-7', subjectId: 'cn', unitId: 'u4', unitNumber: 4, title: 'TCP Congestion Control (Slow Start, AIMD, Fast Recovery)', completed: false, mastery: 'weak', pyqCount: 5 },
+  { id: 'top-cn-8', subjectId: 'cn', unitId: 'u5', unitNumber: 5, title: 'DNS Resolution (Iterative vs Recursive) & HTTP/2', completed: false, mastery: 'okay', pyqCount: 2 },
+
+  // DSA Topics
+  { id: 'top-dsa-1', subjectId: 'dsa', unitId: 'u1', unitNumber: 1, title: 'Asymptotic Complexities & Master Theorem', completed: true, mastery: 'strong', pyqCount: 3 },
+  { id: 'top-dsa-2', subjectId: 'dsa', unitId: 'u2', unitNumber: 2, title: 'AVL Tree 4 Rotations (LL, RR, LR, RL)', completed: false, mastery: 'weak', pyqCount: 5 },
+  { id: 'top-dsa-3', subjectId: 'dsa', unitId: 'u3', unitNumber: 3, title: 'Binary Heaps, Priority Queues & HeapSort', completed: false, mastery: 'okay', pyqCount: 3 },
+  { id: 'top-dsa-4', subjectId: 'dsa', unitId: 'u4', unitNumber: 4, title: "Dijkstra's Shortest Path & Prim's MST Algorithm", completed: false, mastery: 'weak', pyqCount: 4 },
+  { id: 'top-dsa-5', subjectId: 'dsa', unitId: 'u5', unitNumber: 5, title: '0/1 Knapsack & Longest Common Subsequence (DP)', completed: false, mastery: 'weak', pyqCount: 4 }
+];
+
+export const DEFAULT_FLASHCARDS: Flashcard[] = [
+  {
+    id: 'fc-1',
+    subjectId: 'os',
+    unitId: 'u2',
+    topicTitle: "Banker's Algorithm & Safe Sequences",
+    front: "What are the 4 Coffman conditions required for Deadlock to occur?",
+    back: "1. Mutual Exclusion (resources non-shareable)\n2. Hold and Wait (process holds resource while waiting for another)\n3. No Preemption (resources cannot be forcibly taken)\n4. Circular Wait (circular chain of processes waiting)\nAll 4 must hold simultaneously for deadlock.",
+    intervalStep: 0,
+    nextReviewDate: new Date().toISOString().split('T')[0],
+    createdAt: Date.now() - 86400000
+  },
+  {
+    id: 'fc-2',
+    subjectId: 'os',
+    unitId: 'u3',
+    topicTitle: "Paging & TLB Hit Ratio",
+    front: "Formula for Effective Memory Access Time (EMAT) with TLB?",
+    back: "EMAT = (TLB Hit Ratio × (TLB Access Time + Memory Access Time)) + ((1 - Hit Ratio) × (TLB Access Time + 2 × Memory Access Time))\n*Assuming 1-level paging.",
+    intervalStep: 1,
+    nextReviewDate: new Date().toISOString().split('T')[0],
+    createdAt: Date.now() - 86400000 * 2
+  },
+  {
+    id: 'fc-3',
+    subjectId: 'dbms',
+    unitId: 'u2',
+    topicTitle: "1NF, 2NF, 3NF & BCNF Normalization",
+    front: "What is the strict mathematical definition of Boyce-Codd Normal Form (BCNF)?",
+    back: "A relation schema R is in BCNF if for every non-trivial functional dependency X → Y in F+, X is a Superkey for R.",
+    intervalStep: 0,
+    nextReviewDate: new Date().toISOString().split('T')[0],
+    createdAt: Date.now() - 86400000
+  },
+  {
+    id: 'fc-4',
+    subjectId: 'dbms',
+    unitId: 'u3',
+    topicTitle: "Two-Phase Locking Protocol",
+    front: "What is the difference between Growing Phase and Shrinking Phase in 2PL?",
+    back: "• Growing Phase: Transaction may obtain locks, but cannot release any lock.\n• Shrinking Phase: Transaction may release locks, but cannot obtain any new locks.\n• Lock Point: Moment when the final lock is acquired.",
+    intervalStep: 2,
+    nextReviewDate: new Date().toISOString().split('T')[0],
+    createdAt: Date.now() - 86400000 * 3
+  },
+  {
+    id: 'fc-5',
+    subjectId: 'cn',
+    unitId: 'u4',
+    topicTitle: "TCP Congestion Control",
+    front: "What happens during TCP Fast Retransmit & Fast Recovery upon 3 duplicate ACKs?",
+    back: "1. Fast Retransmit: Immediately resends missing segment without waiting for RTO timer.\n2. ssthresh is set to cwnd / 2.\n3. cwnd is set to ssthresh + 3 MSS (Fast Recovery skips slow start back to 1 MSS).",
+    intervalStep: 0,
+    nextReviewDate: new Date().toISOString().split('T')[0],
+    createdAt: Date.now() - 86400000
+  },
+  {
+    id: 'fc-6',
+    subjectId: 'dsa',
+    unitId: 'u2',
+    topicTitle: "AVL Tree 4 Rotations",
+    front: "What are the 4 AVL Tree rotations and when is each applied?",
+    back: "• LL Rotation (Single Right): Applied when inserted into left subtree of left child.\n• RR Rotation (Single Left): Applied when inserted into right subtree of right child.\n• LR Rotation (Left-Right Double): Left rotation on child, then Right rotation on node.\n• RL Rotation (Right-Left Double): Right rotation on child, then Left rotation on node.",
+    intervalStep: 1,
+    nextReviewDate: new Date().toISOString().split('T')[0],
+    createdAt: Date.now() - 86400000 * 2
+  }
+];
+
 // Helper: Extract YouTube ID from various URL formats
 export function extractYoutubeId(url: string): string | null {
   if (!url) return null;
@@ -414,6 +531,9 @@ const STORAGE_KEYS = {
   TASKS: 'exam_hub_v3_tasks',
   VIDEOS: 'exam_hub_v3_videos',
   PDFS: 'exam_hub_v3_pdfs',
+  TOPICS: 'exam_hub_v3_topics',
+  POMODORO_LOGS: 'exam_hub_v3_pomodoro_logs',
+  FLASHCARDS: 'exam_hub_v3_flashcards',
   ACTIVE_SUBJECT: 'exam_hub_v3_active_subject',
   THEME: 'exam_hub_v3_theme',
 };
@@ -528,6 +648,8 @@ export const storageService = {
     this.saveTasks(this.getTasks().filter(t => t.subjectId !== subjectId));
     this.saveVideos(this.getVideos().filter(v => v.subjectId !== subjectId));
     this.savePdfs(this.getPdfs().filter(p => p.subjectId !== subjectId));
+    this.saveTopics(this.getTopics().filter(t => t.subjectId !== subjectId));
+    this.saveFlashcards(this.getFlashcards().filter(f => f.subjectId !== subjectId));
     
     return updated;
   },
@@ -816,6 +938,456 @@ export const storageService = {
     }
   },
 
+  // ==========================================
+  // SYLLABUS TOPICS TRACKER
+  // ==========================================
+  getTopics(subjectId?: string): SyllabusTopic[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.TOPICS);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return subjectId ? parsed.filter(t => t.subjectId === subjectId) : parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading topics:', e);
+    }
+
+    // Initialize default topics + seed topics for custom subjects from units if needed
+    const subjects = this.getSubjects();
+    const seededTopics: SyllabusTopic[] = [...DEFAULT_TOPICS];
+
+    // For any user-created subjects not in defaults, seed initial topics from their units
+    subjects.forEach(sub => {
+      const existing = seededTopics.filter(t => t.subjectId === sub.id);
+      if (existing.length === 0) {
+        sub.units.forEach((u, uIdx) => {
+          seededTopics.push({
+            id: `top-${sub.id}-${u.id || uIdx + 1}-1`,
+            subjectId: sub.id,
+            unitId: u.id,
+            unitNumber: u.unit,
+            title: u.title,
+            completed: false,
+            mastery: 'okay',
+            pyqCount: 1
+          });
+        });
+      }
+    });
+
+    this.saveTopics(seededTopics);
+    return subjectId ? seededTopics.filter(t => t.subjectId === subjectId) : seededTopics;
+  },
+
+  saveTopics(topics: SyllabusTopic[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.TOPICS, JSON.stringify(topics));
+    } catch (e) {
+      console.error('Error saving topics:', e);
+    }
+  },
+
+  addTopic(topic: SyllabusTopic): SyllabusTopic[] {
+    const list = this.getTopics();
+    const updated = [...list, topic];
+    this.saveTopics(updated);
+    return updated;
+  },
+
+  updateTopic(topic: SyllabusTopic): SyllabusTopic[] {
+    const list = this.getTopics();
+    const updated = list.map(t => t.id === topic.id ? topic : t);
+    this.saveTopics(updated);
+    return updated;
+  },
+
+  deleteTopic(topicId: string): SyllabusTopic[] {
+    const list = this.getTopics();
+    const updated = list.filter(t => t.id !== topicId);
+    this.saveTopics(updated);
+    return updated;
+  },
+
+  toggleTopicCompleted(topicId: string): SyllabusTopic[] {
+    const list = this.getTopics();
+    const updated = list.map(t => t.id === topicId ? { ...t, completed: !t.completed } : t);
+    this.saveTopics(updated);
+    return updated;
+  },
+
+  setTopicMastery(topicId: string, mastery: TopicMastery): SyllabusTopic[] {
+    const list = this.getTopics();
+    const updated = list.map(t => t.id === topicId ? { ...t, mastery } : t);
+    this.saveTopics(updated);
+    return updated;
+  },
+
+  getSubjectProgress(subjectId: string, customTopics?: SyllabusTopic[]) {
+    const allTopics = customTopics || this.getTopics();
+    const subTopics = allTopics.filter(t => t.subjectId === subjectId);
+    const total = subTopics.length;
+    const completed = subTopics.filter(t => t.completed).length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const weakCount = subTopics.filter(t => t.mastery === 'weak').length;
+    const okayCount = subTopics.filter(t => t.mastery === 'okay').length;
+    const strongCount = subTopics.filter(t => t.mastery === 'strong').length;
+
+    return { total, completed, percentage, weakCount, okayCount, strongCount };
+  },
+
+  // ==========================================
+  // POMODORO FOCUS LOGS
+  // ==========================================
+  getPomodoroLogs(): PomodoroSession[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.POMODORO_LOGS);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('Error reading pomodoro logs:', e);
+    }
+    const today = new Date();
+    const defaultLogs: PomodoroSession[] = [
+      { id: 'pomo-1', subjectId: 'os', subjectName: 'Operating Systems', accentColor: '#3B82F6', minutes: 50, date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 3 },
+      { id: 'pomo-2', subjectId: 'dbms', subjectName: 'Database Systems', accentColor: '#F97316', minutes: 75, date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 2 },
+      { id: 'pomo-3', subjectId: 'cn', subjectName: 'Computer Networks', accentColor: '#10B981', minutes: 50, date: new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 1 },
+      { id: 'pomo-4', subjectId: 'dsa', subjectName: 'Data Structures & Algorithms', accentColor: '#06B6D4', minutes: 25, date: today.toISOString().split('T')[0], timestamp: Date.now() }
+    ];
+    this.savePomodoroLogs(defaultLogs);
+    return defaultLogs;
+  },
+
+  savePomodoroLogs(logs: PomodoroSession[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.POMODORO_LOGS, JSON.stringify(logs));
+    } catch (e) {
+      console.error('Error saving pomodoro logs:', e);
+    }
+  },
+
+  logPomodoroSession(subjectId: string, minutes: number): PomodoroSession[] {
+    const list = this.getPomodoroLogs();
+    const subjects = this.getSubjects();
+    const sub = subjects.find(s => s.id === subjectId);
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const newLog: PomodoroSession = {
+      id: `pomo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+      subjectId,
+      subjectName: sub?.name || subjectId,
+      accentColor: sub?.accentColor || '#10B981',
+      minutes,
+      date: todayStr,
+      timestamp: Date.now()
+    };
+
+    const updated = [newLog, ...list];
+    this.savePomodoroLogs(updated);
+    return updated;
+  },
+
+  getWeeklyPomodoroStats(): { day: string; date: string; minutes: number }[] {
+    const logs = this.getPomodoroLogs();
+    const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const result: { day: string; date: string; minutes: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = daysArr[d.getDay()];
+
+      const dayMinutes = logs
+        .filter(l => l.date === dateStr)
+        .reduce((sum, l) => sum + (Number(l.minutes) || 0), 0);
+
+      result.push({
+        day: dayName,
+        date: dateStr,
+        minutes: dayMinutes
+      });
+    }
+
+    return result;
+  },
+
+  // ==========================================
+  // FLASHCARDS WITH SPACED REPETITION
+  // ==========================================
+  getFlashcards(subjectId?: string): Flashcard[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.FLASHCARDS);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return subjectId ? parsed.filter(c => c.subjectId === subjectId) : parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading flashcards:', e);
+    }
+    this.saveFlashcards(DEFAULT_FLASHCARDS);
+    return subjectId ? DEFAULT_FLASHCARDS.filter(c => c.subjectId === subjectId) : DEFAULT_FLASHCARDS;
+  },
+
+  saveFlashcards(cards: Flashcard[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(cards));
+    } catch (e) {
+      console.error('Error saving flashcards:', e);
+    }
+  },
+
+  addFlashcard(card: Flashcard): Flashcard[] {
+    const list = this.getFlashcards();
+    const updated = [card, ...list];
+    this.saveFlashcards(updated);
+    return updated;
+  },
+
+  reviewFlashcard(cardId: string, rating: 'hard' | 'good' | 'easy'): Flashcard[] {
+    const list = this.getFlashcards();
+    const today = new Date();
+
+    const updated = list.map(c => {
+      if (c.id === cardId) {
+        let nextDays = 1;
+        let newStep: 0 | 1 | 2 | 3 = 1;
+
+        if (rating === 'hard') {
+          nextDays = 1;
+          newStep = 1;
+        } else if (rating === 'good') {
+          nextDays = 3;
+          newStep = 2;
+        } else if (rating === 'easy') {
+          nextDays = 7;
+          newStep = 3;
+        }
+
+        const nextDate = new Date(today.getTime() + nextDays * 86400000);
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+
+        return {
+          ...c,
+          intervalStep: newStep,
+          nextReviewDate: nextDateStr,
+          lastReviewedAt: Date.now()
+        };
+      }
+      return c;
+    });
+
+    this.saveFlashcards(updated);
+    return updated;
+  },
+
+  deleteFlashcard(cardId: string): Flashcard[] {
+    const list = this.getFlashcards();
+    const updated = list.filter(c => c.id !== cardId);
+    this.saveFlashcards(updated);
+    return updated;
+  },
+
+  getDueFlashcards(subjectId?: string): Flashcard[] {
+    const cards = this.getFlashcards(subjectId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    return cards.filter(c => !c.nextReviewDate || c.nextReviewDate <= todayStr);
+  },
+
+  // ==========================================
+  // PYQ FREQUENCY RANKER & HIGH-PRIORITY TOPICS
+  // ==========================================
+  getHighPriorityTopics(subjectId: string, topicsList?: SyllabusTopic[], questionsList?: PYQQuestion[]) {
+    const topics = topicsList || this.getTopics(subjectId);
+    const questions = questionsList || this.getQuestions().filter(q => q.subjectId === subjectId);
+
+    return topics.map(topic => {
+      const matchedQuestions = questions.filter(q => {
+        if (q.topicId && q.topicId === topic.id) return true;
+        if (q.topicTitle && q.topicTitle.toLowerCase() === topic.title.toLowerCase()) return true;
+        const topicWords = topic.title.toLowerCase().split(/[\s,()&]+/).filter(w => w.length > 3);
+        const qText = (q.question + ' ' + (q.unitTitle || '')).toLowerCase();
+        return topicWords.some(w => qText.includes(w));
+      });
+
+      const totalRepeatCount = matchedQuestions.reduce((sum, q) => sum + (q.repeatCount || 1), 0);
+      const allYears = Array.from(new Set(matchedQuestions.flatMap(q => q.yearsAsked || []))).sort((a, b) => b - a);
+      const isHighPriority = totalRepeatCount >= 3 || matchedQuestions.some(q => q.isHighProbability) || topic.mastery === 'weak';
+
+      return {
+        topicId: topic.id,
+        topicTitle: topic.title,
+        unitNumber: topic.unitNumber,
+        unitId: topic.unitId,
+        mastery: topic.mastery,
+        completed: topic.completed,
+        pyqCount: matchedQuestions.length,
+        totalRepeatCount: Math.max(totalRepeatCount, matchedQuestions.length),
+        yearsAsked: allYears,
+        isHighPriority,
+        questions: matchedQuestions
+      };
+    }).sort((a, b) => {
+      if (b.totalRepeatCount !== a.totalRepeatCount) {
+        return b.totalRepeatCount - a.totalRepeatCount;
+      }
+      if (a.mastery === 'weak' && b.mastery !== 'weak') return -1;
+      if (b.mastery === 'weak' && a.mastery !== 'weak') return 1;
+      return a.unitNumber - b.unitNumber;
+    });
+  },
+
+  // ==========================================
+  // SMART STUDY PLANNER (AUTO-REDISTRIBUTING)
+  // ==========================================
+  generateSmartStudyPlan(subjects: SubjectMeta[], allTopics: SyllabusTopic[], allQuestions: PYQQuestion[]): DayStudyPlan[] {
+    const now = Date.now();
+    const upcomingSubjects = subjects
+      .filter(s => s.examDate && new Date(s.examDate).getTime() > now)
+      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+
+    const targetSubjects = upcomingSubjects.length > 0 ? upcomingSubjects : subjects;
+    const nextExam = targetSubjects[0];
+    if (!nextExam) return [];
+
+    const examTime = new Date(nextExam.examDate).getTime();
+    const daysUntilExam = Math.max(1, Math.min(30, Math.ceil((examTime - now) / 86400000)));
+    const subjectRank = new Map(targetSubjects.map((s, idx) => [s.id, idx]));
+
+    const scoredTopics: PlannerDayTopic[] = allTopics
+      .filter(t => !t.completed)
+      .map(topic => {
+        const sub = subjects.find(s => s.id === topic.subjectId);
+        const subRank = subjectRank.get(topic.subjectId) ?? 99;
+
+        const pyqs = allQuestions.filter(q => 
+          q.subjectId === topic.subjectId && 
+          ((q.topicId && q.topicId === topic.id) || (q.topicTitle && q.topicTitle.toLowerCase() === topic.title.toLowerCase()))
+        );
+        const frequency = pyqs.length || topic.pyqCount || 0;
+
+        let masteryWeight = 40;
+        if (topic.mastery === 'weak') masteryWeight = 100;
+        if (topic.mastery === 'strong') masteryWeight = 10;
+
+        const priorityScore = masteryWeight + (frequency * 25) - (subRank * 60);
+
+        return {
+          topicId: topic.id,
+          subjectId: topic.subjectId,
+          subjectName: sub?.name || 'Subject',
+          accentColor: sub?.accentColor || '#10B981',
+          unitNumber: topic.unitNumber,
+          title: topic.title,
+          mastery: topic.mastery,
+          frequency,
+          completed: false,
+          estimatedMinutes: topic.mastery === 'weak' ? 45 : 30,
+          _score: priorityScore
+        };
+      })
+      .sort((a, b) => (b as any)._score - (a as any)._score);
+
+    const daysPlan: DayStudyPlan[] = [];
+    const topicsPerDay = Math.max(1, Math.ceil(scoredTopics.length / daysUntilExam));
+
+    for (let day = 0; day < daysUntilExam; day++) {
+      const planDate = new Date(now + day * 86400000);
+      const dateStr = planDate.toISOString().split('T')[0];
+      const isToday = day === 0;
+
+      let label = `Day ${day + 1}`;
+      if (day === 0) label = 'Today (Day 1)';
+      else if (day === 1) label = 'Tomorrow (Day 2)';
+      else if (day === daysUntilExam - 1) label = `Exam Eve (Day ${day + 1})`;
+
+      const startIdx = day * topicsPerDay;
+      const dayTopics = scoredTopics.slice(startIdx, startIdx + topicsPerDay);
+
+      daysPlan.push({
+        date: dateStr,
+        dayNumber: day + 1,
+        label,
+        isToday,
+        isPast: false,
+        topics: dayTopics
+      });
+    }
+
+    return daysPlan;
+  },
+
+  // ==========================================
+  // DATA SAVING: EXPORT & IMPORT BACKUP (JSON)
+  // ==========================================
+  exportBackup(): void {
+    const backup: FullBackupData = {
+      version: '3.1.0',
+      exportedAt: new Date().toISOString(),
+      subjects: this.getSubjects(),
+      topics: this.getTopics(),
+      questions: this.getQuestions(),
+      tasks: this.getTasks(),
+      videos: this.getVideos(),
+      pdfs: this.getPdfs(),
+      pomodoroLogs: this.getPomodoroLogs(),
+      flashcards: this.getFlashcards()
+    };
+
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pyqranker_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  importBackup(jsonString: string): { success: boolean; message: string } {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data || typeof data !== 'object') {
+        return { success: false, message: 'Invalid backup JSON file structure.' };
+      }
+
+      if (Array.isArray(data.subjects) && data.subjects.length > 0) {
+        this.saveSubjects(data.subjects);
+      }
+      if (Array.isArray(data.topics)) {
+        this.saveTopics(data.topics);
+      }
+      if (Array.isArray(data.questions)) {
+        this.saveQuestions(data.questions);
+      }
+      if (Array.isArray(data.tasks)) {
+        this.saveTasks(data.tasks);
+      }
+      if (Array.isArray(data.videos)) {
+        this.saveVideos(data.videos);
+      }
+      if (Array.isArray(data.pdfs)) {
+        this.savePdfs(data.pdfs);
+      }
+      if (Array.isArray(data.pomodoroLogs)) {
+        this.savePomodoroLogs(data.pomodoroLogs);
+      }
+      if (Array.isArray(data.flashcards)) {
+        this.saveFlashcards(data.flashcards);
+      }
+
+      return { success: true, message: 'All study data, syllabus topics, and countdowns imported successfully!' };
+    } catch (e: any) {
+      return { success: false, message: `Import error: ${e.message || 'Corrupted JSON file'}` };
+    }
+  },
+
   // RESET TO DEFAULT DEMO DATA
   resetToDefaultData(): {
     subjects: SubjectMeta[];
@@ -829,6 +1401,8 @@ export const storageService = {
     this.saveTasks(DEFAULT_TASKS);
     this.saveVideos(DEFAULT_VIDEOS);
     this.savePdfs(DEFAULT_PDFS);
+    this.saveTopics(DEFAULT_TOPICS);
+    this.saveFlashcards(DEFAULT_FLASHCARDS);
 
     return {
       subjects: DEFAULT_SUBJECTS,

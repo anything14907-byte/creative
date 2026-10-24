@@ -4,10 +4,21 @@ import { getExamUrgencyColor, sortSubjectsByExamUrgency } from '../utils/storage
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Sparkles, Clock, Sun, Moon, Plus, Download, RotateCcw, 
-  Layers, BookOpen, ChevronDown 
+  Layers, BookOpen, ChevronDown, Flame, Calendar, Timer, 
+  Brain, Video, FileText, Database, ShieldCheck 
 } from 'lucide-react';
 
-export type MainNavView = 'overview' | 'workspace';
+export type MainNavView = 
+  | 'today' 
+  | 'syllabus' 
+  | 'pyqs' 
+  | 'planner' 
+  | 'timer' 
+  | 'flashcards' 
+  | 'vault' 
+  | 'pdf' 
+  | 'overview' 
+  | 'workspace';
 
 interface NavbarProps {
   currentView: MainNavView;
@@ -17,6 +28,7 @@ interface NavbarProps {
   onSelectSubject?: (id: string) => void;
   onOpenAddSubject: () => void;
   onOpenExtensionModal: () => void;
+  onOpenBackup: () => void;
   onResetData: () => void;
 }
 
@@ -28,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectSubject,
   onOpenAddSubject,
   onOpenExtensionModal,
+  onOpenBackup,
   onResetData
 }) => {
   const { theme, toggleTheme } = useTheme();
@@ -60,15 +73,28 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
 
+  const navItems: { id: MainNavView; label: string; icon: React.ReactNode }[] = [
+    { id: 'today', label: 'Today', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'syllabus', label: 'Syllabus', icon: <BookOpen className="w-4 h-4" /> },
+    { id: 'pyqs', label: 'PYQ Ranker', icon: <Flame className="w-4 h-4" /> },
+    { id: 'planner', label: 'Planner', icon: <Calendar className="w-4 h-4" /> },
+    { id: 'timer', label: 'Timer', icon: <Timer className="w-4 h-4" /> },
+    { id: 'flashcards', label: 'Flashcards', icon: <Brain className="w-4 h-4" /> },
+    { id: 'vault', label: 'Vault', icon: <Video className="w-4 h-4" /> },
+    { id: 'pdf', label: 'PDF Notes', icon: <FileText className="w-4 h-4" /> },
+    { id: 'overview', label: 'All Subjects', icon: <Layers className="w-4 h-4" /> },
+  ];
+
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         
         {/* Brand Logo & Ticker */}
-        <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <div 
-            onClick={() => onSelectView('overview')}
+            onClick={() => onSelectView('today')}
             className="flex items-center gap-2.5 cursor-pointer select-none group"
+            title="Go to Today Screen"
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-sm group-hover:scale-105 transition-transform">
               <div className="w-full h-full bg-paper-card dark:bg-night-bg rounded-[10px] flex items-center justify-center">
@@ -79,72 +105,55 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="text-base font-extrabold text-paper-ink dark:text-night-text tracking-tight flex items-center gap-1.5">
                 Pyq<span className="text-emerald-600 dark:text-emerald-400">Ranker</span>
               </div>
-              <div className="text-[11px] text-paper-muted dark:text-night-muted font-medium hidden sm:block">
+              <div className="text-[10px] text-paper-muted dark:text-night-muted font-medium hidden sm:block">
                 Exam Command Center
               </div>
             </div>
           </div>
-
-          {/* Next Exam Mini Ticker in Navbar with Dynamic Color */}
-          {nearestCountdown && (
-            <div 
-              onClick={() => onSelectView('overview')}
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer text-xs transition-colors shadow-sm"
-            >
-              <Clock className="w-3.5 h-3.5 animate-pulse" style={{ color: nearestCountdown.urgency.hslColor }} />
-              <span className="text-paper-muted dark:text-night-muted font-medium">Next Exam:</span>
-              <strong className="text-paper-ink dark:text-night-text font-bold">
-                {nearestCountdown.subject.name}
-              </strong>
-              <span 
-                className="font-mono font-bold px-2 py-0.5 rounded-md text-[11px]"
-                style={{ 
-                  color: nearestCountdown.urgency.hslColor,
-                  backgroundColor: `${nearestCountdown.urgency.hslColor}18`
-                }}
-              >
-                {nearestCountdown.urgency.days}d {nearestCountdown.urgency.hours}h {nearestCountdown.urgency.minutes}m
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* Center: Simplified Navigation with Sorted Subject Switcher */}
-        <nav className="flex items-center gap-2 relative">
-          <button
-            onClick={() => onSelectView('overview')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
-              currentView === 'overview'
-                ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
-                : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>All Subjects</span>
-          </button>
-
-          {/* Subject Switcher Button with Dropdown Popover */}
-          {activeSubject && (
-            <div className="relative">
+        {/* Center: Desktop Navigation Tabs */}
+        <nav className="hidden md:flex items-center gap-1 overflow-x-auto max-w-2xl py-1">
+          {navItems.map(item => {
+            const isActive = currentView === item.id;
+            return (
               <button
-                onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
-                  currentView === 'workspace'
+                key={item.id}
+                onClick={() => onSelectView(item.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all ${
+                  isActive
                     ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
                     : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
                 }`}
               >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+
+          {/* Subject Switcher Button with Dropdown Popover */}
+          {activeSubject && (
+            <div className="relative ml-1 shrink-0">
+              <button
+                onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
+                  currentView === 'workspace'
+                    ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
+                    : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated border border-paper-border dark:border-night-border'
+                }`}
+              >
                 <span 
-                  className="w-2.5 h-2.5 rounded-full shrink-0" 
+                  className="w-2 h-2 rounded-full shrink-0" 
                   style={{ backgroundColor: activeSubject.accentColor }} 
                 />
-                <span className="max-w-[130px] sm:max-w-[180px] truncate">{activeSubject.name}</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+                <span className="max-w-[100px] truncate">{activeSubject.name}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Dropdown Menu listing subjects sorted chronologically by time remaining */}
               {isSwitcherOpen && (
-                <div className="absolute left-0 mt-2 w-72 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-2 z-50 animate-fade-slide-up space-y-1">
+                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-2 z-50 animate-fade-slide-up space-y-1">
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted border-b border-paper-border dark:border-night-border flex items-center justify-between">
                     <span>Priority Ranked Subjects</span>
                     <span>{sortedSubjects.length} Total</span>
@@ -202,23 +211,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </nav>
 
-        {/* Right Actions: + Add Subject, Extension, Reset, Theme Toggle */}
+        {/* Right Actions: + Add Subject, Backup, Theme Toggle */}
         <div className="flex items-center gap-2 shrink-0">
           
           <button
             onClick={onOpenAddSubject}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg dark:hover:bg-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-sm btn-tactile btn-shimmer"
+            className="hidden sm:flex px-3.5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg dark:hover:bg-emerald-400 text-xs font-bold items-center gap-1.5 shadow-sm btn-tactile btn-shimmer"
           >
             <Plus className="w-4 h-4" />
             <span>+ Add Subject</span>
           </button>
 
+          {/* Backup & Restore (JSON) */}
           <button
-            onClick={onOpenExtensionModal}
-            className="hidden sm:flex px-3 py-2 rounded-xl text-xs font-semibold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors items-center gap-1.5 btn-tactile"
+            onClick={onOpenBackup}
+            className="p-2 rounded-xl border border-paper-border dark:border-night-border text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile flex items-center gap-1.5"
+            title="Export / Import Backup (JSON)"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Browser Extension</span>
+            <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-bold hidden lg:inline">Backup</span>
           </button>
 
           <button

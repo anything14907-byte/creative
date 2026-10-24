@@ -2,16 +2,21 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300F0FF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2'/></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#06090E" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>PyqRanker — Personal College Exam Command Center & PYQ Study Hub</title>
-    <meta name="description" content="Futuristic exam command center with live ticking exam countdowns, custom subject creator, YouTube lecture vault, PDF note extractor, and deep concept explainer." />
+    <meta name="description" content="Futuristic exam command center with live ticking exam countdowns, syllabus tracker, PYQ frequency ranker, smart study planner, Pomodoro focus timer, flashcards, and YouTube vault." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#EEF4FF] dark:bg-[#0A0F24] text-[#0A0F24] dark:text-[#F3F6FA] min-h-screen antialiased selection:bg-[#00F0FF] selection:text-black transition-colors duration-200">
+  <body class="bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text min-h-screen antialiased selection:bg-[#00E599] selection:text-black transition-colors duration-200">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
