@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { storageService } from '../utils/storageService';
+import React, { useRef, useState, useEffect } from 'react';
+import { indexedDbService } from '../utils/indexedDbService';
 import { 
   Download, 
   Upload, 
@@ -7,9 +7,8 @@ import {
   ShieldCheck, 
   Database, 
   AlertTriangle,
-  RotateCcw,
-  CheckCircle2,
-  FileText
+  FileText,
+  CheckCircle2
 } from 'lucide-react';
 
 interface BackupModalProps {
@@ -26,41 +25,64 @@ export const BackupModal: React.FC<BackupModalProps> = ({
   onShowToast
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [storageInfo, setStorageInfo] = useState<{ totalBytes: number; formatted: string; fileCount: number }>({
+    totalBytes: 0,
+    formatted: 'Calculating...',
+    fileCount: 0
+  });
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      indexedDbService.getStorageUsage().then(setStorageInfo);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const subjects = storageService.getSubjects();
-  const topics = storageService.getTopics();
-  const questions = storageService.getQuestions();
-  const tasks = storageService.getTasks();
-  const flashcards = storageService.getFlashcards();
-  const videos = storageService.getVideos();
-  const pomodoro = storageService.getPomodoroLogs();
-
-  const handleExport = () => {
-    storageService.exportBackup();
-    onShowToast('Backup JSON exported successfully! 📦', 'success');
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await indexedDbService.exportCompleteBackup();
+      onShowToast('Single-file backup exported successfully! 📦', 'success');
+    } catch (err: any) {
+      onShowToast(`Export failed: ${err.message}`, 'error');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setIsImporting(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
-      if (!content) return;
+      if (!content) {
+        setIsImporting(false);
+        return;
+      }
 
-      const result = storageService.importBackup(content);
-      if (result.success) {
-        onDataReloaded();
-        onShowToast(result.message, 'success');
-        onClose();
-      } else {
-        onShowToast(result.message, 'error');
+      try {
+        const result = await indexedDbService.importCompleteBackup(content);
+        if (result.success) {
+          onDataReloaded();
+          onShowToast(result.message, 'success');
+          onClose();
+        } else {
+          onShowToast(result.message, 'error');
+        }
+      } catch (err: any) {
+        onShowToast(`Import failed: ${err.message}`, 'error');
+      } finally {
+        setIsImporting(false);
       }
     };
     reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -68,103 +90,89 @@ export const BackupModal: React.FC<BackupModalProps> = ({
       <div className="w-full max-w-lg p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative space-y-5">
         
         {/* Header */}
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-            <ShieldCheck className="w-5 h-5" />
+        <div className="flex items-center justify-between pb-3 border-b border-paper-border dark:border-night-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-paper-ink dark:text-night-text">
+                IndexedDB Storage & Backup
+              </h3>
+              <p className="text-xs text-paper-muted dark:text-night-muted">
+                Offline browser storage for all subjects, PDFs, photos & notes
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-paper-ink dark:text-night-text">
-              Data Backup & Restore (JSON)
-            </h3>
-            <p className="text-xs text-paper-muted dark:text-night-muted">
-              Never lose your college subjects, exam countdowns, or flashcards.
-            </p>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Current Storage Stats */}
-        <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-2">
-          <div className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Currently Saved in Your Browser:</span>
+        {/* Storage Stats Box */}
+        <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-paper-muted dark:text-night-muted uppercase tracking-wider">
+              Storage Usage
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              {storageInfo.formatted} Used
+            </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono pt-1">
-            <div className="p-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
-              <div className="font-bold text-emerald-600 dark:text-emerald-400">{subjects.length}</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Subjects</div>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="p-2.5 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
+              <div className="text-paper-muted dark:text-night-muted">Stored Files</div>
+              <div className="text-base font-extrabold text-paper-ink dark:text-night-text mt-0.5">
+                {storageInfo.fileCount} Files
+              </div>
             </div>
-
-            <div className="p-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
-              <div className="font-bold text-cyan-600 dark:text-cyan-400">{topics.length}</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Topics</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
-              <div className="font-bold text-amber-600 dark:text-amber-400">{questions.length}</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">PYQs</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
-              <div className="font-bold text-rose-600 dark:text-rose-400">{flashcards.length}</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Cards</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
-              <div className="font-bold text-emerald-600 dark:text-emerald-400">{pomodoro.length}</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Sessions</div>
-            </div>
-
-            <div className="p-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
-              <div className="font-bold text-cyan-600 dark:text-cyan-400">{videos.length}</div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted">Videos</div>
+            <div className="p-2.5 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border">
+              <div className="text-paper-muted dark:text-night-muted">Storage Engine</div>
+              <div className="text-base font-extrabold text-emerald-500 mt-0.5">
+                IndexedDB
+              </div>
             </div>
           </div>
+
+          <p className="text-[11px] text-paper-muted dark:text-night-muted leading-relaxed">
+            Data survives page refreshes and browser restarts. Use the buttons below to export a single file backup to keep on your computer or phone.
+          </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          {/* Export JSON Button */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          
+          {/* Export Button */}
           <button
             onClick={handleExport}
-            className="p-4 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 flex flex-col items-center justify-center gap-1.5 btn-tactile shadow-sm text-center"
+            disabled={isExporting}
+            className="p-3.5 rounded-2xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg dark:hover:bg-emerald-400 font-bold text-xs flex items-center justify-center gap-2 shadow-sm btn-tactile"
           >
-            <Download className="w-5 h-5" />
-            <span className="text-xs font-bold">Export Backup (JSON)</span>
-            <span className="text-[10px] opacity-80">Downloads your full dataset file</span>
+            <Download className="w-4 h-4" />
+            <span>{isExporting ? 'Exporting...' : 'Export Backup (JSON)'}</span>
           </button>
 
-          {/* Import JSON Button */}
+          {/* Import Button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="p-4 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated hover:border-emerald-500 text-paper-ink dark:text-night-text flex flex-col items-center justify-center gap-1.5 btn-tactile shadow-xs text-center"
+            disabled={isImporting}
+            className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated hover:bg-paper-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text font-bold text-xs flex items-center justify-center gap-2 transition-colors btn-tactile"
           >
-            <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-bold">Import Backup (JSON)</span>
-            <span className="text-[10px] text-paper-muted dark:text-night-muted">Restores data from a backup file</span>
+            <Upload className="w-4 h-4 text-cyan-500" />
+            <span>{isImporting ? 'Restoring Data...' : 'Import Backup (JSON)'}</span>
           </button>
 
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileSelect} 
-            accept=".json,application/json" 
-            className="hidden" 
-          />
-        </div>
-
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-paper-muted dark:text-night-muted flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <span>
-            Everything is automatically preserved in your browser's <code>localStorage</code>. Use Export JSON if you plan to switch laptops or clear browser cache!
-          </span>
         </div>
 
       </div>

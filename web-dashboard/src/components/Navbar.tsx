@@ -3,22 +3,17 @@ import { SubjectMeta } from '../types';
 import { getExamUrgencyColor, sortSubjectsByExamUrgency } from '../utils/storageService';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
-  Sparkles, Clock, Sun, Moon, Plus, Download, RotateCcw, 
-  Layers, BookOpen, ChevronDown, Flame, Calendar, Timer, 
-  Brain, Video, FileText, Database, ShieldCheck 
+  Sparkles, 
+  Sun, 
+  Moon, 
+  Database, 
+  ChevronDown, 
+  BookOpen, 
+  Layers,
+  ArrowLeft
 } from 'lucide-react';
 
-export type MainNavView = 
-  | 'today' 
-  | 'syllabus' 
-  | 'pyqs' 
-  | 'planner' 
-  | 'timer' 
-  | 'flashcards' 
-  | 'vault' 
-  | 'pdf' 
-  | 'overview' 
-  | 'workspace';
+export type MainNavView = 'dashboard' | 'subject';
 
 interface NavbarProps {
   currentView: MainNavView;
@@ -26,10 +21,7 @@ interface NavbarProps {
   subjects: SubjectMeta[];
   activeSubjectId: string;
   onSelectSubject?: (id: string) => void;
-  onOpenAddSubject: () => void;
-  onOpenExtensionModal: () => void;
   onOpenBackup: () => void;
-  onResetData: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,29 +30,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   subjects,
   activeSubjectId,
   onSelectSubject,
-  onOpenAddSubject,
-  onOpenExtensionModal,
-  onOpenBackup,
-  onResetData
+  onOpenBackup
 }) => {
   const { theme, toggleTheme } = useTheme();
-
-  // Find the nearest upcoming exam for the navbar ticker
-  const nearestCountdown = React.useMemo(() => {
-    let nearest: { subject: SubjectMeta; urgency: ReturnType<typeof getExamUrgencyColor> } | null = null;
-    let minDiff = Infinity;
-
-    for (const sub of subjects) {
-      const u = getExamUrgencyColor(sub.examDate);
-      if (u.fractionalDays > 0 && u.fractionalDays < minDiff) {
-        minDiff = u.fractionalDays;
-        nearest = { subject: sub, urgency: u };
-      }
-    }
-    return nearest;
-  }, [subjects]);
-
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+
   const sortedSubjects = React.useMemo(() => sortSubjectsByExamUrgency(subjects), [subjects]);
   const activeSubject = subjects.find(s => s.id === activeSubjectId) || subjects[0];
 
@@ -68,33 +42,19 @@ export const Navbar: React.FC<NavbarProps> = ({
     setIsSwitcherOpen(false);
     if (onSelectSubject) {
       onSelectSubject(id);
-    } else {
-      onSelectView('workspace');
     }
   };
-
-  const navItems: { id: MainNavView; label: string; icon: React.ReactNode }[] = [
-    { id: 'today', label: 'Today', icon: <Sparkles className="w-4 h-4" /> },
-    { id: 'syllabus', label: 'Syllabus', icon: <BookOpen className="w-4 h-4" /> },
-    { id: 'pyqs', label: 'PYQ Ranker', icon: <Flame className="w-4 h-4" /> },
-    { id: 'planner', label: 'Planner', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'timer', label: 'Timer', icon: <Timer className="w-4 h-4" /> },
-    { id: 'flashcards', label: 'Flashcards', icon: <Brain className="w-4 h-4" /> },
-    { id: 'vault', label: 'Vault', icon: <Video className="w-4 h-4" /> },
-    { id: 'pdf', label: 'PDF Notes', icon: <FileText className="w-4 h-4" /> },
-    { id: 'overview', label: 'All Subjects', icon: <Layers className="w-4 h-4" /> },
-  ];
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         
-        {/* Brand Logo & Ticker */}
+        {/* Brand Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <div 
-            onClick={() => onSelectView('today')}
+            onClick={() => onSelectView('dashboard')}
             className="flex items-center gap-2.5 cursor-pointer select-none group"
-            title="Go to Today Screen"
+            title="Go to Subjects Dashboard"
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-sm group-hover:scale-105 transition-transform">
               <div className="w-full h-full bg-paper-card dark:bg-night-bg rounded-[10px] flex items-center justify-center">
@@ -106,90 +66,69 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Pyq<span className="text-emerald-600 dark:text-emerald-400">Ranker</span>
               </div>
               <div className="text-[10px] text-paper-muted dark:text-night-muted font-medium hidden sm:block">
-                Exam Command Center
+                College Exam Study Hub
               </div>
             </div>
           </div>
         </div>
 
-        {/* Center: Desktop Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1 overflow-x-auto max-w-2xl py-1">
-          {navItems.map(item => {
-            const isActive = currentView === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelectView(item.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
-                    : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+        {/* Center: Navigation Links & Subject Quick Switcher */}
+        <nav className="flex items-center gap-2 overflow-x-auto py-1">
+          <button
+            onClick={() => onSelectView('dashboard')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all ${
+              currentView === 'dashboard'
+                ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
+                : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated border border-transparent'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Dashboard</span>
+          </button>
 
           {/* Subject Switcher Button with Dropdown Popover */}
-          {activeSubject && (
-            <div className="relative ml-1 shrink-0">
+          {activeSubject && currentView === 'subject' && (
+            <div className="relative shrink-0">
               <button
                 onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile ${
-                  currentView === 'workspace'
-                    ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
-                    : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated border border-paper-border dark:border-night-border'
-                }`}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 btn-tactile bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
               >
                 <span 
-                  className="w-2 h-2 rounded-full shrink-0" 
+                  className="w-2.5 h-2.5 rounded-full shrink-0" 
                   style={{ backgroundColor: activeSubject.accentColor }} 
                 />
-                <span className="max-w-[100px] truncate">{activeSubject.name}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+                <span className="max-w-[120px] truncate">{activeSubject.name}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isSwitcherOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Dropdown Menu listing subjects sorted chronologically by time remaining */}
+              {/* Dropdown Menu */}
               {isSwitcherOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-2 z-50 animate-fade-slide-up space-y-1">
+                <div className="absolute left-0 sm:right-0 mt-2 w-72 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl p-2 z-50 animate-fade-slide-up space-y-1">
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted border-b border-paper-border dark:border-night-border flex items-center justify-between">
-                    <span>Priority Ranked Subjects</span>
+                    <span>Switch Subject</span>
                     <span>{sortedSubjects.length} Total</span>
                   </div>
 
-                  <div className="max-h-64 overflow-y-auto space-y-1 pt-1">
-                    {sortedSubjects.map((sub, idx) => {
+                  <div className="max-h-64 overflow-y-auto space-y-1 py-1">
+                    {sortedSubjects.map(sub => {
                       const u = getExamUrgencyColor(sub.examDate);
-                      const isCurrent = sub.id === activeSubjectId;
-                      let badge = `Priority #${idx + 1}`;
-                      if (u.fractionalDays <= 0) badge = 'Completed';
-                      else if (idx === 0) badge = '🚨 #1 Closest';
-
+                      const isSelected = sub.id === activeSubject.id;
                       return (
                         <div
                           key={sub.id}
                           onClick={() => handleSelectFromSwitcher(sub.id)}
-                          className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between gap-2 btn-tactile ${
-                            isCurrent 
-                              ? 'bg-emerald-500/15 border border-emerald-500/30' 
-                              : 'hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
+                          className={`p-2.5 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold'
+                              : 'hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated text-paper-ink dark:text-night-text'
                           }`}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2 overflow-hidden">
                             <span 
-                              className="w-2.5 h-2.5 rounded-full shrink-0" 
+                              className="w-2 h-2 rounded-full shrink-0" 
                               style={{ backgroundColor: sub.accentColor }} 
                             />
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-paper-ink dark:text-night-text truncate">
-                                {sub.name}
-                              </div>
-                              <div className="text-[10px] text-paper-muted dark:text-night-muted">
-                                {badge} • {sub.units.length} Units
-                              </div>
-                            </div>
+                            <span className="text-xs truncate">{sub.name}</span>
                           </div>
 
                           <span 
@@ -199,7 +138,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               backgroundColor: `${u.hslColor}16`
                             }}
                           >
-                            {u.days}d {u.hours}h
+                            {u.days}d left
                           </span>
                         </div>
                       );
@@ -211,33 +150,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </nav>
 
-        {/* Right Actions: + Add Subject, Backup, Theme Toggle */}
+        {/* Right Actions: Backup (JSON) & Theme Toggle (NO + Add Subject here!) */}
         <div className="flex items-center gap-2 shrink-0">
           
-          <button
-            onClick={onOpenAddSubject}
-            className="hidden sm:flex px-3.5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg dark:hover:bg-emerald-400 text-xs font-bold items-center gap-1.5 shadow-sm btn-tactile btn-shimmer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Add Subject</span>
-          </button>
-
-          {/* Backup & Restore (JSON) */}
+          {/* Backup Button */}
           <button
             onClick={onOpenBackup}
             className="p-2 rounded-xl border border-paper-border dark:border-night-border text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile flex items-center gap-1.5"
-            title="Export / Import Backup (JSON)"
+            title="Backup & Restore (JSON)"
           >
             <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="text-xs font-bold hidden lg:inline">Backup</span>
-          </button>
-
-          <button
-            onClick={onResetData}
-            className="p-2 rounded-xl text-paper-muted hover:text-amber-600 dark:text-night-muted dark:hover:text-amber-400 hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile"
-            title="Reset to default study data"
-          >
-            <RotateCcw className="w-4 h-4" />
+            <span className="text-xs font-bold hidden sm:inline">Backup</span>
           </button>
 
           {/* Eye-Comfort Day / Night Mode Toggle */}

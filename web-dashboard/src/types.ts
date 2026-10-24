@@ -219,3 +219,39 @@ export interface FullBackupData {
   pomodoroLogs: PomodoroSession[];
   flashcards: Flashcard[];
 }
+
+export type FileCategory = 'pyq' | 'notes' | 'images';
+
+export interface SubjectFile {
+  id: string;
+  subjectId: string;
+  name: string; // Title / filename
+  category: FileCategory; // 'pyq' | 'notes' | 'images'
+  fileType: 'pdf' | 'image' | string;
+  dataUrl: string; // Base64 data URL for instant offline preview & rendering
+  size: number; // Bytes
+  year?: string; // For PYQ Papers: e.g. "2024", "2023"
+  examType?: string; // For PYQ Papers: e.g. "End Sem", "Mid Sem", "Internal 1"
+  date?: string; // For Teacher Notes: optional date string
+  isImportant: boolean; // Star ⭐ (pinned to top)
+  isDone: boolean; // Tick as completed / studied ✅
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface SubjectNote {
+  subjectId: string;
+  content: string;
+  lastUpdated: number;
+}
+
+export interface HubBackupData {
+  version: string;
+  exportedAt: string;
+  subjects: SubjectMeta[];
+  files: SubjectFile[];
+  notes: SubjectNote[];
+  videos: VideoResource[];
+  storageBytes?: number;
+}
+

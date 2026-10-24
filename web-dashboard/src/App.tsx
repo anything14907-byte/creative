@@ -1,57 +1,41 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   SubjectMeta, 
-  PYQQuestion, 
-  StudyTask, 
-  VideoResource, 
-  PdfResource, 
-  SyllabusTopic, 
-  TopicMastery, 
-  Flashcard, 
-  PomodoroSession 
+  SubjectFile, 
+  FileCategory, 
+  VideoResource 
 } from './types';
-import { storageService } from './utils/storageService';
+import { indexedDbService } from './utils/indexedDbService';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Navbar, MainNavView } from './components/Navbar';
-import { TodayScreen } from './components/TodayScreen';
-import { SyllabusTrackerView } from './components/SyllabusTrackerView';
-import { PyqRankerView } from './components/PyqRankerView';
-import { SmartStudyPlannerView } from './components/SmartStudyPlannerView';
-import { FocusTimerView } from './components/FocusTimerView';
-import { FlashcardsView } from './components/FlashcardsView';
-import { YouTubeVaultView } from './components/YouTubeVaultView';
-import { PdfNotesView } from './components/PdfNotesView';
-import { CommandCenterOverview } from './components/CommandCenterOverview';
-import { SubjectWorkspace } from './components/SubjectWorkspace';
+import { DashboardView } from './components/DashboardView';
+import { SubjectDetailView } from './components/SubjectDetailView';
 import { AddSubjectModal } from './components/AddSubjectModal';
-import { ExtensionInstallerModal } from './components/ExtensionInstallerModal';
 import { BackupModal } from './components/BackupModal';
-import { MobileBottomNav } from './components/MobileBottomNav';
 import { Toast, ToastMessage } from './components/Toast';
+import { Loader2 } from 'lucide-react';
 
 function DashboardContent() {
-  // 1. Core State loaded from Persistent Storage (Guaranteed Zero Data Loss)
-  const [subjects, setSubjects] = useState<SubjectMeta[]>(() => storageService.getSubjects());
-  const [questions, setQuestions] = useState<PYQQuestion[]>(() => storageService.getQuestions());
-  const [tasks, setTasks] = useState<StudyTask[]>(() => storageService.getTasks());
-  const [videos, setVideos] = useState<VideoResource[]>(() => storageService.getVideos());
-  const [pdfs, setPdfs] = useState<PdfResource[]>(() => storageService.getPdfs());
-  const [topics, setTopics] = useState<SyllabusTopic[]>(() => storageService.getTopics());
-  const [flashcards, setFlashcards] = useState<Flashcard[]>(() => storageService.getFlashcards());
-  const [pomodoroLogs, setPomodoroLogs] = useState<PomodoroSession[]>(() => storageService.getPomodoroLogs());
-
-  // Active navigation view: default to 'today' as requested in Upgrade 1
-  const [currentView, setCurrentView] = useState<MainNavView>('today');
-
-  // Currently focused subject & unit
-  const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
-    return localStorage.getItem('exam_hub_v3_active_subject') || subjects[0]?.id || 'os';
+  const [subjects, setSubjects] = useState<SubjectMeta[]>([]);
+  const [files, setFiles] = useState<SubjectFile[]>([]);
+  const [videos, setVideos] = useState<VideoResource[]>([]);
+  const [notesMap, setNotesMap] = useState<Record<string, string>>({});
+  const [storageUsage, setStorageUsage] = useState<{ totalBytes: number; formatted: string; fileCount: number }>({
+    totalBytes: 0,
+    formatted: '0 KB',
+    fileCount: 0
   });
-  const [activeUnitId, setActiveUnitId] = useState<string>('all');
 
-  // Modal states
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Active view: 'dashboard' (cards overview) | 'subject' (inside specific subject)
+  const [currentView, setCurrentView] = useState<MainNavView>('dashboard');
+
+  // Currently focused subject
+  const [activeSubjectId, setActiveSubjectId] = useState<string>('');
+
+  // Modals
   const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
-  const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
 
   // Toast feedback
@@ -78,280 +62,198 @@ function DashboardContent() {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  // Find active subject object
-  const activeSubject = subjects.find(s => s.id === activeSubjectId) || subjects[0];
+  // Load all data from IndexedDB
+  const refreshAllData = useCallback(async () => {
+    try {
+      const loadedSubjects = await indexedDbService.getSubjects();
+      const loadedFiles = await indexedDbService.getFiles();
+      const loadedVideos = await indexedDbService.getVideos();
+      const usage = await indexedDbService.getStorageUsage();
 
-  // Calculate due flashcards count for mobile badge
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const dueFlashcardsCount = useMemo(() => {
-    return flashcards.filter(c => !c.nextReviewDate || c.nextReviewDate <= todayDateStr).length;
-  }, [flashcards, todayDateStr]);
+      setSubjects(loadedSubjects);
+      setFiles(loadedFiles);
+      setVideos(loadedVideos);
+      setStorageUsage(usage);
+
+      // Load notes for each subject
+      const notes: Record<string, string> = {};
+      for (const s of loadedSubjects) {
+        notes[s.id] = await indexedDbService.getNotes(s.id);
+      }
+      setNotesMap(notes);
+
+      if (loadedSubjects.length > 0 && !activeSubjectId) {
+        setActiveSubjectId(loadedSubjects[0].id);
+      }
+    } catch (err) {
+      console.error('Error loading data from IndexedDB:', err);
+      showToast('Error loading study data from IndexedDB', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeSubjectId, showToast]);
+
+  useEffect(() => {
+    refreshAllData();
+  }, [refreshAllData]);
+
+  // Find active subject
+  const activeSubject = useMemo(() => {
+    return subjects.find(s => s.id === activeSubjectId) || subjects[0];
+  }, [subjects, activeSubjectId]);
 
   // ==========================================
-  // SUBJECT HANDLERS
+  // NAVIGATION HANDLERS
   // ==========================================
-  const handleSelectSubject = (id: string, unitId?: string) => {
+  const handleSelectSubject = (id: string) => {
     setActiveSubjectId(id);
-    setActiveUnitId(unitId || 'all');
-    localStorage.setItem('exam_hub_v3_active_subject', id);
-  };
-
-  const handleSelectSubjectAndOpenWorkspace = (id: string, unitId?: string) => {
-    handleSelectSubject(id, unitId);
-    setCurrentView('workspace');
+    setCurrentView('subject');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleAddSubject = (newSubject: SubjectMeta) => {
-    const updated = storageService.addSubject(newSubject);
-    setSubjects(updated);
+  const handleBackToDashboard = () => {
+    setCurrentView('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ==========================================
+  // SUBJECT CRUD
+  // ==========================================
+  const handleAddSubject = async (newSubject: SubjectMeta) => {
+    await indexedDbService.saveSubject(newSubject);
+    setSubjects(prev => [...prev, newSubject]);
     setActiveSubjectId(newSubject.id);
-    setActiveUnitId('all');
-    localStorage.setItem('exam_hub_v3_active_subject', newSubject.id);
-    setTopics(storageService.getTopics());
-    setCurrentView('syllabus');
-    showToast(`Created new subject "${newSubject.name}"! 🚀`, 'success');
+    setIsAddSubjectOpen(false);
+    showToast(`Created "${newSubject.name}"! 🚀`, 'success');
   };
 
-  const handleUpdateSubject = (updatedSubject: SubjectMeta) => {
-    const updated = storageService.updateSubject(updatedSubject);
-    setSubjects(updated);
-    showToast(`Updated ${updatedSubject.name}!`, 'success');
+  const handleUpdateSubject = async (updatedSubject: SubjectMeta) => {
+    await indexedDbService.saveSubject(updatedSubject);
+    setSubjects(prev => prev.map(s => s.id === updatedSubject.id ? updatedSubject : s));
+    showToast(`Updated "${updatedSubject.name}"!`, 'success');
   };
 
-  const handleDeleteSubject = (id: string) => {
-    const updated = storageService.deleteSubject(id);
-    setSubjects(updated);
-    setQuestions(storageService.getQuestions());
-    setTasks(storageService.getTasks());
-    setVideos(storageService.getVideos());
-    setPdfs(storageService.getPdfs());
-    setTopics(storageService.getTopics());
-    setFlashcards(storageService.getFlashcards());
-    if (activeSubjectId === id && updated.length > 0) {
-      setActiveSubjectId(updated[0].id);
-      localStorage.setItem('exam_hub_v3_active_subject', updated[0].id);
-    }
-  };
-
-  // ==========================================
-  // SYLLABUS TOPIC HANDLERS
-  // ==========================================
-  const handleToggleTopicCompleted = (topicId: string) => {
-    const updated = storageService.toggleTopicCompleted(topicId);
-    setTopics(updated);
-  };
-
-  const handleSetTopicMastery = (topicId: string, mastery: TopicMastery) => {
-    const updated = storageService.setTopicMastery(topicId, mastery);
-    setTopics(updated);
-    showToast(`Marked topic mastery as ${mastery.toUpperCase()}`, 'info');
-  };
-
-  const handleAddTopic = (topic: SyllabusTopic) => {
-    const updated = storageService.addTopic(topic);
-    setTopics(updated);
-    showToast('Topic added to syllabus!', 'success');
-  };
-
-  const handleDeleteTopic = (topicId: string) => {
-    const updated = storageService.deleteTopic(topicId);
-    setTopics(updated);
-    showToast('Topic removed from syllabus.', 'info');
-  };
-
-  const handleAddUnit = (subjectId: string, unitTitle: string) => {
-    const targetSub = subjects.find(s => s.id === subjectId);
-    if (!targetSub) return;
-    const nextNum = (targetSub.units?.length || 0) + 1;
-    const newUnit = {
-      id: `unit-${Date.now().toString(36)}-${nextNum}`,
-      unit: nextNum,
-      unitNumber: nextNum,
-      title: unitTitle.trim(),
-      name: unitTitle.trim()
-    };
-    const updatedSub: SubjectMeta = {
-      ...targetSub,
-      units: [...(targetSub.units || []), newUnit]
-    };
-    handleUpdateSubject(updatedSub);
-    showToast(`Added Unit ${nextNum}: "${unitTitle}"`, 'success');
-  };
-
-  // ==========================================
-  // QUESTION HANDLERS
-  // ==========================================
-  const handleToggleMastered = (id: string) => {
-    const updated = storageService.toggleQuestionMastered(id);
-    setQuestions(updated);
-  };
-
-  const handleSaveAnswer = (id: string, answer: string, score: number) => {
-    const updated = questions.map(q => {
-      if (q.id === id) {
-        return { ...q, lastAttemptAnswer: answer, lastAttemptScore: score };
+  const handleDeleteSubject = async (id: string) => {
+    await indexedDbService.deleteSubject(id);
+    setSubjects(prev => prev.filter(s => s.id !== id));
+    setFiles(prev => prev.filter(f => f.subjectId !== id));
+    setVideos(prev => prev.filter(v => v.subjectId !== id));
+    const usage = await indexedDbService.getStorageUsage();
+    setStorageUsage(usage);
+    if (activeSubjectId === id) {
+      const remaining = subjects.filter(s => s.id !== id);
+      if (remaining.length > 0) {
+        setActiveSubjectId(remaining[0].id);
+      } else {
+        setCurrentView('dashboard');
       }
-      return q;
-    });
-    setQuestions(updated);
-    storageService.saveQuestions(updated);
-  };
-
-  const handleAddQuestion = (q: PYQQuestion) => {
-    const updated = storageService.addQuestion(q);
-    setQuestions(updated);
-    setTopics(storageService.getTopics());
-    showToast('Question saved to subject PYQ bank! 🔥', 'success');
-  };
-
-  // ==========================================
-  // TASK HANDLERS
-  // ==========================================
-  const handleToggleTask = (id: string) => {
-    const updated = storageService.toggleTask(id);
-    setTasks(updated);
-  };
-
-  const handleAddTask = (text: string, unitId?: string, unitNum?: number) => {
-    const newTask: StudyTask = {
-      id: `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-      subjectId: activeSubjectId,
-      unitId,
-      unit: unitNum,
-      text,
-      completed: false,
-      isMission: false,
-      category: 'custom',
-      createdAt: Date.now()
-    };
-    const updated = storageService.addTask(newTask);
-    setTasks(updated);
-    showToast('Task added to checklist!', 'success');
-  };
-
-  const handleDeleteTask = (id: string) => {
-    const updated = storageService.deleteTask(id);
-    setTasks(updated);
-  };
-
-  // ==========================================
-  // FOCUS TIMER / POMODORO HANDLERS
-  // ==========================================
-  const handleLogPomodoro = (subjectId: string, minutes: number) => {
-    const updated = storageService.logPomodoroSession(subjectId, minutes);
-    setPomodoroLogs(updated);
-    const subName = subjects.find(s => s.id === subjectId)?.name || 'Subject';
-    showToast(`Logged ${minutes} min focus session for ${subName}! 🔥`, 'success');
-  };
-
-  // ==========================================
-  // FLASHCARD HANDLERS (SPACED REPETITION)
-  // ==========================================
-  const handleAddFlashcard = (card: Flashcard) => {
-    const updated = storageService.addFlashcard(card);
-    setFlashcards(updated);
-    showToast('Flashcard saved with Spaced Repetition! 🧠', 'success');
-  };
-
-  const handleReviewCard = (cardId: string, rating: 'hard' | 'good' | 'easy') => {
-    const updated = storageService.reviewFlashcard(cardId, rating);
-    setFlashcards(updated);
-  };
-
-  const handleDeleteFlashcard = (cardId: string) => {
-    const updated = storageService.deleteFlashcard(cardId);
-    setFlashcards(updated);
-    showToast('Flashcard deleted.', 'info');
-  };
-
-  // ==========================================
-  // VIDEO HANDLERS (YOUTUBE VAULT)
-  // ==========================================
-  const handleAddVideo = (video: VideoResource) => {
-    const updated = storageService.addVideo(video);
-    setVideos(updated);
-    showToast('Lecture saved to YouTube Vault! 🎥', 'success');
-  };
-
-  const handleUpdateVideoNotes = (id: string, notes: string) => {
-    const updated = storageService.updateVideoNotes(id, notes);
-    setVideos(updated);
-  };
-
-  const handleToggleVideoWatched = (id: string) => {
-    const updated = storageService.toggleVideoWatched(id);
-    setVideos(updated);
-  };
-
-  const handleDeleteVideo = (id: string) => {
-    const updated = storageService.deleteVideo(id);
-    setVideos(updated);
-    showToast('Video removed from Vault.', 'info');
-  };
-
-  // ==========================================
-  // PDF HANDLERS
-  // ==========================================
-  const handleAddPdf = (pdf: PdfResource) => {
-    const updated = storageService.addPdf(pdf);
-    setPdfs(updated);
-    showToast('PDF notes saved to subject library! 📄', 'success');
-  };
-
-  const handleDeletePdf = (id: string) => {
-    const updated = storageService.deletePdf(id);
-    setPdfs(updated);
-    showToast('Document removed from Vault.', 'info');
-  };
-
-  // ==========================================
-  // MOVE ITEM TO UNIT HANDLER
-  // ==========================================
-  const handleMoveItemToUnit = (
-    type: 'task' | 'video' | 'pdf' | 'question', 
-    itemId: string, 
-    targetUnitId: string, 
-    targetUnitNumber?: number
-  ) => {
-    storageService.moveItemToUnit(type, itemId, targetUnitId, targetUnitNumber);
-    if (type === 'task') setTasks(storageService.getTasks());
-    if (type === 'video') setVideos(storageService.getVideos());
-    if (type === 'pdf') setPdfs(storageService.getPdfs());
-    if (type === 'question') setQuestions(storageService.getQuestions());
-  };
-
-  // ==========================================
-  // DATA RELOAD & RESTORE
-  // ==========================================
-  const handleDataReloaded = () => {
-    setSubjects(storageService.getSubjects());
-    setQuestions(storageService.getQuestions());
-    setTasks(storageService.getTasks());
-    setVideos(storageService.getVideos());
-    setPdfs(storageService.getPdfs());
-    setTopics(storageService.getTopics());
-    setFlashcards(storageService.getFlashcards());
-    setPomodoroLogs(storageService.getPomodoroLogs());
-  };
-
-  const handleResetData = () => {
-    if (window.confirm('Reset all subjects, countdowns, videos, and questions to default? This will replace any custom changes.')) {
-      const reset = storageService.resetToDefaultData();
-      setSubjects(reset.subjects);
-      setQuestions(reset.questions);
-      setTasks(reset.tasks);
-      setVideos(reset.videos);
-      setPdfs(reset.pdfs);
-      setTopics(storageService.getTopics());
-      setFlashcards(storageService.getFlashcards());
-      setPomodoroLogs(storageService.getPomodoroLogs());
-      setActiveSubjectId(reset.subjects[0].id);
-      setActiveUnitId('all');
-      localStorage.setItem('exam_hub_v3_active_subject', reset.subjects[0].id);
-      showToast('Reset to default university study data!', 'info');
     }
   };
+
+  // ==========================================
+  // FILE OPERATIONS
+  // ==========================================
+  const handleAddFiles = async (newFiles: SubjectFile[]) => {
+    await indexedDbService.addFiles(newFiles);
+    setFiles(prev => [...prev, ...newFiles]);
+    const usage = await indexedDbService.getStorageUsage();
+    setStorageUsage(usage);
+  };
+
+  const handleUpdateFile = async (updatedFile: SubjectFile) => {
+    await indexedDbService.updateFile(updatedFile);
+    setFiles(prev => prev.map(f => f.id === updatedFile.id ? updatedFile : f));
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    await indexedDbService.deleteFile(fileId);
+    setFiles(prev => prev.filter(f => f.id !== fileId));
+    const usage = await indexedDbService.getStorageUsage();
+    setStorageUsage(usage);
+  };
+
+  const handleMoveFile = async (fileId: string, newCategory: FileCategory) => {
+    await indexedDbService.moveFile(fileId, newCategory);
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, category: newCategory } : f));
+  };
+
+  const handleToggleImportant = async (fileId: string) => {
+    const newState = await indexedDbService.toggleFileImportant(fileId);
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, isImportant: newState } : f));
+  };
+
+  const handleToggleDone = async (fileId: string) => {
+    const newState = await indexedDbService.toggleFileDone(fileId);
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, isDone: newState } : f));
+  };
+
+  // ==========================================
+  // MY NOTES
+  // ==========================================
+  const handleSaveNotes = async (subjectId: string, content: string) => {
+    await indexedDbService.saveNotes(subjectId, content);
+    setNotesMap(prev => ({ ...prev, [subjectId]: content }));
+  };
+
+  // ==========================================
+  // YOUTUBE VIDEOS
+  // ==========================================
+  const handleAddVideo = async (video: VideoResource) => {
+    await indexedDbService.saveVideo(video);
+    setVideos(prev => [...prev, video]);
+  };
+
+  const handleToggleVideoWatched = async (videoId: string) => {
+    const newState = await indexedDbService.toggleVideoWatched(videoId);
+    setVideos(prev => prev.map(v => v.id === videoId ? { ...v, isWatched: newState } : v));
+  };
+
+  const handleUpdateVideoNotes = async (videoId: string, notes: string) => {
+    await indexedDbService.updateVideoNotes(videoId, notes);
+    setVideos(prev => prev.map(v => v.id === videoId ? { ...v, notes } : v));
+  };
+
+  const handleDeleteVideo = async (videoId: string) => {
+    await indexedDbService.deleteVideo(videoId);
+    setVideos(prev => prev.filter(v => v.id !== videoId));
+  };
+
+  // ==========================================
+  // BACKUP EXPORT & IMPORT
+  // ==========================================
+  const handleExportBackup = async () => {
+    try {
+      await indexedDbService.exportCompleteBackup();
+      showToast('Single-file backup JSON downloaded! 📦', 'success');
+    } catch (err: any) {
+      showToast(`Export failed: ${err.message}`, 'error');
+    }
+  };
+
+  const handleImportBackup = async (content: string) => {
+    try {
+      const result = await indexedDbService.importCompleteBackup(content);
+      if (result.success) {
+        await refreshAllData();
+        showToast(result.message, 'success');
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (err: any) {
+      showToast(`Import failed: ${err.message}`, 'error');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-paper-bg dark:bg-night-bg flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+        <div className="text-sm font-bold text-paper-ink dark:text-night-text">
+          Opening PyqRanker IndexedDB...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
@@ -363,200 +265,65 @@ function DashboardContent() {
         subjects={subjects}
         activeSubjectId={activeSubjectId}
         onSelectSubject={handleSelectSubject}
-        onOpenAddSubject={() => setIsAddSubjectOpen(true)}
-        onOpenExtensionModal={() => setIsExtensionModalOpen(true)}
         onOpenBackup={() => setIsBackupModalOpen(true)}
-        onResetData={handleResetData}
       />
 
-      {/* Main Content Area: pb-24 on mobile so MobileBottomNav never blocks elements */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-8">
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-20">
         
-        {/* VIEW 1: HOME / TODAY SCREEN (UPGRADE 1) */}
-        {currentView === 'today' && (
-          <TodayScreen
+        {/* VIEW 1: DASHBOARD (ALL SUBJECTS CARDS + FILE COUNTS + ONLY + ADD SUBJECT BUTTON) */}
+        {currentView === 'dashboard' && (
+          <DashboardView
             subjects={subjects}
-            topics={topics}
-            questions={questions}
-            tasks={tasks}
-            flashcards={flashcards}
-            pomodoroLogs={pomodoroLogs}
-            onToggleTopicCompleted={handleToggleTopicCompleted}
-            onSelectSubject={(id, unitId) => {
-              handleSelectSubject(id, unitId);
-              setCurrentView('syllabus');
-            }}
-            onNavigateView={setCurrentView}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 2: SYLLABUS TRACKER (UPGRADE 2) */}
-        {currentView === 'syllabus' && (
-          <SyllabusTrackerView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
+            files={files}
             onSelectSubject={handleSelectSubject}
-            topics={topics}
-            onToggleTopicCompleted={handleToggleTopicCompleted}
-            onSetTopicMastery={handleSetTopicMastery}
-            onAddTopic={handleAddTopic}
-            onDeleteTopic={handleDeleteTopic}
-            onAddUnit={handleAddUnit}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 3: PYQ RANKER (UPGRADE 3) */}
-        {currentView === 'pyqs' && (
-          <PyqRankerView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            onSelectSubject={handleSelectSubject}
-            questions={questions}
-            topics={topics}
-            onToggleMastered={handleToggleMastered}
-            onSaveAnswer={handleSaveAnswer}
-            onAddQuestion={handleAddQuestion}
-            onSetTopicMastery={handleSetTopicMastery}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 4: SMART STUDY PLANNER (UPGRADE 4) */}
-        {currentView === 'planner' && (
-          <SmartStudyPlannerView
-            subjects={subjects}
-            topics={topics}
-            questions={questions}
-            onToggleTopicCompleted={handleToggleTopicCompleted}
-            onSelectSubject={handleSelectSubject}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 5: FOCUS TIMER / POMODORO (UPGRADE 5) */}
-        {currentView === 'timer' && (
-          <FocusTimerView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            pomodoroLogs={pomodoroLogs}
-            onLogSession={handleLogPomodoro}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 6: FLASHCARDS / SPACED REPETITION (UPGRADE 8) */}
-        {currentView === 'flashcards' && (
-          <FlashcardsView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            flashcards={flashcards}
-            onAddFlashcard={handleAddFlashcard}
-            onReviewCard={handleReviewCard}
-            onDeleteFlashcard={handleDeleteFlashcard}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 7: YOUTUBE VAULT (UPGRADE 9) */}
-        {currentView === 'vault' && (
-          <YouTubeVaultView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            videos={videos}
-            onAddVideo={handleAddVideo}
-            onUpdateVideoNotes={handleUpdateVideoNotes}
-            onToggleVideoWatched={handleToggleVideoWatched}
-            onDeleteVideo={handleDeleteVideo}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 8: PDF NOTES TOOL (UPGRADE 7) */}
-        {currentView === 'pdf' && (
-          <PdfNotesView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            pdfs={pdfs}
-            onAddPdf={handleAddPdf}
-            onDeletePdf={handleDeletePdf}
-            onAddQuestion={handleAddQuestion}
-            onAddFlashcard={handleAddFlashcard}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 9: COMMAND CENTER OVERVIEW */}
-        {currentView === 'overview' && (
-          <CommandCenterOverview
-            subjects={subjects}
-            questions={questions}
-            tasks={tasks}
-            onSelectSubject={handleSelectSubjectAndOpenWorkspace}
             onOpenAddSubject={() => setIsAddSubjectOpen(true)}
             onUpdateSubject={handleUpdateSubject}
             onDeleteSubject={handleDeleteSubject}
+            storageUsage={storageUsage}
+            onExportBackup={handleExportBackup}
+            onImportBackup={handleImportBackup}
+            onShowToast={showToast}
           />
         )}
 
-        {/* VIEW 10: SUBJECT WORKSPACE */}
-        {currentView === 'workspace' && activeSubject && (
-          <SubjectWorkspace
+        {/* VIEW 2: INSIDE SUBJECT PAGE */}
+        {currentView === 'subject' && activeSubject && (
+          <SubjectDetailView
             subject={activeSubject}
-            initialUnitId={activeUnitId}
-            questions={questions}
-            tasks={tasks}
+            files={files}
+            notesText={notesMap[activeSubject.id] || ''}
             videos={videos}
-            pdfs={pdfs}
-            onToggleMastered={handleToggleMastered}
-            onSaveAnswer={handleSaveAnswer}
-            onAddQuestion={handleAddQuestion}
-            onToggleTask={handleToggleTask}
-            onAddTask={handleAddTask}
-            onDeleteTask={handleDeleteTask}
+            onBackToDashboard={handleBackToDashboard}
+            onAddFiles={handleAddFiles}
+            onUpdateFile={handleUpdateFile}
+            onDeleteFile={handleDeleteFile}
+            onMoveFile={handleMoveFile}
+            onToggleImportant={handleToggleImportant}
+            onToggleDone={handleToggleDone}
+            onSaveNotes={handleSaveNotes}
             onAddVideo={handleAddVideo}
-            onUpdateVideoNotes={handleUpdateVideoNotes}
             onToggleVideoWatched={handleToggleVideoWatched}
+            onUpdateVideoNotes={handleUpdateVideoNotes}
             onDeleteVideo={handleDeleteVideo}
-            onAddPdf={handleAddPdf}
-            onDeletePdf={handleDeletePdf}
-            onMoveItemToUnit={handleMoveItemToUnit}
-            onUpdateSubject={handleUpdateSubject}
-            onDeleteSubject={handleDeleteSubject}
-            onBackToOverview={() => setCurrentView('overview')}
             onShowToast={showToast}
           />
         )}
 
       </main>
 
-      {/* Mobile Bottom Navigation (Upgrade 10 - Mobile-First) */}
-      <MobileBottomNav
-        currentView={currentView}
-        onSelectView={setCurrentView}
-        onOpenBackup={() => setIsBackupModalOpen(true)}
-        dueFlashcardsCount={dueFlashcardsCount}
-      />
-
-      {/* Modals */}
+      {/* The Single Add Subject Modal (opened only from dashboard button) */}
       <AddSubjectModal
         isOpen={isAddSubjectOpen}
         onClose={() => setIsAddSubjectOpen(false)}
         onAdd={handleAddSubject}
       />
 
-      <ExtensionInstallerModal
-        isOpen={isExtensionModalOpen}
-        onClose={() => setIsExtensionModalOpen(false)}
-        questions={questions}
-        onShowToast={showToast}
-      />
-
+      {/* Backup and Restore Modal */}
       <BackupModal
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
-        onDataReloaded={handleDataReloaded}
+        onDataReloaded={refreshAllData}
         onShowToast={showToast}
       />
 
