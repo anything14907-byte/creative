@@ -1,16 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SubjectMeta, PdfResource, PYQQuestion, Flashcard, SyllabusTopic, SubjectFile } from '../types';
 import { extractTextFromPdf } from '../utils/pdfExtractor';
 import { formatUnitDisplayName } from '../utils/storageService';
 import { indexedDbService } from '../utils/indexedDbService';
 import { 
   analyzeExtractedNotes, 
+  cleanExtractedText,
+  detectStructureAndHeadings,
+  assessTextQuality,
   runOcrOnImage, 
   runOcrOnScannedPdf, 
   NotesAnalysisResult, 
   PracticeQuestionItem,
   SectionHeading
 } from '../utils/notesAnalyzer';
+import { 
+  getSavedApiKey, 
+  saveApiKey, 
+  deleteApiKey, 
+  getSavedModel, 
+  saveModel, 
+  testApiKey, 
+  runSmartAnalysis, 
+  DEFAULT_GEMINI_MODEL 
+} from '../utils/aiService';
 import { 
   FileText, 
   UploadCloud, 
@@ -36,7 +49,12 @@ import {
   Edit3,
   ExternalLink,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Key,
+  Settings,
+  ShieldAlert,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 
 interface PdfNotesViewProps {
@@ -87,12 +105,56 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   // Full Note Modal
   const [viewingPdf, setViewingPdf] = useState<PdfResource | null>(null);
 
+  // ==========================================
+  // SMART ANALYSIS (AI) STATE & SETTINGS
+  // ==========================================
+  const [smartAnalysisEnabled, setSmartAnalysisEnabled] = useState<boolean>(false);
+  const [savedApiKey, setSavedApiKey] = useState<string | null>(null);
+  const [hasSavedApiKey, setHasSavedApiKey] = useState<boolean>(false);
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_GEMINI_MODEL);
+  const [showAiSettings, setShowAiSettings] = useState<boolean>(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>('');
+  const [showApiKeyText, setShowApiKeyText] = useState<boolean>(false);
+  const [isTestingKey, setIsTestingKey] = useState<boolean>(false);
+  const [testKeyResult, setTestKeyResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // AI execution indicators
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState<boolean>(false);
+  const [aiProgressMessage, setAiProgressMessage] = useState<string>('');
+  const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
+  const [usedAiMode, setUsedAiMode] = useState<boolean>(false);
+
+  // Load saved credentials from IndexedDB on initial mount
+  useEffect(() => {
+    let isMounted = true;
+    getSavedApiKey().then(key => {
+      if (!isMounted) return;
+      if (key) {
+        setSavedApiKey(key);
+        setApiKeyInput(key);
+        setHasSavedApiKey(true);
+      } else {
+        setHasSavedApiKey(false);
+        setSmartAnalysisEnabled(false);
+      }
+    });
+
+    getSavedModel().then(m => {
+      if (!isMounted) return;
+      if (m) setSelectedModel(m);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const targetSubject = subjects.find(s => s.id === targetSubjectId) || subjects[0];
   const selectedUnit = targetSubject?.units?.find(u => u.id === targetUnitId) || targetSubject?.units?.[0];
   const subjectPdfs = pdfs.filter(p => p.subjectId === selectedSubjectId);
 
   // Check which headings already exist as topics in current subject/unit
-  const existingTopicTitles = React.useMemo(() => {
+  const existingTopicTitles = useMemo(() => {
     return new Set(
       topics
         .filter(t => t.subjectId === targetSubjectId)
@@ -100,20 +162,69 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     );
   }, [topics, targetSubjectId]);
 
-  // Process and analyze raw extracted text
-  const applyAnalysis = (rawText: string, fileName: string) => {
-    const result = analyzeExtractedNotes(rawText);
-    setAnalysis(result);
-    setEditableText(result.cleanedText || rawText);
-    setPracticeQuestions(result.practiceQuestions);
+  // Process and analyze extracted notes (Rule-based default with Optional Smart AI)
+  const applyAnalysis = async (rawText: string, fileName: string) => {
+    const quality = assessTextQuality(rawText);
+    const cleanedText = cleanExtractedText(rawText);
+    const headings = detectStructureAndHeadings(cleanedText);
+    setEditableText(cleanedText || rawText);
 
     // Initialize heading checkboxes: pre-check non-existing headings
     const initialHeadingSelection: Record<string, boolean> = {};
-    result.headings.forEach(h => {
+    headings.forEach(h => {
       const alreadyExists = existingTopicTitles.has(h.cleanTitle.toLowerCase().trim());
       initialHeadingSelection[h.id] = !alreadyExists;
     });
     setSelectedHeadings(initialHeadingSelection);
+
+    // OPTIONAL SMART ANALYSIS MODE
+    if (smartAnalysisEnabled && savedApiKey && rawText.trim().length >= 45) {
+      setIsAiAnalyzing(true);
+      setAiAnalysisError(null);
+      setAiProgressMessage('Connecting to Google Gemini API...');
+
+      try {
+        const aiResult = await runSmartAnalysis(
+          cleanedText,
+          savedApiKey,
+          selectedModel,
+          (msg) => setAiProgressMessage(msg)
+        );
+
+        setAnalysis({
+          rawText,
+          cleanedText,
+          quality,
+          headings, // keeps the detected outline sections
+          summary: aiResult.summary,
+          keyTerms: aiResult.keyTerms,
+          formulasAndAlgorithms: aiResult.formulasAndAlgorithms,
+          practiceQuestions: aiResult.practiceQuestions
+        });
+        setPracticeQuestions(aiResult.practiceQuestions);
+        setUsedAiMode(true);
+      } catch (aiErr: any) {
+        console.warn('Smart AI Analysis failed, falling back to rule-based analysis:', aiErr);
+        const errMsg = aiErr.message || 'AI request failed';
+        setAiAnalysisError(`Smart AI Analysis failed (${errMsg}). Successfully fell back to Rule-Based Extractor.`);
+        
+        // Fall back to rule-based extractor
+        const ruleResult = analyzeExtractedNotes(rawText);
+        setAnalysis(ruleResult);
+        setPracticeQuestions(ruleResult.practiceQuestions);
+        setUsedAiMode(false);
+      } finally {
+        setIsAiAnalyzing(false);
+        setAiProgressMessage('');
+      }
+    } else {
+      // RULE-BASED EXTRACTOR (Default & Fallback)
+      const ruleResult = analyzeExtractedNotes(rawText);
+      setAnalysis(ruleResult);
+      setPracticeQuestions(ruleResult.practiceQuestions);
+      setUsedAiMode(false);
+      setAiAnalysisError(null);
+    }
   };
 
   // File Upload & OCR Handler
@@ -125,6 +236,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     setIsProcessing(true);
     setOcrProgress(null);
     setAnalysis(null);
+    setAiAnalysisError(null);
 
     // Read Data URL for saving to IndexedDB / previewing
     const reader = new FileReader();
@@ -165,18 +277,17 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
         }
       }
 
-      applyAnalysis(rawText, file.name);
+      await applyAnalysis(rawText, file.name);
 
       if (rawText.trim().length >= 45) {
-        onShowToast('Notes extracted successfully! Review the outline, summary, and practice questions below.', 'success');
+        onShowToast('Notes extracted successfully! Review outline, summary, and questions below.', 'success');
       } else {
         onShowToast('File text was too sparse or unreadable. See Quality Guard below.', 'info');
       }
     } catch (err: any) {
       console.error('File processing error:', err);
       onShowToast(err.message || 'Error processing file. Try another file or paste text below.', 'error');
-      // Create empty analysis to trigger quality guard
-      applyAnalysis('', file.name);
+      await applyAnalysis('', file.name);
     } finally {
       setIsProcessing(false);
       setOcrProgress(null);
@@ -184,13 +295,13 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   };
 
   // Re-run analysis on user-edited text
-  const handleReanalyze = () => {
+  const handleReanalyze = async () => {
     if (!editableText.trim()) {
       onShowToast('Please enter or paste notes text to analyze.', 'info');
       return;
     }
     const fileName = selectedFile?.name || 'Manual Notes';
-    applyAnalysis(editableText, fileName);
+    await applyAnalysis(editableText, fileName);
     onShowToast('Re-analyzed notes successfully!', 'success');
   };
 
@@ -202,6 +313,82 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   // Update question text
   const handleQuestionTextChange = (id: string, newText: string) => {
     setPracticeQuestions(prev => prev.map(q => q.id === id ? { ...q, question: newText } : q));
+  };
+
+  // ACTION: Toggle Smart AI Mode
+  const handleToggleSmartMode = () => {
+    if (!hasSavedApiKey) {
+      setShowAiSettings(true);
+      onShowToast('Please configure and save your Gemini API Key in Settings first.', 'info');
+      return;
+    }
+    const nextState = !smartAnalysisEnabled;
+    setSmartAnalysisEnabled(nextState);
+    if (nextState) {
+      onShowToast('Smart Analysis (AI) enabled! Next analysis will use your Gemini key.', 'success');
+    } else {
+      onShowToast('Smart Analysis OFF. Using fast offline rule-based extractor.', 'info');
+    }
+  };
+
+  // ACTION: Test API Key
+  const handleTestKey = async () => {
+    if (!apiKeyInput.trim()) {
+      setTestKeyResult({ success: false, message: 'Please enter an API key to test.' });
+      return;
+    }
+    setIsTestingKey(true);
+    setTestKeyResult(null);
+    try {
+      const res = await testApiKey(apiKeyInput.trim(), selectedModel);
+      setTestKeyResult(res);
+      if (res.success) {
+        onShowToast('API Key verified! Connected to Google AI Studio. ✅', 'success');
+      } else {
+        onShowToast(res.message, 'error');
+      }
+    } catch (e: any) {
+      setTestKeyResult({ success: false, message: e.message || 'Network test failed.' });
+    } finally {
+      setIsTestingKey(false);
+    }
+  };
+
+  // ACTION: Save API Key
+  const handleSaveKey = async () => {
+    if (!apiKeyInput.trim()) {
+      onShowToast('Please enter an API key before saving.', 'info');
+      return;
+    }
+    try {
+      await saveApiKey(apiKeyInput.trim());
+      await saveModel(selectedModel);
+      setSavedApiKey(apiKeyInput.trim());
+      setHasSavedApiKey(true);
+      setShowAiSettings(false);
+      onShowToast('API Key securely stored in browser IndexedDB! 🔑', 'success');
+    } catch (e: any) {
+      onShowToast('Failed to save API key in IndexedDB: ' + e.message, 'error');
+    }
+  };
+
+  // ACTION: Delete API Key
+  const handleDeleteKey = async () => {
+    if (!window.confirm('Are you sure you want to delete your API key from IndexedDB?')) {
+      return;
+    }
+    try {
+      await deleteApiKey();
+      setSavedApiKey(null);
+      setApiKeyInput('');
+      setHasSavedApiKey(false);
+      setSmartAnalysisEnabled(false);
+      setTestKeyResult(null);
+      setShowAiSettings(false);
+      onShowToast('API key deleted from browser.', 'info');
+    } catch (e: any) {
+      onShowToast('Error deleting API key: ' + e.message, 'error');
+    }
   };
 
   // ACTION 1: Add Headings as Topics to Selected Unit
@@ -238,7 +425,6 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
       addedCount++;
     });
 
-    // Update headings selection state so added ones reflect as existing
     setSelectedHeadings(prev => {
       const updated = { ...prev };
       headingsToAdd.forEach(h => { updated[h.id] = false; });
@@ -258,81 +444,83 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     analysis.keyTerms.forEach((kt, idx) => {
       const card: Flashcard = {
         id: `fc-pdf-${Date.now().toString(36)}-${idx}`,
-        subjectId: targetSubjectId,
-        topicTitle: kt.term,
+        subjectId: targetSubjectId as any,
+        unitId: selectedUnit?.id || `u1`,
         front: kt.term,
         back: kt.definition,
         intervalStep: 0,
-        nextReviewDate: new Date().toISOString().split('T')[0],
+        nextReviewDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
         createdAt: Date.now()
       };
       onAddFlashcard(card);
     });
 
-    onShowToast(`Created ${analysis.keyTerms.length} flashcards from key terms! 🧠`, 'success');
+    onShowToast(`Created ${analysis.keyTerms.length} flashcards under ${targetSubject.name}! 🗂️`, 'success');
   };
 
-  // ACTION 3: Add Practice Questions to PYQ Question Bank
+  // ACTION 3: Add Practice Questions to PYQ Bank
   const handleSaveQuestionsToPyqBank = () => {
     if (practiceQuestions.length === 0) {
       onShowToast('No practice questions available to add.', 'info');
       return;
     }
 
-    const unitLabelDisplay = selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit';
-
-    practiceQuestions.forEach((pq, idx) => {
-      const q: PYQQuestion = {
-        id: `q-practice-${Date.now().toString(36)}-${idx}`,
-        subjectId: targetSubjectId,
+    const currentYear = new Date().getFullYear();
+    practiceQuestions.forEach((pq) => {
+      const newQuestion: PYQQuestion = {
+        id: `pq-bank-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        subjectId: targetSubjectId as any,
         subjectName: targetSubject.name,
         unit: selectedUnit?.unit || 1,
-        unitId: selectedUnit?.id || `u1`,
-        unitTitle: unitLabelDisplay,
+        unitTitle: selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit 1',
+        unitLabel: selectedUnit ? formatUnitDisplayName(selectedUnit) : undefined,
+        unitId: selectedUnit?.id,
         question: pq.question,
         marks: pq.marks,
-        yearsAsked: [2024, 2025],
-        repeatCount: pq.marks === 10 ? 3 : 2,
-        isHighProbability: pq.marks === 10,
-        expectedKeywords: ['Definition', 'Working Mechanism', 'Application'],
-        bullets: [
-          'State key definition and theoretical scope.',
-          'Elaborate step-by-step logic or technical details.',
-          'Provide practical examples and trade-offs expected in exams.'
-        ],
-        diagramFormulaTip: 'Draw a clear labeled diagram or state governing formulas.',
+        yearsAsked: [currentYear],
+        repeatCount: 1,
+        isHighProbability: false,
+        expectedKeywords: [],
+        bullets: [],
+        diagramFormulaTip: '',
         userStatus: 'not-started',
         isCustom: true
       };
-      onAddQuestion(q);
+      onAddQuestion(newQuestion);
     });
 
-    onShowToast(`Added ${practiceQuestions.length} practice questions to PYQ Bank! 🎯`, 'success');
+    onShowToast(`Added ${practiceQuestions.length} practice questions to PYQ Bank for ${targetSubject.name}! 📝`, 'success');
   };
 
   // ACTION 4: Save Original File to IndexedDB & Notes Library
-  const handleSaveFileToSubject = async () => {
-    const fileName = selectedFile?.name || (analysis?.headings[0]?.cleanTitle ? `${analysis.headings[0].cleanTitle}.pdf` : 'Study_Notes.pdf');
-    const unitLabelDisplay = selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit';
+  const handleSaveToSubject = async () => {
+    if (!selectedFile && !editableText) {
+      onShowToast('No file or text to save.', 'info');
+      return;
+    }
+
+    const fileName = selectedFile?.name || `${targetSubject.name}_Notes.txt`;
+    const unitLabelDisplay = selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit 1';
 
     // 1. Store original file in IndexedDB under selected subject & unit
     if (fileDataUrl && selectedFile) {
-      const isImg = selectedFile.type.startsWith('image/');
-      const newSubjectFile: SubjectFile = {
-        id: `file-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        subjectId: targetSubjectId,
-        unitId: selectedUnit?.id || `u1`,
-        name: fileName,
-        description: analysis?.summary?.[0] || 'Extracted notes file',
-        category: 'notes',
-        fileType: isImg ? 'image' : 'pdf',
-        dataUrl: fileDataUrl,
-        size: selectedFile.size,
-        isImportant: false,
-        isDone: false,
-        createdAt: Date.now()
-      };
       try {
+        const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf');
+        const newSubjectFile: SubjectFile = {
+          id: `file-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          subjectId: targetSubjectId,
+          name: fileName,
+          category: 'notes',
+          fileType: isPdf ? 'pdf' : 'image',
+          dataUrl: fileDataUrl,
+          size: selectedFile.size,
+          year: String(new Date().getFullYear()),
+          examType: 'Lecture Notes',
+          isImportant: false,
+          isDone: false,
+          unitId: selectedUnit?.id,
+          createdAt: Date.now()
+        };
         await indexedDbService.addFile(newSubjectFile);
       } catch (idbErr) {
         console.error('Error saving to IndexedDB:', idbErr);
@@ -360,7 +548,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   return (
     <div className="space-y-8 animate-fade-slide-up max-w-5xl mx-auto pb-16">
       
-      {/* 1. HONEST NAMING: Header */}
+      {/* 1. HONEST NAMING: Header & Smart Analysis Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text flex items-center gap-2">
@@ -371,17 +559,52 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
             Extract clean outlines, key terms, formulas, and practice questions from chapter PDFs, scanned notes, and images.
           </p>
         </div>
+
+        {/* Smart Analysis Mode Toggle & Settings Button */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {/* Smart Analysis Toggle */}
+          <div 
+            onClick={handleToggleSmartMode}
+            className={`cursor-pointer px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs transition-all ${
+              smartAnalysisEnabled
+                ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-700 dark:text-indigo-300 font-semibold shadow-xs'
+                : 'bg-paper-cardElevated dark:bg-night-cardElevated border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted'
+            }`}
+            title={hasSavedApiKey ? "Toggle Smart AI Analysis" : "Click to configure your Gemini API Key in Settings"}
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${smartAnalysisEnabled ? 'text-indigo-500 fill-indigo-500' : 'text-paper-muted'}`} />
+            <span>Smart Analysis (AI)</span>
+            <div className={`w-8 h-4 rounded-full transition-colors relative flex items-center px-0.5 ${
+              smartAnalysisEnabled ? 'bg-indigo-600' : 'bg-paper-border dark:bg-night-border'
+            }`}>
+              <div className={`w-3 h-3 rounded-full bg-white transition-transform ${
+                smartAnalysisEnabled ? 'translate-x-4' : 'translate-x-0'
+              }`} />
+            </div>
+          </div>
+
+          {/* AI Settings Button */}
+          <button
+            onClick={() => setShowAiSettings(true)}
+            className="px-3 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-medium text-paper-ink dark:text-night-text hover:border-paper-ink/30 flex items-center gap-1.5 btn-tactile"
+            title="Configure Gemini API Key & Model Settings"
+          >
+            <Key className="w-3.5 h-3.5 text-paper-muted dark:text-night-muted" />
+            <span>Settings</span>
+            <span className={`w-2 h-2 rounded-full ${hasSavedApiKey ? 'bg-emerald-500' : 'bg-paper-border dark:bg-night-border'}`} />
+          </button>
+        </div>
       </div>
 
       {/* Upload Zone */}
       <div className="p-8 rounded-3xl bg-paper-card dark:bg-night-card border-2 border-dashed border-paper-border dark:border-night-border hover:border-emerald-500 transition-all text-center space-y-4">
         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
-          {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-6 h-6" />}
+          {isProcessing || isAiAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <UploadCloud className="w-6 h-6" />}
         </div>
 
         <div className="space-y-1">
           <h3 className="text-base font-bold text-paper-ink dark:text-night-text">
-            {isProcessing ? (ocrProgress?.status || 'Processing Document...') : 'Upload University Notes, Scanned PDFs, or Photos'}
+            {isProcessing ? (ocrProgress?.status || 'Processing Document...') : isAiAnalyzing ? (aiProgressMessage || 'Running Smart AI Analysis...') : 'Upload University Notes, Scanned PDFs, or Photos'}
           </h3>
           <p className="text-xs text-paper-muted dark:text-night-muted max-w-md mx-auto">
             Drag and drop chapter PDFs or photos of notes (.pdf, .png, .jpg). Built-in local OCR handles scanned pages in your browser.
@@ -404,6 +627,14 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           </div>
         )}
 
+        {/* AI Analysis Spinner Bar */}
+        {isAiAnalyzing && (
+          <div className="max-w-md mx-auto p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-2">
+            <Sparkles className="w-4 h-4 animate-spin text-indigo-500" />
+            <span>{aiProgressMessage || 'Connecting to Gemini API with your personal key...'}</span>
+          </div>
+        )}
+
         <div>
           <label className="inline-flex px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer btn-tactile shadow-sm">
             <span>Choose PDF or Image File</span>
@@ -411,281 +642,315 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
               type="file" 
               accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/jpg" 
               onChange={handleFileUpload} 
-              disabled={isProcessing}
+              disabled={isProcessing || isAiAnalyzing}
               className="hidden" 
             />
           </label>
         </div>
       </div>
 
-      {/* QUALITY GUARD: When text is too short or garbled */}
+      {/* QUALITY GUARD: Banner when text is unreadable or too short */}
       {analysis && !analysis.quality.isReliable && (
-        <div className="p-6 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-paper-ink dark:text-night-text space-y-4 animate-fade-slide-up">
+        <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-3">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <h4 className="text-base font-bold text-rose-600 dark:text-rose-400">
-                Could not analyze this file reliably
-              </h4>
-              <p className="text-xs text-paper-body dark:text-night-text leading-relaxed">
-                {analysis.quality.reason || 'The extracted text contains too few readable words or appears garbled.'}
+              <h4 className="text-sm font-bold">Could not analyze this file reliably</h4>
+              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                {analysis.quality.reason || 'The extracted text contains insufficient readable characters to build an accurate outline, summary, or questions.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-1">
             {fileDataUrl && (
-              <a
-                href={fileDataUrl}
-                target="_blank"
-                rel="noreferrer"
-                download={selectedFile?.name || 'notes_file'}
-                className="px-4 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-bold hover:border-emerald-500 flex items-center gap-1.5 btn-tactile"
+              <a 
+                href={fileDataUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 btn-tactile shadow-xs"
               >
-                <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <Eye className="w-3.5 h-3.5" />
                 <span>View Original File</span>
               </a>
             )}
-
-            <button
-              onClick={() => setIsTextEditorOpen(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 btn-tactile"
-            >
-              Open Text Editor to Paste Notes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* EDITABLE EXTRACTED TEXT DRAWER (Available for verification & re-analyzing) */}
-      {analysis && (
-        <div className="p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border space-y-3">
-          <div className="flex items-center justify-between">
             <button
               onClick={() => setIsTextEditorOpen(!isTextEditorOpen)}
-              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-paper-ink dark:text-night-text hover:text-emerald-600 transition-colors"
+              className="px-3.5 py-1.5 rounded-xl bg-paper-card dark:bg-night-card border border-amber-500/30 text-xs font-semibold text-paper-ink dark:text-night-text inline-flex items-center gap-1.5 hover:bg-paper-cardElevated"
             >
-              <Edit3 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Extracted Notes Text ({editableText.length} chars)</span>
-              {isTextEditorOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit text manually & try again</span>
             </button>
-
-            <span className="text-[11px] text-paper-muted dark:text-night-muted">
-              Page numbers & broken breaks removed. Edit freely and re-analyze.
-            </span>
           </div>
-
-          {isTextEditorOpen && (
-            <div className="space-y-3 pt-2">
-              <textarea
-                rows={8}
-                value={editableText}
-                onChange={e => setEditableText(e.target.value)}
-                placeholder="Paste or clean up notes text here..."
-                className="w-full p-3.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text font-mono leading-relaxed focus:outline-none focus:border-emerald-500 resize-y"
-              />
-
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-paper-muted dark:text-night-muted">
-                  Fix any OCR typos above and click Analyze again.
-                </span>
-                <button
-                  onClick={handleReanalyze}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Analyze again</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* STRUCTURED OUTPUT BLOCKS (Rendered only if text passed quality guard) */}
+      {/* AI ERROR & FALLBACK NOTICE BANNER */}
+      {aiAnalysisError && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+          <div className="space-y-0.5">
+            <span className="font-bold">Smart Analysis Fallback: </span>
+            <span>{aiAnalysisError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ANALYSIS OUTPUT BLOCKS */}
       {analysis && analysis.quality.isReliable && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-paper-card dark:bg-night-card border border-emerald-500/40 shadow-xl space-y-8 animate-fade-slide-up">
+        <div className="space-y-6 p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-xs">
           
-          {/* Header & Target Subject/Unit Selection (Uses Saved Unit Labels) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-paper-border dark:border-night-border">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-mono">
-                  Structured Study Notes
+          {/* Header Bar with Subject & Unit Destination */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-paper-border dark:border-night-border">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-paper-ink dark:text-night-text">
+                  {selectedFile?.name || 'Analyzed Document'}
                 </span>
-                <span className="text-xs text-paper-muted dark:text-night-muted">
-                  {selectedFile ? selectedFile.name : 'Extracted Chapter'}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-paper-border/60 text-paper-muted">
+                  {analysis.cleanedText.length} characters
                 </span>
+                {usedAiMode ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Smart AI Mode</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-paper-border/40 text-paper-muted">
+                    Rule-Based Mode
+                  </span>
+                )}
               </div>
-              <h3 className="text-xl font-extrabold text-paper-ink dark:text-night-text">
-                {selectedFile?.name.replace(/\.[^/.]+$/, '') || 'Document Overview'}
-              </h3>
+              <p className="text-xs text-paper-muted dark:text-night-muted">
+                Review contents, outline, key terms, and practice questions below.
+              </p>
             </div>
 
-            {/* Target Subject & Unit dropdowns (Strictly using formatUnitDisplayName) */}
+            {/* Target Subject and Unit Selectors */}
             <div className="flex items-center gap-2 flex-wrap">
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-paper-muted dark:text-night-muted mb-0.5">Subject</label>
-                <select
-                  value={targetSubjectId}
-                  onChange={e => setTargetSubjectId(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text"
-                >
-                  {subjects.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={targetSubjectId}
+                onChange={e => {
+                  setTargetSubjectId(e.target.value);
+                  const subj = subjects.find(s => s.id === e.target.value);
+                  if (subj && subj.units && subj.units.length > 0) {
+                    setTargetUnitId(subj.units[0].id);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none"
+              >
+                {subjects.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-paper-muted dark:text-night-muted mb-0.5">Unit</label>
+              {targetSubject && targetSubject.units && targetSubject.units.length > 0 && (
                 <select
-                  value={selectedUnit?.id || ''}
+                  value={targetUnitId || targetSubject.units[0]?.id}
                   onChange={e => setTargetUnitId(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none max-w-[200px] truncate"
                 >
-                  {targetSubject?.units?.map(u => (
+                  {targetSubject.units.map(u => (
                     <option key={u.id} value={u.id}>
                       {formatUnitDisplayName(u)}
                     </option>
                   ))}
-                  {(!targetSubject?.units || targetSubject.units.length === 0) && (
-                    <option value="">No units defined</option>
-                  )}
                 </select>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* BLOCK 1: Contents / Outline & "Add Headings as Topics" */}
-          {analysis.headings.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
-                  <ListTree className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>1. Contents / Outline ({analysis.headings.length} Sections Detected)</span>
-                </h4>
+          {/* EDITABLE TEXT DRAWER */}
+          <div className="border border-paper-border dark:border-night-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setIsTextEditorOpen(!isTextEditorOpen)}
+              className="w-full px-4 py-2.5 bg-paper-cardElevated dark:bg-night-cardElevated flex items-center justify-between text-xs font-semibold text-paper-ink dark:text-night-text hover:bg-paper-cardElevated/80"
+            >
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-3.5 h-3.5 text-paper-muted" />
+                <span>View Extracted & Cleaned Text (Editable)</span>
+              </div>
+              {isTextEditorOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
 
-                {onAddTopic && (
+            {isTextEditorOpen && (
+              <div className="p-4 space-y-3 bg-paper-card dark:bg-night-card border-t border-paper-border dark:border-night-border">
+                <p className="text-[11px] text-paper-muted dark:text-night-muted">
+                  Page markers (like --- Page N ---) and repeated headers were cleaned. You can edit this text to correct any scan mistakes, then click "Analyze again".
+                </p>
+                <textarea
+                  value={editableText}
+                  onChange={e => setEditableText(e.target.value)}
+                  rows={8}
+                  className="w-full p-3 rounded-xl bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border font-mono text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 leading-relaxed resize-y"
+                  placeholder="Extracted cleaned text..."
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-paper-muted font-mono">
+                    {editableText.length} characters • {editableText.split(/\s+/).filter(Boolean).length} words
+                  </span>
                   <button
-                    onClick={handleAddHeadingsAsTopics}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs self-start sm:self-auto"
-                    title="Add checked headings as topics to the selected unit"
+                    onClick={handleReanalyze}
+                    disabled={isProcessing || isAiAnalyzing}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Headings as Topics</span>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Analyze again</span>
                   </button>
-                )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* BLOCK 1: Contents / Outline (Detected Sections in Order) */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+                  <ListTree className="w-4 h-4 text-emerald-600" />
+                  <span>1. Contents / Outline ({analysis.headings.length} Sections)</span>
+                </h4>
+                <p className="text-[11px] text-paper-muted dark:text-night-muted">
+                  Hierarchical outline detected from numbered sections, units, and headers in your notes.
+                </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-2 max-h-64 overflow-y-auto">
-                {analysis.headings.map(h => {
-                  const alreadyExists = existingTopicTitles.has(h.cleanTitle.toLowerCase().trim());
+              {onAddTopic && (
+                <button
+                  onClick={handleAddHeadingsAsTopics}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add headings as topics</span>
+                </button>
+              )}
+            </div>
+
+            {analysis.headings.length > 0 ? (
+              <div className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-1.5 max-h-60 overflow-y-auto">
+                {analysis.headings.map((h) => {
                   const isChecked = !!selectedHeadings[h.id];
+                  const alreadyExists = existingTopicTitles.has(h.cleanTitle.toLowerCase().trim());
 
                   return (
                     <div 
-                      key={h.id}
-                      className={`flex items-center justify-between p-2 rounded-xl transition-all ${
-                        h.level === 1 
-                          ? 'bg-paper-card dark:bg-night-card font-semibold' 
-                          : 'pl-6 text-xs text-paper-body dark:text-night-muted'
+                      key={h.id} 
+                      className={`flex items-center justify-between gap-2 p-1.5 rounded-lg text-xs transition-colors ${
+                        alreadyExists ? 'opacity-50' : 'hover:bg-paper-card dark:hover:bg-night-card'
                       }`}
+                      style={{ paddingLeft: `${Math.max(6, (h.level - 1) * 16 + 6)}px` }}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {onAddTopic && (
-                          <button
-                            type="button"
-                            disabled={alreadyExists}
-                            onClick={() => setSelectedHeadings(prev => ({ ...prev, [h.id]: !prev[h.id] }))}
-                            className={`p-0.5 rounded transition-colors ${alreadyExists ? 'opacity-40 cursor-not-allowed text-paper-muted' : 'text-emerald-600 dark:text-emerald-400'}`}
-                          >
-                            {isChecked ? (
-                              <CheckSquare className="w-4 h-4" />
-                            ) : (
-                              <Square className="w-4 h-4 text-paper-muted" />
-                            )}
-                          </button>
-                        )}
-                        <span className="truncate text-xs text-paper-ink dark:text-night-text">
+                      <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isChecked && !alreadyExists}
+                          disabled={alreadyExists}
+                          onChange={e => setSelectedHeadings({ ...selectedHeadings, [h.id]: e.target.checked })}
+                          className="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className={`font-medium truncate ${h.level === 1 ? 'font-bold text-paper-ink dark:text-night-text' : 'text-paper-muted'}`}>
                           {h.title}
                         </span>
-                      </div>
+                      </label>
 
                       {alreadyExists && (
-                        <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md shrink-0">
-                          Already in syllabus
+                        <span className="text-[10px] font-mono text-paper-muted uppercase shrink-0">
+                          (Already added)
                         </span>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {/* BLOCK 2: Executive Summary (3 to 5 Complete Sentences, Document-wide) */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>2. Executive Summary (3–5 Complete Sentences)</span>
-            </h4>
-            <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-body dark:text-night-text leading-relaxed space-y-2">
-              {analysis.summary.map((sentence, idx) => (
-                <p key={idx} className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:text-emerald-400 mt-1.5 shrink-0" />
-                  <span>{sentence}</span>
-                </p>
-              ))}
-            </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-center text-xs text-paper-muted italic">
+                No distinct numbered headings detected. You can add section headings in the text editor above.
+              </div>
+            )}
           </div>
 
-          {/* BLOCK 3: Key Terms & Definitions (Strict Patterns, Bold Term & Separate Definition) */}
+          {/* BLOCK 2: Executive Summary (3 to 5 Complete Sentences from Whole Document) */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                <span>3. Key Terms & Definitions ({analysis.keyTerms.length} Extracted)</span>
-              </h4>
-
-              <button
-                onClick={handleCreateFlashcards}
-                disabled={analysis.keyTerms.length === 0}
-                className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs"
-              >
-                <Brain className="w-3.5 h-3.5" />
-                <span>Create Flashcards ({analysis.keyTerms.length})</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {analysis.keyTerms.map((kt, idx) => (
-                <div key={idx} className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-1">
-                  <div className="text-xs font-black text-cyan-600 dark:text-cyan-400">
-                    {kt.term}
-                  </div>
-                  <div className="text-[11px] text-paper-body dark:text-night-muted leading-relaxed">
-                    {kt.definition}
-                  </div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-emerald-600" />
+              <span>2. Executive Summary ({analysis.summary.length} Sentences)</span>
+              {usedAiMode && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span>AI Summary</span>
+                </span>
+              )}
+            </h4>
+            <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-2 text-xs leading-relaxed text-paper-ink dark:text-night-text">
+              {analysis.summary.map((sentence, idx) => (
+                <div key={idx} className="flex items-start gap-2">
+                  <span className="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {idx + 1}
+                  </span>
+                  <span>{sentence}</span>
                 </div>
               ))}
-
-              {analysis.keyTerms.length === 0 && (
-                <div className="col-span-2 p-4 text-center text-xs text-paper-muted italic rounded-xl border border-dashed border-paper-border dark:border-night-border">
-                  No strict definition patterns ("X is defined as", "X means", "X refers to") found in this text.
-                </div>
+              {analysis.summary.length === 0 && (
+                <div className="text-paper-muted italic">No complete prose sentences could be extracted for summary.</div>
               )}
             </div>
           </div>
 
-          {/* BLOCK 4: Formulas & Algorithms (Listed Separately) */}
+          {/* BLOCK 3: Key Terms & Definitions */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+                  <Brain className="w-4 h-4 text-emerald-600" />
+                  <span>3. Key Terms & Definitions ({analysis.keyTerms.length})</span>
+                </h4>
+                <p className="text-[11px] text-paper-muted dark:text-night-muted">
+                  Strict academic terms and definitions. Terms displayed in bold with separated definitions.
+                </p>
+              </div>
+
+              <button
+                onClick={handleCreateFlashcards}
+                disabled={analysis.keyTerms.length === 0}
+                className="px-3 py-1.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500 text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5 btn-tactile shadow-xs self-start sm:self-auto disabled:opacity-40"
+              >
+                <Brain className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Create Flashcards ({analysis.keyTerms.length})</span>
+              </button>
+            </div>
+
+            {analysis.keyTerms.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1">
+                {analysis.keyTerms.map((kt, idx) => (
+                  <div 
+                    key={`${kt.term}-${idx}`} 
+                    className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-1 text-xs"
+                  >
+                    <div className="font-bold text-paper-ink dark:text-night-text text-xs flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <strong>{kt.term}</strong>
+                    </div>
+                    <div className="text-paper-muted dark:text-night-muted pl-3 leading-relaxed">
+                      {kt.definition}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-center text-xs text-paper-muted italic">
+                No formal definition patterns ("is defined as", "is called", "means", "refers to") detected.
+              </div>
+            )}
+          </div>
+
+          {/* BLOCK 4: Formulas & Algorithms (Separately Listed) */}
           {(analysis.formulasAndAlgorithms.formulas.length > 0 || analysis.formulasAndAlgorithms.algorithms.length > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Formulas */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
-                  <FunctionSquare className="w-4 h-4 text-amber-500" />
-                  <span>4A. Governing Formulas & Equations ({analysis.formulasAndAlgorithms.formulas.length})</span>
+                  <FunctionSquare className="w-4 h-4 text-blue-500" />
+                  <span>4A. Mathematical Formulas ({analysis.formulasAndAlgorithms.formulas.length})</span>
                 </h4>
                 <div className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-2 max-h-52 overflow-y-auto font-mono text-xs">
                   {analysis.formulasAndAlgorithms.formulas.map((f, idx) => (
@@ -723,9 +988,19 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5 flex-wrap">
                   <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
                   <span>5. Practice Questions from your Notes ({practiceQuestions.length})</span>
+                  {usedAiMode ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>AI-suggested practice questions, not real predictions</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-paper-border/40 dark:bg-night-border/40 text-paper-muted dark:text-night-muted">
+                      Rule-based templates
+                    </span>
+                  )}
                 </h4>
                 <p className="text-[11px] text-paper-muted dark:text-night-muted">
                   Generated from outlines, key terms, and formulas. Every question is complete with editable suggested marks.
@@ -778,28 +1053,10 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           {/* ACTION BUTTONS (Save original file to IndexedDB, Create Flashcards, Add to PYQ) */}
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-6 border-t border-paper-border dark:border-night-border">
             <button
-              onClick={handleCreateFlashcards}
-              disabled={analysis.keyTerms.length === 0}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated hover:border-cyan-500 text-xs font-bold text-cyan-600 dark:text-cyan-400 flex items-center justify-center gap-1.5 btn-tactile"
+              onClick={handleSaveToSubject}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 btn-tactile shadow-sm"
             >
-              <Brain className="w-4 h-4" />
-              <span>Create Flashcards ({analysis.keyTerms.length})</span>
-            </button>
-
-            <button
-              onClick={handleSaveQuestionsToPyqBank}
-              disabled={practiceQuestions.length === 0}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated hover:border-amber-500 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1.5 btn-tactile"
-            >
-              <Flame className="w-4 h-4" />
-              <span>Add to PYQ Bank ({practiceQuestions.length})</span>
-            </button>
-
-            <button
-              onClick={handleSaveFileToSubject}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
-            >
-              <Check className="w-4 h-4" />
+              <Download className="w-4 h-4" />
               <span>Save to {targetSubject.name} (IndexedDB)</span>
             </button>
           </div>
@@ -807,18 +1064,24 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
         </div>
       )}
 
-      {/* SAVED NOTES LIBRARY BY SUBJECT */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Saved Subject Notes & Summaries</span>
-          </h3>
+      {/* SAVED NOTES VAULT FOR SELECTED SUBJECT */}
+      <div className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-emerald-600" />
+              <span>Saved Notes Library for {targetSubject?.name}</span>
+            </h3>
+            <p className="text-xs text-paper-muted dark:text-night-muted">
+              Notes and summaries saved into your local browser database.
+            </p>
+          </div>
 
+          {/* Subject Filter */}
           <select
             value={selectedSubjectId}
             onChange={e => setSelectedSubjectId(e.target.value)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none"
           >
             {subjects.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
@@ -826,83 +1089,242 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {subjectPdfs.map(pdf => (
-            <div 
-              key={pdf.id}
-              className="p-5 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-xs flex flex-col justify-between gap-3 group"
-            >
-              <div className="space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-sm font-bold text-paper-ink dark:text-night-text line-clamp-1">{pdf.fileName}</h4>
-                    <span className="text-[10px] text-paper-muted dark:text-night-muted">{pdf.uploadDate} • {pdf.fileSize}</span>
+        {subjectPdfs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            {subjectPdfs.map(pdf => (
+              <div 
+                key={pdf.id}
+                className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border flex flex-col justify-between gap-3 hover:border-emerald-500/40 transition-all"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold text-xs text-paper-ink dark:text-night-text line-clamp-1">
+                      {pdf.fileName}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-paper-border/60 text-paper-muted shrink-0">
+                      Unit {pdf.unit}
+                    </span>
                   </div>
-
-                  <button
-                    onClick={() => onDeletePdf(pdf.id)}
-                    className="p-1 text-paper-muted hover:text-rose-600 dark:text-night-muted dark:hover:text-rose-400 opacity-70 group-hover:opacity-100"
-                    title="Delete Note"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <p className="text-[11px] text-paper-muted dark:text-night-muted line-clamp-2 leading-relaxed">
+                    {pdf.summary}
+                  </p>
                 </div>
 
-                <p className="text-xs text-paper-body dark:text-night-muted line-clamp-3 bg-paper-cardElevated dark:bg-night-cardElevated p-3 rounded-2xl">
-                  {pdf.summary}
-                </p>
+                <div className="flex items-center justify-between pt-2 border-t border-paper-border/50 text-[11px] font-mono text-paper-muted">
+                  <span>{pdf.uploadDate}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setViewingPdf(pdf)}
+                      className="p-1.5 rounded-lg hover:bg-paper-card text-emerald-600 hover:text-emerald-700"
+                      title="View Details"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onDeletePdf(pdf.id)}
+                      className="p-1.5 rounded-lg hover:bg-paper-card text-red-500 hover:text-red-700"
+                      title="Delete Note"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-paper-border dark:border-night-border">
-                <button
-                  onClick={() => setViewingPdf(pdf)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-paper-cardElevated dark:bg-night-cardElevated hover:border-emerald-500 border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text flex items-center gap-1.5 btn-tactile"
-                >
-                  <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Read Full Extracted Note</span>
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {subjectPdfs.length === 0 && (
-            <div className="col-span-2 p-8 text-center rounded-3xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-paper-muted text-xs">
-              No notes saved for this subject yet. Upload a PDF or photo of notes above to extract structured outlines and practice questions.
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-xs text-paper-muted italic">
+            No saved notes in this subject yet. Upload a document above to save.
+          </div>
+        )}
       </div>
 
       {/* FULL NOTE MODAL */}
       {viewingPdf && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-slide-up">
-          <div className="w-full max-w-2xl max-h-[85vh] p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text shadow-2xl relative flex flex-col space-y-4">
-            <button 
-              onClick={() => setViewingPdf(null)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div>
-              <h3 className="text-lg font-bold text-paper-ink dark:text-night-text">{viewingPdf.fileName}</h3>
-              <p className="text-xs text-paper-muted dark:text-night-muted">{viewingPdf.uploadDate} • Full Extracted Content</p>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl max-w-2xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-paper-border dark:border-night-border pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-paper-ink dark:text-night-text">{viewingPdf.fileName}</h3>
+                <span className="text-xs text-paper-muted">Unit {viewingPdf.unit} • {viewingPdf.uploadDate}</span>
+              </div>
+              <button 
+                onClick={() => setViewingPdf(null)}
+                className="p-1.5 rounded-full hover:bg-paper-cardElevated text-paper-muted hover:text-paper-ink"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-              <div className="p-4 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-body dark:text-night-text leading-relaxed font-mono whitespace-pre-wrap">
-                {viewingPdf.extractedText}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted">Summary</h4>
+              <p className="text-xs text-paper-ink dark:text-night-text leading-relaxed p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border">
+                {viewingPdf.summary}
+              </p>
+
+              <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted">Practice Questions</h4>
+              <div className="space-y-1.5">
+                {viewingPdf.extractedQuestions?.map((q, idx) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text">
+                    {q}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMART ANALYSIS & API KEY SETTINGS MODAL */}
+      {showAiSettings && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-slide-up">
+            
+            <div className="flex items-center justify-between border-b border-paper-border dark:border-night-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-paper-ink dark:text-night-text">
+                    Smart Analysis Settings (Optional AI)
+                  </h3>
+                  <span className="text-[11px] text-paper-muted dark:text-night-muted">
+                    Google Gemini API Configuration
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowAiSettings(false);
+                  setTestKeyResult(null);
+                }}
+                className="p-1.5 rounded-full hover:bg-paper-cardElevated text-paper-muted hover:text-paper-ink"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* PRIVACY WARNING & ZERO LEAKAGE COMMITMENT */}
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600" />
+                <span>Provider Transmission & Privacy Warning</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                When Smart Analysis is turned ON, your cleaned notes text is transmitted directly from your browser to <strong>Google AI Studio</strong> (Google Generative Language API) to generate academic summaries, formulas, and questions.
+              </p>
+              <div className="pt-1 border-t border-amber-500/20 text-[10px] space-y-1 font-mono">
+                <div>🔒 <strong>Stored strictly in this browser</strong> (IndexedDB)</div>
+                <div>🚫 <strong>Never in source code</strong>, never in backups, never on PyqRanker servers</div>
+                <div>💡 <strong>100% Offline fallback</strong>: Leave OFF anytime to use local rule-based parsing</div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-paper-border dark:border-night-border">
-              <button
-                onClick={() => setViewingPdf(null)}
-                className="px-4 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-bold btn-tactile"
-              >
-                Close
-              </button>
+            {/* API Key Input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center justify-between">
+                <span>Google Gemini API Key</span>
+                <a 
+                  href="https://aistudio.google.com/app/apikey" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Get free key at Google AI Studio</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </label>
+
+              <div className="relative">
+                <input
+                  type={showApiKeyText ? "text" : "password"}
+                  value={apiKeyInput}
+                  onChange={e => setApiKeyInput(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-indigo-500 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyText(!showApiKeyText)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-paper-muted hover:text-paper-ink"
+                  title={showApiKeyText ? "Hide key" : "Show key"}
+                >
+                  {showApiKeyText ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
+
+            {/* Model Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-paper-ink dark:text-night-text">
+                Language Model Service
+              </label>
+              <select
+                value={selectedModel}
+                onChange={e => setSelectedModel(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-medium bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-indigo-500"
+              >
+                <option value="gemini-1.5-flash">gemini-1.5-flash (Recommended • Fast & Free tier)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Latest Flash preview)</option>
+                <option value="gemini-1.5-pro">gemini-1.5-pro (High reasoning)</option>
+              </select>
+            </div>
+
+            {/* Test Key Result Banner */}
+            {testKeyResult && (
+              <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                testKeyResult.success
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-red-500/10 border-red-500/30 text-red-800 dark:text-red-300'
+              }`}>
+                {testKeyResult.success ? (
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <span>{testKeyResult.message}</span>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between gap-2 pt-3 border-t border-paper-border dark:border-night-border">
+              {hasSavedApiKey ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteKey}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 flex items-center gap-1.5 btn-tactile"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Key</span>
+                </button>
+              ) : (
+                <span className="text-[11px] text-paper-muted">No key currently stored</span>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTestKey}
+                  disabled={isTestingKey || !apiKeyInput.trim()}
+                  className="px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text hover:bg-paper-card flex items-center gap-1.5 disabled:opacity-40 btn-tactile"
+                >
+                  {isTestingKey && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Test Key</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveKey}
+                  disabled={!apiKeyInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 btn-tactile shadow-xs"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Save Key</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
