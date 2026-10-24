@@ -271,36 +271,70 @@ export function extractYoutubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-export function formatUnitDisplayName(unit?: Partial<SubjectUnit> | null): string {
+export function formatUnitDisplayName(unit?: any): string {
   if (!unit) return 'Unit';
-  const rawLabel = (unit.unitLabel || '').trim();
-  let title = (unit.title || unit.name || '').trim();
-
-  // If no unitLabel is specified:
-  if (!rawLabel) {
-    const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+  if (typeof unit === 'string') {
+    const trimmed = unit.trim();
+    const match = trimmed.match(/^(unit\s*[\d\w]+|[a-z]+\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
     if (match) {
       return `${match[1].trim()}: ${match[2].trim()}`;
     }
-    if (unit.unitNumber && String(unit.unitNumber).trim().toLowerCase().startsWith('unit')) {
-      const cleanNum = String(unit.unitNumber).trim();
-      if (title && !title.toLowerCase().startsWith(cleanNum.toLowerCase())) {
-        return `${cleanNum}: ${title}`;
-      }
-      return title || cleanNum;
+    return trimmed || 'Unit';
+  }
+
+  // 1. Determine saved unit label
+  let label = (unit.unitLabel || '').trim();
+  if (!label && unit.unitNumber !== undefined && unit.unitNumber !== null) {
+    const rawNum = String(unit.unitNumber).trim();
+    if (rawNum.toLowerCase().startsWith('unit') || rawNum.toLowerCase().startsWith('module') || rawNum.toLowerCase().startsWith('chapter') || rawNum.toLowerCase().startsWith('section')) {
+      label = rawNum;
+    } else if (/^\d+$/.test(rawNum)) {
+      label = `Unit ${rawNum}`;
+    } else if (rawNum.length > 0 && rawNum.length <= 15) {
+      label = rawNum;
     }
-    return title || 'Unit';
   }
 
-  // If unitLabel is specified:
-  // Strip duplicate prefix from title if present (e.g. title already has "Unit 3: Continuous...")
-  const prefixRegex = new RegExp('^(' + rawLabel.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '|unit\\s*\\d+)[:\\s\\-\\–]*', 'i');
-  const cleanTitle = title.replace(prefixRegex, '').trim();
+  // 2. Determine title
+  let title = (unit.unitTitle || unit.title || unit.name || '').trim();
 
-  if (cleanTitle && rawLabel) {
-    return `${rawLabel}: ${cleanTitle}`;
+  // If label is still empty, check if title starts with "Unit X:" or similar
+  if (!label && title) {
+    const match = title.match(/^(unit\s*[\d\w]+|[a-z]+\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+    if (match) {
+      label = match[1].trim();
+      title = match[2].trim();
+    }
   }
-  return rawLabel || cleanTitle || 'Unit';
+
+  // If label is STILL not found, check unit.unit (saved unit number, NOT position)
+  if (!label && unit.unit !== undefined && unit.unit !== null && unit.unit !== '') {
+    const uNum = String(unit.unit).trim();
+    if (uNum.toLowerCase().startsWith('unit')) {
+      label = uNum;
+    } else {
+      label = `Unit ${uNum}`;
+    }
+  }
+
+  // Clean title: strip duplicate label or "Unit \d+:" from start of title
+  if (label && title) {
+    const escapedLabel = label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const prefixRegex = new RegExp('^(' + escapedLabel + '|unit\\s*\\d+)[:\\s\\-\\–]*', 'i');
+    title = title.replace(prefixRegex, '').trim();
+  }
+
+  // Return "<saved unit label>: <saved unit title>"
+  if (label && title) {
+    return `${label}: ${title}`;
+  }
+  if (label) {
+    return label;
+  }
+  if (title) {
+    return title;
+  }
+  return 'Unit';
 }
 
 /**
@@ -318,13 +352,15 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
       if (typeof item === 'string') {
         const title = item.trim();
         const match = title.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
-        const label = match ? match[1].trim() : `Unit ${idx + 1}`;
+        const label = match ? match[1].trim() : undefined;
         const cleanT = match ? match[2].trim() : title;
+        const numMatch = label?.match(/\d+/);
+        const num = numMatch ? Number(numMatch[0]) : (idx + 1);
         return {
           id: `unit-${idx + 1}-${title.replace(/\s+/g, '-').slice(0, 10)}`,
           unitLabel: label,
-          unit: idx + 1,
-          unitNumber: label,
+          unit: num,
+          unitNumber: label || cleanT,
           title: cleanT,
           name: cleanT
         };
@@ -340,28 +376,33 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
             title = match[2].trim();
           } else if (item.unitNumber && String(item.unitNumber).toLowerCase().startsWith('unit')) {
             label = String(item.unitNumber).trim();
+          } else if (item.unit !== undefined && item.unit !== null) {
+            label = `Unit ${item.unit}`;
           }
         } else {
           const prefixRegex = new RegExp('^(' + label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '|unit\\s*\\d+)[:\\s\\-\\–]*', 'i');
           title = title.replace(prefixRegex, '').trim();
         }
 
+        const numMatch = label.match(/\d+/);
+        const derivedNum = item.unit !== undefined ? Number(item.unit) : (numMatch ? Number(numMatch[0]) : (idx + 1));
+
         return {
           id: String(item.id || `unit-${idx + 1}-${Date.now()}`),
           unitLabel: label || undefined,
-          unit: item.unit !== undefined ? Number(item.unit) : (idx + 1),
+          unit: derivedNum,
           unitNumber: label || item.unitNumber || title,
-          title: title || label || `Unit ${idx + 1}`,
-          name: title || label || `Unit ${idx + 1}`
+          title: title || label || 'Unit',
+          name: title || label || 'Unit'
         };
       }
       return {
         id: `u-${idx + 1}`,
-        unitLabel: `Unit ${idx + 1}`,
+        unitLabel: undefined,
         unit: idx + 1,
-        unitNumber: `Unit ${idx + 1}`,
-        title: `Unit ${idx + 1}`,
-        name: `Unit ${idx + 1}`
+        unitNumber: 'Unit',
+        title: 'Unit',
+        name: 'Unit'
       };
     });
   }
@@ -371,15 +412,17 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
     if (lines.length > 0) {
       return lines.map((line, idx) => {
         const match = line.match(/^(unit\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
-        const label = match ? match[1].trim() : `Unit ${idx + 1}`;
+        const label = match ? match[1].trim() : undefined;
         const cleanTitle = match ? match[2].trim() : line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || line.trim();
+        const numMatch = label?.match(/\d+/);
+        const num = numMatch ? Number(numMatch[0]) : (idx + 1);
         return {
           id: `u${idx + 1}`,
           unitLabel: label,
-          unit: idx + 1,
-          unitNumber: label,
-          title: cleanTitle || `Unit ${idx + 1}`,
-          name: cleanTitle || `Unit ${idx + 1}`
+          unit: num,
+          unitNumber: label || cleanTitle,
+          title: cleanTitle || 'Unit',
+          name: cleanTitle || 'Unit'
         };
       });
     }
@@ -397,63 +440,108 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
 }
 
 /**
- * Requirement 2: Auto-Sort Subjects by Exam Time Remaining (Closest Exam First)
- * Upcoming exams with least time left come first (#1, #2, ...), followed by more distant exams.
- * Completed / past exams are placed at the end.
+ * Requirement 2 & 3: Auto-Sort Subjects by Exam Time Remaining (Closest Exam First)
+ * Priority order only compares subjects that have a date.
+ * Subjects without a date are placed after subjects with dates.
  */
 export function sortSubjectsByExamUrgency(subjects: SubjectMeta[]): SubjectMeta[] {
   const now = Date.now();
   return [...subjects].sort((a, b) => {
-    const targetA = a.examDate ? new Date(a.examDate).getTime() : Infinity;
-    const targetB = b.examDate ? new Date(b.examDate).getTime() : Infinity;
-    const diffA = targetA - now;
-    const diffB = targetB - now;
+    const hasA = !!(a.examDate && a.examDate.trim() && !isNaN(new Date(a.examDate).getTime()));
+    const hasB = !!(b.examDate && b.examDate.trim() && !isNaN(new Date(b.examDate).getTime()));
 
-    // Both in future: closest first
-    if (diffA > 0 && diffB > 0) {
-      return diffA - diffB;
+    // Both have dates: compare upcoming dates first, then past
+    if (hasA && hasB) {
+      const targetA = new Date(a.examDate!).getTime();
+      const targetB = new Date(b.examDate!).getTime();
+      const diffA = targetA - now;
+      const diffB = targetB - now;
+
+      // Both in future: closest first
+      if (diffA > 0 && diffB > 0) {
+        return diffA - diffB;
+      }
+      // A in future, B in past: A comes first
+      if (diffA > 0 && diffB <= 0) {
+        return -1;
+      }
+      // B in future, A in past: B comes first
+      if (diffA <= 0 && diffB > 0) {
+        return 1;
+      }
+      // Both in past: most recently passed first
+      return targetB - targetA;
     }
-    // A in future, B in past: A comes first
-    if (diffA > 0 && diffB <= 0) {
-      return -1;
-    }
-    // B in future, A in past: B comes first
-    if (diffA <= 0 && diffB > 0) {
-      return 1;
-    }
-    // Both in past: most recently passed first
-    return targetB - targetA;
+
+    // A has date, B does not: A comes first
+    if (hasA && !hasB) return -1;
+    if (!hasA && hasB) return 1;
+
+    // Neither has date: keep original order
+    return 0;
   });
 }
 
 /**
  * Exam Urgency Calculation with Continuous HSL Color Shift
+ * If no date is set, returns hasDate: false and formattedCountdown: 'Set exam date'
  */
-export function getExamUrgencyColor(examDateString: string): ExamUrgency {
-  const fallbackDate = new Date(Date.now() + 7 * 86400 * 1000);
-  const target = examDateString ? new Date(examDateString).getTime() : fallbackDate.getTime();
+export function getExamUrgencyColor(examDateString?: string | null): ExamUrgency {
+  if (!examDateString || !examDateString.trim()) {
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      fractionalDays: Infinity,
+      hasDate: false,
+      hue: 200,
+      hslColor: '#5B6573', // secondary text neutral
+      isUrgent: false,
+      statusLabel: 'Set exam date',
+      formattedCountdown: 'Set exam date',
+      formattedExamDate: 'No Exam Date Set'
+    };
+  }
+
+  const target = new Date(examDateString).getTime();
+  if (isNaN(target)) {
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      fractionalDays: Infinity,
+      hasDate: false,
+      hue: 200,
+      hslColor: '#5B6573',
+      isUrgent: false,
+      statusLabel: 'Set exam date',
+      formattedCountdown: 'Set exam date',
+      formattedExamDate: 'No Exam Date Set'
+    };
+  }
+
   const diffMs = target - Date.now();
-
   const targetObj = new Date(target);
-  const formattedExamDate = isNaN(target) 
-    ? 'No Exam Date Set' 
-    : targetObj.toLocaleDateString(undefined, { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-      }) + ' • ' + targetObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedExamDate = targetObj.toLocaleDateString(undefined, { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  }) + ' • ' + targetObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  if (isNaN(target) || diffMs <= 0) {
+  if (diffMs <= 0) {
     return {
       days: 0,
       hours: 0,
       minutes: 0,
       seconds: 0,
       fractionalDays: 0,
+      hasDate: true,
       hue: 0,
       hslColor: '#B25A4E', // Muted Terracotta (Weak/Urgent)
       isUrgent: true,
-      statusLabel: 'Completed / Update Date',
+      statusLabel: 'Exam passed',
       formattedCountdown: '0d : 0h : 0m : 0s',
       formattedExamDate
     };
@@ -471,15 +559,15 @@ export function getExamUrgencyColor(examDateString: string): ExamUrgency {
 
   if (fractionalDays >= 15) {
     hue = 145;
-    statusLabel = 'On Track (> 15 Days)';
+    statusLabel = 'On Track';
   } else if (fractionalDays > 5) {
     const t = (fractionalDays - 5) / (15 - 5);
     hue = Math.round(20 + t * (145 - 20));
-    statusLabel = fractionalDays > 9 ? 'Active Prep' : 'Approaching Soon';
+    statusLabel = fractionalDays > 9 ? 'Active Prep' : 'Approaching';
   } else {
     const t = Math.max(0, fractionalDays) / 5;
     hue = Math.round(t * 20);
-    statusLabel = '🚨 Urgent (< 5 Days)';
+    statusLabel = 'Urgent (< 5d)';
     isUrgent = true;
   }
 
@@ -492,6 +580,7 @@ export function getExamUrgencyColor(examDateString: string): ExamUrgency {
     minutes,
     seconds,
     fractionalDays,
+    hasDate: true,
     hue,
     hslColor,
     isUrgent,
@@ -511,7 +600,7 @@ export function calculateCountdown(examDateString: string): CountdownTime {
     hours: urgency.hours,
     minutes: urgency.minutes,
     seconds: urgency.seconds,
-    totalSeconds: Math.floor(urgency.fractionalDays * 86400),
+    totalSeconds: Number.isFinite(urgency.fractionalDays) ? Math.floor(urgency.fractionalDays * 86400) : 0,
     label: urgency.formattedCountdown,
     urgency: urgencyLevel
   };
@@ -680,6 +769,11 @@ export const storageService = {
     } catch (e) {
       console.error('Error saving subjects:', e);
     }
+  },
+
+  reorderSubjects(subjects: SubjectMeta[], examId?: string): SubjectMeta[] {
+    this.saveSubjects(subjects, examId);
+    return subjects;
   },
 
   addSubject(subject: SubjectMeta, examId?: string): SubjectMeta[] {
@@ -1475,6 +1569,7 @@ export const storageService = {
         topicTitle: topic.title,
         unitNumber: topic.unitNumber,
         unitId: topic.unitId,
+        unitLabel: (topic as any).unitLabel,
         mastery: topic.mastery,
         completed: topic.completed,
         pyqCount: matchedQuestions.length,
@@ -1499,14 +1594,14 @@ export const storageService = {
   generateSmartStudyPlan(subjects: SubjectMeta[], allTopics: SyllabusTopic[], allQuestions: PYQQuestion[]): DayStudyPlan[] {
     const now = Date.now();
     const upcomingSubjects = subjects
-      .filter(s => s.examDate && new Date(s.examDate).getTime() > now)
-      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime());
+      .filter(s => !!s.examDate && new Date(s.examDate).getTime() > now)
+      .sort((a, b) => new Date(a.examDate!).getTime() - new Date(b.examDate!).getTime());
 
     const targetSubjects = upcomingSubjects.length > 0 ? upcomingSubjects : subjects;
     const nextExam = targetSubjects[0];
     if (!nextExam) return [];
 
-    const examTime = new Date(nextExam.examDate).getTime();
+    const examTime = nextExam.examDate ? new Date(nextExam.examDate).getTime() : now + 14 * 86400000;
     const daysUntilExam = Math.max(1, Math.min(30, Math.ceil((examTime - now) / 86400000)));
     const subjectRank = new Map(targetSubjects.map((s, idx) => [s.id, idx]));
 

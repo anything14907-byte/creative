@@ -13,6 +13,7 @@ import {
 import confetti from 'canvas-confetti';
 import { PYQQuestion, EvaluationResult } from '../types';
 import { evaluateAnswer } from '../utils/rubricEvaluator';
+import { formatUnitDisplayName } from '../utils/storageService';
 
 interface QuestionCardProps {
   question: PYQQuestion;
@@ -76,7 +77,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
           
           {/* Unit Badge */}
           <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-body dark:text-night-text">
-            Unit {question.unit}: {question.unitTitle}
+            {formatUnitDisplayName({ unit: question.unit, unitTitle: question.unitTitle, unitLabel: (question as any).unitLabel })}
           </span>
 
           {/* Marks Badge */}

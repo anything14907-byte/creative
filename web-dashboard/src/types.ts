@@ -42,6 +42,7 @@ export interface PYQQuestion {
   subjectName: string;
   unit: number;
   unitTitle: string;
+  unitLabel?: string;
   unitId?: string; // Links question to a specific SubjectUnit
   topicId?: string;
   topicTitle?: string;
@@ -69,7 +70,7 @@ export interface SubjectMeta {
   name: string;
   code?: string;
   semester?: string;
-  examDate: string; // ISO datetime string: 'YYYY-MM-DDTHH:mm'
+  examDate?: string; // ISO datetime string: 'YYYY-MM-DDTHH:mm' (optional if unset)
   iconName: string;
   accentColor: string; // 10 distinct swatches
   units: SubjectUnit[];
@@ -96,6 +97,7 @@ export interface ExamUrgency {
   hue: number;
   hslColor: string;
   isUrgent: boolean; // fractionalDays <= 5
+  hasDate?: boolean;
   statusLabel: string;
   formattedCountdown: string;
   formattedExamDate: string;

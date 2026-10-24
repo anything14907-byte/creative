@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SubjectMeta, PYQQuestion, SyllabusTopic, TopicMastery, QuestionMarks } from '../types';
-import { storageService } from '../utils/storageService';
+import { storageService, formatUnitDisplayName } from '../utils/storageService';
 import { QuestionCard } from './QuestionCard';
 import { 
   Flame, 
@@ -183,7 +183,7 @@ export const PyqRankerView: React.FC<PyqRankerViewProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap mb-1">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-paper-card dark:bg-night-card text-paper-muted dark:text-night-muted font-mono">
-                        Unit {item.unitNumber}
+                        {formatUnitDisplayName(currentSubject.units?.find(u => u.id === item.unitId || u.unit === item.unitNumber) || { unitNumber: item.unitNumber, unitLabel: (item as any).unitLabel, title: (item as any).unitTitle })}
                       </span>
 
                       {/* Mastery Pill */}

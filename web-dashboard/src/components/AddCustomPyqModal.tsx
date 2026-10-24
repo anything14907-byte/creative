@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PYQQuestion, SubjectMeta, QuestionMarks } from '../types';
 import { Plus, X, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { formatUnitDisplayName } from '../utils/storageService';
 
 interface AddCustomPyqModalProps {
   subject: SubjectMeta;
@@ -37,9 +38,10 @@ export const AddCustomPyqModal: React.FC<AddCustomPyqModalProps> = ({
       .map(k => k.trim())
       .filter(Boolean);
 
-    const selectedUnitObj = subject.units.find(u => u.unit === unit);
+    const selectedUnitObj = subject.units.find(u => u.unit === unit || u.id === String(unit));
     const unitTitle = selectedUnitObj ? selectedUnitObj.title : `Unit ${unit}`;
     const unitId = selectedUnitObj?.id || `u${unit}`;
+    const unitLabel = (selectedUnitObj as any)?.unitLabel;
 
     const newQuestion: PYQQuestion = {
       id: `q-custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
@@ -48,6 +50,7 @@ export const AddCustomPyqModal: React.FC<AddCustomPyqModalProps> = ({
       unit,
       unitId,
       unitTitle,
+      unitLabel,
       question: question.trim(),
       marks,
       yearsAsked: [2022, 2023, 2024, 2025],
@@ -125,7 +128,7 @@ export const AddCustomPyqModal: React.FC<AddCustomPyqModalProps> = ({
                 className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text text-xs focus:outline-none focus:border-emerald-500"
               >
                 {subject.units.map(u => (
-                  <option key={u.unit} value={u.unit}>Unit {u.unit}: {u.title.slice(0, 15)}...</option>
+                  <option key={u.id || u.unit} value={u.unit}>{formatUnitDisplayName(u)}</option>
                 ))}
               </select>
             </div>

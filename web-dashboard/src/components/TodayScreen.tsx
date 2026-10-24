@@ -61,9 +61,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
 
   const sortedSubjects = React.useMemo(() => sortSubjectsByExamUrgency(subjects), [subjects]);
   const nextSubject = sortedSubjects.find(s => {
+    if (!s.examDate || !s.examDate.trim()) return false;
     const u = getExamUrgencyColor(s.examDate);
-    return u.fractionalDays > 0;
-  }) || sortedSubjects[0];
+    return u.hasDate && u.fractionalDays > 0;
+  });
 
   const nextUrgency = nextSubject ? getExamUrgencyColor(nextSubject.examDate) : null;
 
@@ -123,7 +124,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
       )}
       
       {/* 1. NEXT EXAM COUNTDOWN HERO BANNER */}
-      {nextSubject && nextUrgency && (
+      {nextSubject && nextUrgency && nextUrgency.hasDate && (
         <div 
           className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card transition-all"
           style={{ borderLeft: `8px solid ${nextSubject.accentColor}` }}
@@ -327,10 +328,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 <div>
                   {/* Header: Title, Edit Button & Time Remaining Badge */}
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-start gap-1.5 min-w-0">
                       <h4 
                         onClick={() => onSelectSubject(sub.id)}
-                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline truncate"
+                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline line-clamp-2 min-h-[3rem] leading-snug break-words"
                         title={sub.name}
                       >
                         {sub.name}
@@ -341,7 +342,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                             e.stopPropagation();
                             onEditSubject(sub);
                           }}
-                          className="p-1 rounded-md text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text opacity-70 group-hover:opacity-100 transition-opacity"
+                          className="p-1 rounded-md text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text opacity-70 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5"
                           title="Edit subject name & exam date"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
@@ -350,13 +351,15 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     </div>
 
                     <span 
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full font-mono shrink-0"
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full font-mono shrink-0 whitespace-nowrap"
                       style={{ 
-                        color: urgency.hslColor,
-                        backgroundColor: `${urgency.hslColor}16`
+                        color: urgency.hasDate ? urgency.hslColor : '#5B6573',
+                        backgroundColor: urgency.hasDate ? `${urgency.hslColor}16` : '#5B657316'
                       }}
                     >
-                      {urgency.fractionalDays > 0 ? `${urgency.days}d ${urgency.hours}h` : 'Completed'}
+                      {urgency.hasDate 
+                        ? (urgency.fractionalDays > 0 ? `${urgency.days}d ${urgency.hours}h` : 'Passed')
+                        : 'Set exam date'}
                     </span>
                   </div>
 

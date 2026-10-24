@@ -13,7 +13,9 @@ import {
   Trash2, 
   Sparkles,
   Award,
-  Clock
+  Clock,
+  Settings2,
+  AlertCircle
 } from 'lucide-react';
 
 import { ConfirmModal } from './ConfirmModal';
@@ -29,6 +31,31 @@ interface FocusTimerViewProps {
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 
+interface TimerSettings {
+  focusDuration: number; // minutes: 25 to 180
+  shortBreakDuration: number; // minutes: 1 to 60
+  longBreakDuration: number; // minutes: 1 to 60
+}
+
+interface ActiveTimerSession {
+  mode: TimerMode;
+  subjectId: string;
+  targetEndTime: number | null; // Date.now() + remainingSeconds * 1000
+  totalDurationSeconds: number;
+  remainingSeconds: number;
+  isRunning: boolean;
+  lastUpdated: number;
+}
+
+const SETTINGS_KEY = 'pyq_timer_settings';
+const ACTIVE_SESSION_KEY = 'pyq_timer_active_session';
+
+const DEFAULT_SETTINGS: TimerSettings = {
+  focusDuration: 25,
+  shortBreakDuration: 5,
+  longBreakDuration: 15,
+};
+
 export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   subjects,
   activeSubjectId,
@@ -38,38 +65,141 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   onShowToast
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
+  
+  // 1. Settings state (persisted)
+  const [settings, setSettings] = useState<TimerSettings>(() => {
+    try {
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          focusDuration: Math.max(25, Math.min(180, Number(parsed.focusDuration) || 25)),
+          shortBreakDuration: Math.max(1, Math.min(60, Number(parsed.shortBreakDuration) || 5)),
+          longBreakDuration: Math.max(1, Math.min(60, Number(parsed.longBreakDuration) || 15)),
+        };
+      }
+    } catch (e) {
+      console.error('Failed to parse timer settings:', e);
+    }
+    return DEFAULT_SETTINGS;
+  });
+
   const [mode, setMode] = useState<TimerMode>('focus');
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
+  const [targetEndTime, setTargetEndTime] = useState<number | null>(null);
+  const [totalDurationSeconds, setTotalDurationSeconds] = useState(settings.focusDuration * 60);
+  const [secondsLeft, setSecondsLeft] = useState(settings.focusDuration * 60);
+  
   const [sessionCount, setSessionCount] = useState(0);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId) || subjects[0];
 
-  // Set mode duration
-  const switchMode = (newMode: TimerMode) => {
-    setIsActive(false);
-    setMode(newMode);
-    if (newMode === 'focus') setSecondsLeft(25 * 60);
-    else if (newMode === 'shortBreak') setSecondsLeft(5 * 60);
-    else setSecondsLeft(15 * 60);
+  // Helper to get duration in seconds for any mode
+  const getModeDurationSeconds = (m: TimerMode, currentSettings: TimerSettings = settings) => {
+    if (m === 'focus') return currentSettings.focusDuration * 60;
+    if (m === 'shortBreak') return currentSettings.shortBreakDuration * 60;
+    return currentSettings.longBreakDuration * 60;
   };
 
-  // Timer interval
+  // Helper to persist settings
+  const saveSettings = (newSettings: TimerSettings) => {
+    setSettings(newSettings);
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+    } catch (e) {
+      console.error('Failed to save timer settings:', e);
+    }
+  };
+
+  // Helper to persist active session state
+  const persistActiveSession = (state: ActiveTimerSession | null) => {
+    try {
+      if (state) {
+        localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(state));
+      } else {
+        localStorage.removeItem(ACTIVE_SESSION_KEY);
+      }
+    } catch (e) {
+      console.error('Failed to persist active timer session:', e);
+    }
+  };
+
+  // 2. On mount: resume active session if one was running before refresh/tab close
   useEffect(() => {
-    if (isActive) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            handleTimerComplete();
-            return 0;
+    try {
+      const savedSessionRaw = localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (savedSessionRaw) {
+        const saved: ActiveTimerSession = JSON.parse(savedSessionRaw);
+        if (saved && saved.mode) {
+          setMode(saved.mode);
+          if (saved.subjectId) setSelectedSubjectId(saved.subjectId);
+          setTotalDurationSeconds(saved.totalDurationSeconds || getModeDurationSeconds(saved.mode));
+
+          if (saved.isRunning && saved.targetEndTime) {
+            const now = Date.now();
+            const remaining = Math.max(0, Math.ceil((saved.targetEndTime - now) / 1000));
+            if (remaining > 0) {
+              setSecondsLeft(remaining);
+              setTargetEndTime(saved.targetEndTime);
+              setIsActive(true);
+            } else {
+              // Timer completed while away
+              setSecondsLeft(0);
+              setIsActive(false);
+              persistActiveSession(null);
+              if (saved.mode === 'focus') {
+                const durationMinutes = Math.round((saved.totalDurationSeconds || settings.focusDuration * 60) / 60);
+                onLogSession(saved.subjectId || selectedSubjectId, durationMinutes);
+                onShowToast(`🎉 Welcome back! Your ${durationMinutes}-min focus session completed while you were away. Logged successfully!`, 'success');
+                switchMode('shortBreak');
+              } else {
+                onShowToast('Break session completed while you were away!', 'info');
+                switchMode('focus');
+              }
+            }
+            return;
+          } else {
+            // Saved while paused
+            if (saved.remainingSeconds > 0) {
+              setSecondsLeft(saved.remainingSeconds);
+            }
           }
-          return prev - 1;
-        });
-      }, 1000);
+        }
+      }
+    } catch (e) {
+      console.error('Error recovering timer session:', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 3. Switch mode (focus / shortBreak / longBreak)
+  const switchMode = (newMode: TimerMode) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsActive(false);
+    setTargetEndTime(null);
+    setMode(newMode);
+    const durationSec = getModeDurationSeconds(newMode);
+    setTotalDurationSeconds(durationSec);
+    setSecondsLeft(durationSec);
+    persistActiveSession(null);
+  };
+
+  // 4. Timer interval based on targetEndTime (impervious to background throttling and screen lock)
+  useEffect(() => {
+    if (isActive && targetEndTime) {
+      timerRef.current = setInterval(() => {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.ceil((targetEndTime - now) / 1000));
+        setSecondsLeft(remaining);
+
+        if (remaining <= 0) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          handleTimerComplete();
+        }
+      }, 500);
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -77,15 +207,68 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, mode, selectedSubjectId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, targetEndTime, mode, selectedSubjectId]);
 
+  // Start / Pause timer toggle
+  const handleTogglePlay = () => {
+    if (!isActive) {
+      // Start or Resume
+      const durationToRun = secondsLeft > 0 ? secondsLeft : totalDurationSeconds;
+      const endTimestamp = Date.now() + durationToRun * 1000;
+      setTargetEndTime(endTimestamp);
+      setIsActive(true);
+
+      persistActiveSession({
+        mode,
+        subjectId: selectedSubjectId,
+        targetEndTime: endTimestamp,
+        totalDurationSeconds,
+        remainingSeconds: durationToRun,
+        isRunning: true,
+        lastUpdated: Date.now(),
+      });
+    } else {
+      // Pause
+      const currentRemaining = targetEndTime ? Math.max(0, Math.ceil((targetEndTime - Date.now()) / 1000)) : secondsLeft;
+      setIsActive(false);
+      setTargetEndTime(null);
+      setSecondsLeft(currentRemaining);
+
+      persistActiveSession({
+        mode,
+        subjectId: selectedSubjectId,
+        targetEndTime: null,
+        totalDurationSeconds,
+        remainingSeconds: currentRemaining,
+        isRunning: false,
+        lastUpdated: Date.now(),
+      });
+    }
+  };
+
+  // Reset timer (Never logs any study minutes)
+  const handleReset = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setIsActive(false);
+    setTargetEndTime(null);
+    const durationSec = getModeDurationSeconds(mode);
+    setTotalDurationSeconds(durationSec);
+    setSecondsLeft(durationSec);
+    persistActiveSession(null);
+  };
+
+  // Natural Timer Completion (Logs focus minutes only on completion)
   const handleTimerComplete = () => {
     setIsActive(false);
+    setTargetEndTime(null);
+    persistActiveSession(null);
+
     if (mode === 'focus') {
-      const minutes = 25;
+      const minutes = Math.round(totalDurationSeconds / 60);
       onLogSession(selectedSubjectId, minutes);
       setSessionCount(c => c + 1);
-      onShowToast(`🎉 Awesome focus session! Logged 25 mins for ${selectedSubject?.name || 'Subject'}. Take a 5-min break!`, 'success');
+      onShowToast(`🎉 Awesome focus session! Logged ${minutes} mins for ${selectedSubject?.name || 'Subject'}. Take a break!`, 'success');
       switchMode('shortBreak');
     } else {
       onShowToast('Break finished! Ready for the next focus session?', 'info');
@@ -93,11 +276,63 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
     }
   };
 
+  // Manual Log Now (only enabled if at least 1 minute of real focus time has elapsed)
   const handleManualComplete = () => {
-    const elapsedMinutes = Math.max(1, Math.round((25 * 60 - secondsLeft) / 60));
+    const elapsedSeconds = totalDurationSeconds - secondsLeft;
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+
+    if (elapsedMinutes < 1) {
+      onShowToast('At least 1 minute of focus time must elapse before logging.', 'info');
+      return;
+    }
+
     onLogSession(selectedSubjectId, elapsedMinutes);
     onShowToast(`Logged ${elapsedMinutes} focus minutes!`, 'success');
     switchMode('focus');
+  };
+
+  // Duration input handlers with validation
+  const handleUpdateFocusDuration = (val: number) => {
+    if (isActive) return;
+    if (isNaN(val) || val < 25) {
+      onShowToast('Minimum focus duration is 25 minutes.', 'info');
+      const updated = { ...settings, focusDuration: 25 };
+      saveSettings(updated);
+      if (mode === 'focus') {
+        setTotalDurationSeconds(25 * 60);
+        setSecondsLeft(25 * 60);
+      }
+      return;
+    }
+    const clamped = Math.min(180, Math.max(25, val));
+    const updated = { ...settings, focusDuration: clamped };
+    saveSettings(updated);
+    if (mode === 'focus') {
+      setTotalDurationSeconds(clamped * 60);
+      setSecondsLeft(clamped * 60);
+    }
+  };
+
+  const handleUpdateShortBreak = (val: number) => {
+    if (isActive) return;
+    const clamped = Math.min(60, Math.max(1, isNaN(val) ? 5 : val));
+    const updated = { ...settings, shortBreakDuration: clamped };
+    saveSettings(updated);
+    if (mode === 'shortBreak') {
+      setTotalDurationSeconds(clamped * 60);
+      setSecondsLeft(clamped * 60);
+    }
+  };
+
+  const handleUpdateLongBreak = (val: number) => {
+    if (isActive) return;
+    const clamped = Math.min(60, Math.max(1, isNaN(val) ? 15 : val));
+    const updated = { ...settings, longBreakDuration: clamped };
+    saveSettings(updated);
+    if (mode === 'longBreak') {
+      setTotalDurationSeconds(clamped * 60);
+      setSecondsLeft(clamped * 60);
+    }
   };
 
   // Format MM:SS
@@ -105,20 +340,23 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   const secs = secondsLeft % 60;
   const formattedTime = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-  // Weekly Stats calculation
+  // Weekly Stats calculation directly from logged sessions
   const weeklyStats = React.useMemo(() => {
     return storageService.getWeeklyPomodoroStats();
   }, [pomodoroLogs]);
 
   const maxMinutesInWeek = Math.max(...weeklyStats.map(s => s.minutes), 60);
 
-  // Today & Week Totals
+  // Today & Week Totals calculated ONLY from real logged sessions
   const todayStr = new Date().toISOString().split('T')[0];
   const todayMinutes = pomodoroLogs
     .filter(l => l.date === todayStr)
     .reduce((sum, l) => sum + (Number(l.minutes) || 0), 0);
 
   const totalWeekMinutes = weeklyStats.reduce((sum, s) => sum + s.minutes, 0);
+
+  const elapsedSeconds = totalDurationSeconds - secondsLeft;
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
   return (
     <div className="space-y-8 animate-fade-slide-up max-w-4xl mx-auto pb-16">
@@ -128,27 +366,166 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text flex items-center gap-2">
             <Timer className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            <span>Focus Timer (Pomodoro 25/5)</span>
+            <span>Focus Timer ({settings.focusDuration}/{settings.shortBreakDuration})</span>
           </h2>
           <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-            Timed study sessions logged per subject with weekly analytics.
+            Accurate background-safe study sessions logged per subject with analytics.
           </p>
         </div>
 
-        {/* Quick Subject Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-paper-muted dark:text-night-muted">Target Subject:</span>
-          <select
-            value={selectedSubjectId}
-            onChange={e => setSelectedSubjectId(e.target.value)}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 shadow-xs"
+        {/* Quick Subject Selector & Settings Toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-paper-muted dark:text-night-muted">Target Subject:</span>
+            <select
+              value={selectedSubjectId}
+              onChange={e => setSelectedSubjectId(e.target.value)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 shadow-xs"
+            >
+              {subjects.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
+            className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 btn-tactile transition-all ${
+              showSettingsDrawer 
+                ? 'bg-emerald-600 text-white border-emerald-600' 
+                : 'bg-paper-card dark:bg-night-card border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted hover:text-paper-ink dark:hover:text-night-text'
+            }`}
+            title="Configure Timer Durations"
           >
-            {subjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            <Settings2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Durations</span>
+          </button>
         </div>
       </div>
+
+      {/* DURATION CONFIGURATION PANEL */}
+      {showSettingsDrawer && (
+        <div className="p-5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-3 animate-fade-slide-up">
+          <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-night-border">
+            <div className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-paper-ink dark:text-night-text">
+                Timer Settings (Saved Permanently)
+              </span>
+            </div>
+            {isActive && (
+              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Session in progress. Pause/reset to modify.</span>
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+            {/* Focus Duration */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-paper-ink dark:text-night-text">
+                Focus Duration <span className="text-paper-muted text-[10px]">(min 25, max 180 min)</span>
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={isActive || settings.focusDuration <= 25}
+                  onClick={() => handleUpdateFocusDuration(settings.focusDuration - 5)}
+                  className="px-2.5 py-1.5 rounded-lg border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed btn-tactile"
+                >
+                  -5
+                </button>
+                <input
+                  type="number"
+                  min={25}
+                  max={180}
+                  disabled={isActive}
+                  value={settings.focusDuration}
+                  onChange={e => handleUpdateFocusDuration(parseInt(e.target.value, 10))}
+                  className="w-full text-center px-2 py-1.5 rounded-lg bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-emerald-500 font-mono"
+                />
+                <button
+                  type="button"
+                  disabled={isActive || settings.focusDuration >= 180}
+                  onClick={() => handleUpdateFocusDuration(settings.focusDuration + 5)}
+                  className="px-2.5 py-1.5 rounded-lg border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed btn-tactile"
+                >
+                  +5
+                </button>
+              </div>
+            </div>
+
+            {/* Short Break */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-paper-ink dark:text-night-text">
+                Short Break <span className="text-paper-muted text-[10px]">(1 - 60 min)</span>
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={isActive || settings.shortBreakDuration <= 1}
+                  onClick={() => handleUpdateShortBreak(settings.shortBreakDuration - 1)}
+                  className="px-2.5 py-1.5 rounded-lg border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed btn-tactile"
+                >
+                  -1
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  disabled={isActive}
+                  value={settings.shortBreakDuration}
+                  onChange={e => handleUpdateShortBreak(parseInt(e.target.value, 10))}
+                  className="w-full text-center px-2 py-1.5 rounded-lg bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <button
+                  type="button"
+                  disabled={isActive || settings.shortBreakDuration >= 60}
+                  onClick={() => handleUpdateShortBreak(settings.shortBreakDuration + 1)}
+                  className="px-2.5 py-1.5 rounded-lg border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed btn-tactile"
+                >
+                  +1
+                </button>
+              </div>
+            </div>
+
+            {/* Long Break */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-paper-ink dark:text-night-text">
+                Long Break <span className="text-paper-muted text-[10px]">(1 - 60 min)</span>
+              </label>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={isActive || settings.longBreakDuration <= 1}
+                  onClick={() => handleUpdateLongBreak(settings.longBreakDuration - 1)}
+                  className="px-2.5 py-1.5 rounded-lg border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed btn-tactile"
+                >
+                  -1
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  disabled={isActive}
+                  value={settings.longBreakDuration}
+                  onChange={e => handleUpdateLongBreak(parseInt(e.target.value, 10))}
+                  className="w-full text-center px-2 py-1.5 rounded-lg bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-bold text-paper-ink dark:text-night-text disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-amber-500 font-mono"
+                />
+                <button
+                  type="button"
+                  disabled={isActive || settings.longBreakDuration >= 60}
+                  onClick={() => handleUpdateLongBreak(settings.longBreakDuration + 1)}
+                  className="px-2.5 py-1.5 rounded-lg border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed btn-tactile"
+                >
+                  +1
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Pomodoro Clock Card */}
       <div 
@@ -156,7 +533,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         style={{ borderTop: `6px solid ${selectedSubject?.accentColor || '#10B981'}` }}
       >
         {/* Mode Selector Buttons */}
-        <div className="inline-flex p-1.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border gap-1.5 shadow-xs">
+        <div className="inline-flex p-1.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border gap-1.5 shadow-xs flex-wrap justify-center">
           <button
             onClick={() => switchMode('focus')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
@@ -165,7 +542,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
             }`}
           >
-            🔥 Focus (25m)
+            🔥 Focus ({settings.focusDuration}m)
           </button>
 
           <button
@@ -176,7 +553,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
             }`}
           >
-            ☕ Short Break (5m)
+            ☕ Short Break ({settings.shortBreakDuration}m)
           </button>
 
           <button
@@ -187,7 +564,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
             }`}
           >
-            🌴 Long Break (15m)
+            🌴 Long Break ({settings.longBreakDuration}m)
           </button>
         </div>
 
@@ -213,9 +590,9 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-center gap-3 flex-wrap">
           <button
-            onClick={() => setIsActive(!isActive)}
+            onClick={handleTogglePlay}
             className={`px-8 py-3.5 rounded-2xl text-base font-extrabold text-white flex items-center gap-2 btn-tactile shadow-md transition-all ${
               isActive ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
             }`}
@@ -225,20 +602,20 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
           </button>
 
           <button
-            onClick={() => switchMode(mode)}
+            onClick={handleReset}
             className="p-3.5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
-            title="Reset Timer"
+            title="Reset Timer (No minutes logged)"
           >
             <RotateCcw className="w-5 h-5" />
           </button>
 
-          {isActive && (
+          {mode === 'focus' && (isActive || elapsedMinutes >= 1) && (
             <button
               onClick={handleManualComplete}
               className="px-4 py-3.5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:border-emerald-500 btn-tactile"
-              title="End session now and log minutes"
+              title="Log completed study minutes right now"
             >
-              Log Now
+              Log Now ({elapsedMinutes}m)
             </button>
           )}
         </div>
@@ -253,7 +630,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
               <span>Weekly Focus Activity (Last 7 Days)</span>
             </h3>
             <p className="text-xs text-paper-muted dark:text-night-muted">
-              Total minutes logged through Pomodoro focus sessions.
+              Total minutes logged exclusively through completed Pomodoro focus sessions.
             </p>
           </div>
 
@@ -313,18 +690,18 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         </div>
       </div>
 
-      {/* Recent Sessions List */}
+      {/* Recent Sessions List & Reset Timer Data Option */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-2">
             <Clock className="w-4 h-4" />
             <span>Recent Focus Sessions</span>
           </h4>
 
-          {onResetTimerData && pomodoroLogs.length > 0 && (
+          {onResetTimerData && (
             <button
               onClick={() => setIsResetConfirmOpen(true)}
-              className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 btn-tactile"
+              className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1.5 btn-tactile py-1 px-2 rounded-lg hover:bg-rose-500/10 transition-colors"
               title="Reset all timer study sessions back to 0"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -337,8 +714,8 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         <ConfirmModal
           isOpen={isResetConfirmOpen}
           title="Reset Timer Study Data?"
-          message="Are you sure you want to reset all Pomodoro focus sessions for this exam? This will clear your study minutes back to 0 and cannot be undone."
-          confirmText="Yes, Reset Timer"
+          message="Are you sure you want to reset all Pomodoro focus session history for this exam? This will clear Today's and Week Total study minutes back to 0 and cannot be undone."
+          confirmText="Yes, Reset Timer Data"
           cancelText="Keep Data"
           isDanger={true}
           onConfirm={() => {
@@ -369,8 +746,8 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
           ))}
 
           {pomodoroLogs.length === 0 && (
-            <div className="p-6 text-center rounded-2xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-paper-muted text-xs">
-              No sessions logged yet. Complete your first 25-minute Pomodoro above!
+            <div className="p-6 text-center rounded-2xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-paper-muted text-xs sm:col-span-2">
+              No sessions logged yet. Complete your first focus session above!
             </div>
           )}
         </div>

@@ -33,10 +33,12 @@ export const EditUnitsModal: React.FC<EditUnitsModalProps> = ({
           if (match) {
             label = match[1].trim();
             title = match[2].trim();
-          } else if (u.unitNumber && String(u.unitNumber).toLowerCase().startsWith('unit')) {
+          } else if (u.unitNumber) {
             label = String(u.unitNumber).trim();
+          } else if (u.unit) {
+            label = `Unit ${u.unit}`;
           } else {
-            label = `Unit ${u.unit || idx + 1}`;
+            label = 'Unit';
           }
         } else {
           const prefixRegex = new RegExp('^(' + label.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '|unit\\s*\\d+)[:\\s\\-\\–]*', 'i');

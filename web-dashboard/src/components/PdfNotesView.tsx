@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SubjectMeta, PdfResource, PYQQuestion, Flashcard } from '../types';
 import { extractTextFromPdf } from '../utils/pdfExtractor';
+import { formatUnitDisplayName } from '../utils/storageService';
 import { 
   FileText, 
   UploadCloud, 
@@ -51,12 +52,13 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
 
   // Target save subject & unit
   const [targetSubjectId, setTargetSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
-  const [targetUnitNum, setTargetUnitNum] = useState<number>(1);
+  const [targetUnitId, setTargetUnitId] = useState<string>('');
 
   // Modal to view note full text
   const [viewingPdf, setViewingPdf] = useState<PdfResource | null>(null);
 
   const targetSubject = subjects.find(s => s.id === targetSubjectId) || subjects[0];
+  const selectedUnit = targetSubject?.units?.find(u => u.id === targetUnitId) || targetSubject?.units?.[0];
   const subjectPdfs = pdfs.filter(p => p.subjectId === selectedSubjectId);
 
   // Smart analysis function
@@ -126,11 +128,12 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   const handleSaveToSubject = () => {
     if (!extractedTitle.trim()) return;
 
+    const unitLabelDisplay = selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit';
     const newPdf: PdfResource = {
       id: `pdf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
       subjectId: targetSubjectId,
-      unit: targetUnitNum,
-      unitId: `u${targetUnitNum}`,
+      unit: selectedUnit?.unit || 1,
+      unitId: selectedUnit?.id || `u1`,
       fileName: `${extractedTitle.trim()}.pdf`,
       uploadDate: new Date().toLocaleDateString(),
       fileSize: selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB` : '1.2 MB',
@@ -140,17 +143,19 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     };
 
     onAddPdf(newPdf);
-    onShowToast(`Saved notes under ${targetSubject.name} (Unit ${targetUnitNum})! 📄`, 'success');
+    onShowToast(`Saved notes under ${targetSubject.name} (${unitLabelDisplay})! 📄`, 'success');
   };
 
   const handleSaveQuestionsToPyqBank = () => {
+    const unitLabelDisplay = selectedUnit ? formatUnitDisplayName(selectedUnit) : 'Unit';
     extractedQuestions.forEach((eq, idx) => {
       const q: PYQQuestion = {
         id: `q-pdf-${Date.now().toString(36)}-${idx}`,
         subjectId: targetSubjectId,
         subjectName: targetSubject.name,
-        unit: targetUnitNum,
-        unitTitle: `Unit ${targetUnitNum}`,
+        unit: selectedUnit?.unit || 1,
+        unitId: selectedUnit?.id,
+        unitTitle: unitLabelDisplay,
         question: eq.question,
         marks: eq.marks,
         yearsAsked: [2024, 2025],
@@ -256,13 +261,18 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
               </select>
 
               <select
-                value={targetUnitNum}
-                onChange={e => setTargetUnitNum(Number(e.target.value))}
+                value={selectedUnit?.id || ''}
+                onChange={e => setTargetUnitId(e.target.value)}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text"
               >
-                {[1, 2, 3, 4, 5].map(u => (
-                  <option key={u} value={u}>Unit {u}</option>
+                {targetSubject?.units?.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {formatUnitDisplayName(u)}
+                  </option>
                 ))}
+                {(!targetSubject?.units || targetSubject.units.length === 0) && (
+                  <option value="">No units defined</option>
+                )}
               </select>
             </div>
           </div>

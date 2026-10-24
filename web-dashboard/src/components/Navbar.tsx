@@ -390,7 +390,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {matchedTopics.map(topic => {
                         const sub = subjects.find(s => s.id === topic.subjectId);
                         const unit = sub?.units?.find(u => u.id === topic.unitId);
-                        const unitLabel = unit ? formatUnitDisplayName(unit) : (topic.unitNumber ? `Unit ${topic.unitNumber}` : 'Unit');
+                        const unitLabel = unit ? formatUnitDisplayName(unit) : formatUnitDisplayName({ unitNumber: topic.unitNumber, unitLabel: (topic as any).unitLabel, title: (topic as any).unitTitle });
 
                         return (
                           <div
@@ -556,7 +556,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {matchedTopics.map(topic => {
                         const sub = subjects.find(s => s.id === topic.subjectId);
                         const unit = sub?.units?.find(u => u.id === topic.unitId);
-                        const unitLabel = unit ? formatUnitDisplayName(unit) : (topic.unitNumber ? `Unit ${topic.unitNumber}` : 'Unit');
+                        const unitLabel = unit ? formatUnitDisplayName(unit) : formatUnitDisplayName({ unitNumber: topic.unitNumber, unitLabel: (topic as any).unitLabel, title: (topic as any).unitTitle });
 
                         return (
                           <div

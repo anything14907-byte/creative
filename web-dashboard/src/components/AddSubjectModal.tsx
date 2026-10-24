@@ -20,28 +20,32 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
   const [semester, setSemester] = useState('5th Semester');
   const [accentColor, setAccentColor] = useState(ACCENT_PALETTE[0].hex);
   const [iconName, setIconName] = useState(ICON_OPTIONS[0]);
-  const [examDate, setExamDate] = useState(() => {
-    return toDatetimeLocalString(new Date(Date.now() + 10 * 24 * 3600 * 1000));
-  });
+  const [examDate, setExamDate] = useState('');
   const [unitsInput, setUnitsInput] = useState('Unit 1: Fundamentals & Architecture\nUnit 2: Core Processing & Logic\nUnit 3: Optimization & Practice');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !examDate) return;
+    if (!name.trim()) return;
 
-    // Parse units (Preserve user typed unit titles without stripping or renumbering)
+    // Parse units (Preserve user typed unit titles and labels)
     const parsedUnits: SubjectUnit[] = unitsInput
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
       .map((line, idx) => {
+        const match = line.match(/^(unit\s*[\d\w]+|[a-z]+\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+        const label = match ? match[1].trim() : undefined;
+        const title = match ? match[2].trim() : line;
+        const numMatch = label?.match(/\d+/);
         return {
           id: `unit-${Date.now().toString(36)}-${idx}`,
-          title: line,
-          name: line,
-          unitNumber: line
+          unitLabel: label,
+          unit: numMatch ? Number(numMatch[0]) : (idx + 1),
+          unitNumber: label || line,
+          title: title,
+          name: title
         };
       });
 
@@ -55,13 +59,15 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
       semester: semester.trim(),
       accentColor,
       iconName,
-      examDate,
+      examDate: examDate.trim() || undefined,
       units: parsedUnits.length > 0 ? parsedUnits : [
         { id: 'u1', unit: 1, title: 'Core Syllabus & Fundamentals', name: 'Core Syllabus & Fundamentals' }
       ]
     };
 
     onAdd(newSubject);
+    setName('');
+    setExamDate('');
     onClose();
   };
 
@@ -109,13 +115,15 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Exam Date & Starting Time</span>
+            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Exam Date & Starting Time</span>
+              </span>
+              <span className="text-[10px] text-paper-muted dark:text-night-muted font-normal">(Optional)</span>
             </label>
             <input
               type="datetime-local"
-              required
               value={examDate}
               onChange={e => setExamDate(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 text-xs"

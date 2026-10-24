@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { SubjectMeta, PYQQuestion, StudyTask } from '../types';
-import { getExamUrgencyColor, sortSubjectsByExamUrgency, ACCENT_PALETTE } from '../utils/storageService';
+import { getExamUrgencyColor, sortSubjectsByExamUrgency, ACCENT_PALETTE, formatUnitDisplayName, storageService } from '../utils/storageService';
 import { EditExamDateModal } from './EditExamDateModal';
 import { EditUnitsModal } from './EditUnitsModal';
 import { 
   Clock, Calendar, Plus, ArrowRight, Trash2, Palette, 
-  Cpu, Database, Network, Code, BookOpen, AlertCircle, Layers 
+  Cpu, Database, Network, Code, BookOpen, AlertCircle, Layers,
+  ArrowUp, ArrowDown, GripVertical
 } from 'lucide-react';
 
 interface CommandCenterOverviewProps {
@@ -16,6 +17,7 @@ interface CommandCenterOverviewProps {
   onOpenAddSubject: () => void;
   onUpdateSubject: (subject: SubjectMeta) => void;
   onDeleteSubject: (id: string) => void;
+  onReorderSubjects?: (subjects: SubjectMeta[]) => void;
 }
 
 export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
@@ -25,27 +27,90 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
   onSelectSubject,
   onOpenAddSubject,
   onUpdateSubject,
-  onDeleteSubject
+  onDeleteSubject,
+  onReorderSubjects
 }) => {
   const [editingDateSubject, setEditingDateSubject] = useState<SubjectMeta | null>(null);
   const [editingUnitsSubject, setEditingUnitsSubject] = useState<SubjectMeta | null>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null);
   const [activeColorPickerSubjectId, setActiveColorPickerSubjectId] = useState<string | null>(null);
 
-  // Auto-sort subjects by exam time remaining (closest exam first)
-  const sortedSubjects = React.useMemo(() => {
-    return sortSubjectsByExamUrgency(subjects);
+  // Switch: "Sort: by exam date / my own order"
+  const [sortMode, setSortMode] = useState<'date' | 'custom'>(() => {
+    return (localStorage.getItem('pyq_subject_sort_mode') as 'date' | 'custom') || 'date';
+  });
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  const handleSetSortMode = (mode: 'date' | 'custom') => {
+    setSortMode(mode);
+    localStorage.setItem('pyq_subject_sort_mode', mode);
+  };
+
+  // Only subjects with valid dates, sorted by urgency
+  const subjectsWithDate = React.useMemo(() => {
+    return sortSubjectsByExamUrgency(subjects.filter(s => s.examDate && s.examDate.trim().length > 0));
   }, [subjects]);
 
-  // Find the single nearest upcoming exam for the hero header
+  // Displayed subjects list depending on sortMode
+  const displaySubjects = React.useMemo(() => {
+    if (sortMode === 'date') {
+      return sortSubjectsByExamUrgency(subjects);
+    }
+    return subjects;
+  }, [subjects, sortMode]);
+
+  // Find the single nearest upcoming exam with a date for the hero header
   const nearestSubjectWithUrgency = React.useMemo(() => {
-    if (sortedSubjects.length === 0) return null;
-    const top = sortedSubjects[0];
+    if (subjectsWithDate.length === 0) return null;
+    const top = subjectsWithDate[0];
+    const urgency = getExamUrgencyColor(top.examDate);
+    if (!urgency.hasDate || urgency.fractionalDays <= 0) return null;
     return {
       subject: top,
-      urgency: getExamUrgencyColor(top.examDate)
+      urgency
     };
-  }, [sortedSubjects]);
+  }, [subjectsWithDate]);
+
+  const handleMoveSubject = (idx: number, offset: number) => {
+    const target = idx + offset;
+    if (target < 0 || target >= displaySubjects.length) return;
+    const reordered = [...displaySubjects];
+    const [removed] = reordered.splice(idx, 1);
+    reordered.splice(target, 0, removed);
+    storageService.saveSubjects(reordered);
+    if (onReorderSubjects) {
+      onReorderSubjects(reordered);
+    } else {
+      onUpdateSubject(reordered[0]);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (sortMode !== 'custom') return;
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (sortMode !== 'custom') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    if (sortMode !== 'custom' || draggedIdx === null || draggedIdx === targetIndex) return;
+    e.preventDefault();
+    const reordered = [...displaySubjects];
+    const [removed] = reordered.splice(draggedIdx, 1);
+    reordered.splice(targetIndex, 0, removed);
+    setDraggedIdx(null);
+    storageService.saveSubjects(reordered);
+    if (onReorderSubjects) {
+      onReorderSubjects(reordered);
+    } else {
+      onUpdateSubject(reordered[0]);
+    }
+  };
 
   const getSubjectIcon = (name: string) => {
     switch (name) {
@@ -155,67 +220,137 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
         </div>
       )}
 
-      {/* 2. SUBJECT CARDS GRID (CHRONOLOGICALLY SORTED BY TIME REMAINING) */}
+      {/* 2. SUBJECT CARDS GRID */}
       <div>
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
           <div>
             <h3 className="text-xl font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
               <span>Your Subjects</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-muted dark:text-night-muted font-bold font-mono">
-                {sortedSubjects.length} Active
+                {displaySubjects.length} Active
               </span>
             </h3>
             <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-              Automatically sorted by upcoming exam date (closest exam first). Click any Unit pill to jump directly to its materials.
+              {sortMode === 'date' 
+                ? 'Sorted by upcoming exam date (closest exam first).' 
+                : 'My own order: drag cards or use arrows to reorder subjects.'}
             </p>
+          </div>
+
+          {/* Switch: "Sort: by exam date / my own order" */}
+          <div className="flex items-center gap-1.5 p-1 bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border rounded-xl self-start sm:self-auto shadow-xs">
+            <span className="text-xs font-semibold px-2 text-paper-muted dark:text-night-muted">Sort:</span>
+            <button
+              type="button"
+              onClick={() => handleSetSortMode('date')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all btn-tactile ${
+                sortMode === 'date'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
+              }`}
+            >
+              by exam date
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetSortMode('custom')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all btn-tactile ${
+                sortMode === 'custom'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
+              }`}
+            >
+              my own order
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {sortedSubjects.map((subject, idx) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-stretch">
+          {displaySubjects.map((subject, idx) => {
             const urgency = getExamUrgencyColor(subject.examDate);
             const subQuestions = questions.filter(q => q.subjectId === subject.id);
             const subTasks = tasks.filter(t => t.subjectId === subject.id);
             const isColorPickerOpen = activeColorPickerSubjectId === subject.id;
 
-            // Priority label based on sorted rank
-            let priorityBadge = `Priority #${idx + 1}`;
-            if (urgency.fractionalDays <= 0) {
-              priorityBadge = 'Completed / Update Date';
-            } else if (idx === 0) {
-              priorityBadge = '🚨 Priority #1 • Closest Exam';
-            } else if (idx === 1) {
-              priorityBadge = '⚡ Priority #2';
-            } else if (idx === 2) {
-              priorityBadge = '⚡ Priority #3';
+            // Priority label: ONLY compares subjects that have an exam date! Fits on 1 line!
+            let priorityBadge = 'Set exam date';
+            if (subject.examDate && urgency.hasDate) {
+              if (urgency.fractionalDays <= 0) {
+                priorityBadge = 'Exam passed';
+              } else {
+                const dateRank = subjectsWithDate.findIndex(s => s.id === subject.id);
+                if (dateRank === 0) {
+                  priorityBadge = '#1 Closest exam';
+                } else if (dateRank > 0) {
+                  priorityBadge = `#${dateRank + 1} Priority`;
+                } else {
+                  priorityBadge = 'Scheduled';
+                }
+              }
             }
 
             return (
               <div
                 key={subject.id}
-                className="p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-all duration-300 hover:shadow-md relative group"
+                draggable={sortMode === 'custom'}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, idx)}
+                className={`p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card flex flex-col justify-between h-full transition-all duration-300 hover:shadow-md relative group ${
+                  draggedIdx === idx ? 'opacity-50 ring-2 ring-emerald-500 scale-[0.98]' : ''
+                } ${sortMode === 'custom' ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 style={{ 
                   borderTop: `4px solid ${subject.accentColor}`
                 }}
               >
                 <div>
                   
-                  {/* Priority Rank Tag with Urgency Color */}
-                  <div className="flex items-center justify-between mb-3">
+                  {/* Priority Rank Tag with Urgency Color (1 Line Guarantee) */}
+                  <div className="flex items-center justify-between mb-3 gap-2">
                     <span 
-                      className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono flex items-center gap-1"
+                      className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono flex items-center gap-1 whitespace-nowrap shrink-0 overflow-hidden text-ellipsis max-w-[65%]"
                       style={{ 
-                        color: urgency.hslColor,
-                        backgroundColor: `${urgency.hslColor}16`
+                        color: urgency.hasDate ? urgency.hslColor : '#5B6573',
+                        backgroundColor: urgency.hasDate ? `${urgency.hslColor}16` : '#5B657316'
                       }}
+                      title={priorityBadge}
                     >
-                      <Clock className="w-3 h-3" />
-                      <span>{priorityBadge}</span>
+                      <Clock className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{priorityBadge}</span>
                     </span>
 
-                    {/* Header Controls: Quick Color Picker & Delete */}
-                    <div className="flex items-center gap-1 relative">
+                    {/* Header Controls: Reorder arrows (in custom mode), Quick Color Picker & Delete */}
+                    <div className="flex items-center gap-1 relative shrink-0">
                       
+                      {sortMode === 'custom' && (
+                        <div className="flex items-center gap-0.5 mr-1 bg-paper-cardElevated/70 dark:bg-night-cardElevated/70 rounded-lg p-0.5 border border-paper-border dark:border-night-border">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveSubject(idx, -1);
+                            }}
+                            className="p-1 rounded text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text disabled:opacity-20 disabled:cursor-not-allowed btn-tactile"
+                            title="Move subject up"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === displaySubjects.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveSubject(idx, 1);
+                            }}
+                            className="p-1 rounded text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text disabled:opacity-20 disabled:cursor-not-allowed btn-tactile"
+                            title="Move subject down"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+
                       {/* 🎨 Quick Color Swatch Popover Trigger */}
                       <button
                         onClick={() => setActiveColorPickerSubjectId(isColorPickerOpen ? null : subject.id)}
@@ -251,10 +386,10 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
                     </div>
                   </div>
 
-                  {/* Card Title & Icon */}
+                  {/* Card Title & Icon - 2 lines wrap with min-height & full name on hover */}
                   <div className="flex items-start gap-3 mb-3">
                     <div 
-                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5"
                       style={{ 
                         backgroundColor: `${subject.accentColor}18`,
                         color: subject.accentColor
@@ -265,8 +400,7 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
                     <div className="flex-1 min-w-0">
                       <h4 
                         onClick={() => onSelectSubject(subject.id)}
-                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer transition-colors line-clamp-1"
-                        style={{ color: undefined }}
+                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer transition-colors line-clamp-2 min-h-[3rem] leading-snug break-words"
                         title={subject.name}
                       >
                         {subject.name}
@@ -279,10 +413,10 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
 
                   {/* 1. Visible Exam Date with 1-Click "Change Date" Picker */}
                   <div className="my-2.5 p-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-xs text-paper-body dark:text-night-text">
+                    <div className="flex items-center gap-1.5 text-xs text-paper-body dark:text-night-text min-w-0">
                       <Calendar className="w-3.5 h-3.5 text-paper-muted dark:text-night-muted shrink-0" />
-                      <span className="font-semibold text-[11px] line-clamp-1">
-                        {urgency.formattedExamDate}
+                      <span className="font-semibold text-[11px] truncate">
+                        {urgency.hasDate ? urgency.formattedExamDate : 'No exam date set'}
                       </span>
                     </div>
 
@@ -290,30 +424,45 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
                       onClick={() => setEditingDateSubject(subject)}
                       className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0 btn-tactile"
                     >
-                      Change Date
+                      {urgency.hasDate ? 'Change Date' : 'Set Date'}
                     </button>
                   </div>
 
-                  {/* 2. Live Countdown Timer with Smooth Green -> Yellow -> Red Shift */}
-                  <div 
-                    className="p-3 rounded-xl mb-3 text-center border transition-all duration-600"
-                    style={{ 
-                      backgroundColor: `${urgency.hslColor}10`,
-                      borderColor: `${urgency.hslColor}35`
-                    }}
-                  >
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted mb-0.5">
-                      Time Remaining
-                    </div>
+                  {/* 2. Live Countdown Timer OR "Set exam date" prompt */}
+                  {subject.examDate && urgency.hasDate ? (
                     <div 
-                      className="text-lg font-extrabold countdown-digit"
-                      style={{ color: urgency.hslColor }}
+                      className="p-3 rounded-xl mb-3 text-center border transition-all duration-600 min-h-[64px] flex flex-col justify-center"
+                      style={{ 
+                        backgroundColor: `${urgency.hslColor}10`,
+                        borderColor: `${urgency.hslColor}35`
+                      }}
                     >
-                      {urgency.formattedCountdown}
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted mb-0.5">
+                        Time Remaining
+                      </div>
+                      <div 
+                        className="text-lg font-extrabold countdown-digit"
+                        style={{ color: urgency.hslColor }}
+                      >
+                        {urgency.formattedCountdown}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div 
+                      onClick={() => setEditingDateSubject(subject)}
+                      className="p-3 rounded-xl mb-3 text-center border border-dashed border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer transition-all bg-paper-cardElevated/40 dark:bg-night-cardElevated/40 min-h-[64px] flex flex-col justify-center btn-tactile group/btn"
+                    >
+                      <div className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center justify-center gap-1.5 group-hover/btn:text-emerald-600 dark:group-hover/btn:text-emerald-400">
+                        <Calendar className="w-3.5 h-3.5 text-paper-muted" />
+                        <span>Set exam date</span>
+                      </div>
+                      <div className="text-[10px] text-paper-muted dark:text-night-muted mt-0.5">
+                        Click to schedule countdown
+                      </div>
+                    </div>
+                  )}
 
-                  {/* 3. UNITS PILL TAGS ON FRONT PAGE */}
+                  {/* 3. UNITS PILL TAGS ON FRONT PAGE - wraps 2 lines, formatUnitDisplayName */}
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1">
@@ -329,20 +478,20 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
                     </div>
 
                     {/* Clickable Unit Pills */}
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
                       {subject.units.map(u => (
                         <button
                           key={u.id}
                           onClick={() => onSelectSubject(subject.id, u.id)}
-                          className="px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all btn-tactile text-left truncate max-w-full"
+                          className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold border transition-all btn-tactile text-left line-clamp-2 leading-tight break-words max-w-full"
                           style={{
                             backgroundColor: `${subject.accentColor}10`,
                             borderColor: `${subject.accentColor}30`,
                             color: subject.accentColor
                           }}
-                          title={`Click to open Unit ${u.unit}: ${u.title}`}
+                          title={formatUnitDisplayName(u)}
                         >
-                          Unit {u.unit}: {u.title}
+                          {formatUnitDisplayName(u)}
                         </button>
                       ))}
 
@@ -362,7 +511,7 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
                 {/* Open Subject Button with Subject Accent Color */}
                 <button
                   onClick={() => onSelectSubject(subject.id)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-sm btn-tactile btn-shimmer transition-transform"
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-sm btn-tactile btn-shimmer transition-transform mt-2"
                   style={{ backgroundColor: subject.accentColor }}
                 >
                   <span>Open Subject</span>

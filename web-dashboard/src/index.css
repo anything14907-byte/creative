@@ -224,3 +224,12 @@ button.btn-primary-action:hover {
     page-break-inside: avoid;
   }
 }
+
+/* Safeguard: Prevent any external injected floating round buttons on the right edge */
+body > [style*="position: fixed"][style*="right: 0"],
+body > [style*="position: fixed"][style*="right:0"],
+body > div[class*="floating-button"],
+body > div[class*="feedback-btn"] {
+  display: none !important;
+}
+

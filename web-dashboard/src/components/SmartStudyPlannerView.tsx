@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SubjectMeta, SyllabusTopic, PYQQuestion, DayStudyPlan } from '../types';
-import { storageService, getExamUrgencyColor } from '../utils/storageService';
+import { storageService, getExamUrgencyColor, formatUnitDisplayName } from '../utils/storageService';
 import { 
   Calendar, 
   Sparkles, 
@@ -43,8 +43,8 @@ export const SmartStudyPlannerView: React.FC<SmartStudyPlannerViewProps> = ({
   // Next upcoming exam
   const now = Date.now();
   const nextSubject = subjects
-    .filter(s => s.examDate && new Date(s.examDate).getTime() > now)
-    .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0] || subjects[0];
+    .filter(s => !!s.examDate && new Date(s.examDate).getTime() > now)
+    .sort((a, b) => new Date(a.examDate!).getTime() - new Date(b.examDate!).getTime())[0] || subjects[0];
 
   const urgency = nextSubject ? getExamUrgencyColor(nextSubject.examDate) : null;
 
@@ -211,7 +211,11 @@ export const SmartStudyPlannerView: React.FC<SmartStudyPlannerViewProps> = ({
                               className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono"
                               style={{ backgroundColor: `${item.accentColor}18`, color: item.accentColor }}
                             >
-                              {item.subjectName} • Unit {item.unitNumber}
+                              {item.subjectName} • {(() => {
+                                const sub = subjects.find(s => s.id === (item as any).subjectId);
+                                const unitObj = sub?.units?.find(u => u.unit === item.unitNumber || u.id === (item as any).unitId);
+                                return formatUnitDisplayName(unitObj || { unitNumber: item.unitNumber, unitLabel: (item as any).unitLabel, title: (item as any).unitTitle });
+                              })()}
                             </span>
 
                             {/* Mastery Badge */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SubjectMeta, SubjectUnit } from '../types';
-import { ACCENT_PALETTE } from '../utils/storageService';
+import { ACCENT_PALETTE, formatUnitDisplayName } from '../utils/storageService';
 import { Edit3, X, Trash2, Calendar, BookOpen, Tag, Check } from 'lucide-react';
 
 interface EditSubjectModalProps {
@@ -32,7 +32,7 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
       setAccentColor(subject.accentColor || ACCENT_PALETTE[0].hex);
       setExamDate(subject.examDate || '');
       setUnitsInput(
-        subject.units.map(u => `Unit ${u.unit}: ${u.title}`).join('\n')
+        subject.units.map(u => formatUnitDisplayName(u)).join('\n')
       );
       setShowDeleteConfirm(false);
     }
@@ -42,18 +42,24 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !examDate) return;
+    if (!name.trim()) return;
 
     const parsedUnits: SubjectUnit[] = unitsInput
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
       .map((line, idx) => {
+        const match = line.match(/^(unit\s*[\d\w]+|[a-z]+\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+        const label = match ? match[1].trim() : (subject.units[idx]?.unitLabel || undefined);
+        const title = match ? match[2].trim() : line;
+        const numMatch = label?.match(/\d+/);
         return {
           id: subject.units[idx]?.id || `unit-${Date.now().toString(36)}-${idx}`,
-          title: line,
-          name: line,
-          unitNumber: line
+          unitLabel: label,
+          unit: numMatch ? Number(numMatch[0]) : (subject.units[idx]?.unit || (idx + 1)),
+          unitNumber: label || title,
+          title: title,
+          name: title
         };
       });
 
@@ -62,7 +68,7 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
       name: name.trim(),
       semester: semester.trim(),
       accentColor,
-      examDate,
+      examDate: examDate.trim() || undefined,
       units: parsedUnits.length > 0 ? parsedUnits : subject.units
     };
 
@@ -118,13 +124,23 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-paper-ink dark:text-night-text mb-1 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Exam Date & Starting Time</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-paper-ink dark:text-night-text flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Exam Date & Starting Time</span>
+              </label>
+              {examDate && (
+                <button
+                  type="button"
+                  onClick={() => setExamDate('')}
+                  className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline"
+                >
+                  Clear date
+                </button>
+              )}
+            </div>
             <input
               type="datetime-local"
-              required
               value={examDate}
               onChange={e => setExamDate(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 text-xs"

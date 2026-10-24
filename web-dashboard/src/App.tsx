@@ -217,6 +217,11 @@ function DashboardContent() {
     showToast('Subject deleted.', 'info');
   };
 
+  const handleReorderSubjects = (reordered: SubjectMeta[]) => {
+    storageService.saveSubjects(reordered, activeExamId);
+    setSubjects(reordered);
+  };
+
   // ==========================================
   // UNIT HANDLERS (Requirement 5: Custom unit title/number, rename, delete, reorder)
   // ==========================================
@@ -578,6 +583,7 @@ function DashboardContent() {
             onOpenAddSubject={() => setIsAddSubjectOpen(true)}
             onUpdateSubject={handleUpdateSubject}
             onDeleteSubject={handleDeleteSubject}
+            onReorderSubjects={handleReorderSubjects}
           />
         )}
 
