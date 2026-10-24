@@ -134,7 +134,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
     return { uTasks, uVideos, uPdfs, uQuestions };
   };
 
-  const handleAddVideoSubmit = (unitId: string, unitNum: number, e: React.FormEvent) => {
+  const handleAddVideoSubmit = (unitId: string, unitNum: number | undefined, e: React.FormEvent) => {
     e.preventDefault();
     if (!newVideoTitle.trim() || !newVideoUrl.trim()) return;
 
@@ -162,10 +162,10 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
     setNewVideoTitle('');
     setNewVideoUrl('');
     setAddingResourceType(null);
-    onShowToast(`Added video to Unit ${unitNum}! 🎬`, 'success');
+    onShowToast(`Added video to Unit ${unitNum || 1}! 🎬`, 'success');
   };
 
-  const handleAddNoteSubmit = (unitId: string, unitNum: number, e: React.FormEvent) => {
+  const handleAddNoteSubmit = (unitId: string, unitNum: number | undefined, e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteTitle.trim() || !newNoteContent.trim()) return;
 
@@ -186,17 +186,17 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
     setNewNoteTitle('');
     setNewNoteContent('');
     setAddingResourceType(null);
-    onShowToast(`Saved study note under Unit ${unitNum}! 📄`, 'success');
+    onShowToast(`Saved study note under Unit ${unitNum || 1}! 📄`, 'success');
   };
 
-  const handleAddTaskSubmit = (unitId: string, unitNum: number, e: React.FormEvent) => {
+  const handleAddTaskSubmit = (unitId: string, unitNum: number | undefined, e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskText.trim()) return;
 
     onAddTask(newTaskText.trim(), unitId, unitNum);
     setNewTaskText('');
     setAddingResourceType(null);
-    onShowToast(`Task added to Unit ${unitNum}! 📋`, 'success');
+    onShowToast(`Task added to Unit ${unitNum || 1}! 📋`, 'success');
   };
 
   const handleMove = (type: 'task' | 'video' | 'pdf' | 'question', itemId: string, targetUnitId: string) => {

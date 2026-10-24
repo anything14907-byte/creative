@@ -408,7 +408,7 @@ export const indexedDbService = {
   // ==========================================
   // FILES CRUD (PDFs, Images, Notes)
   // ==========================================
-  async getFiles(subjectId?: string): Promise<SubjectFile[]> {
+  async getFiles(subjectId?: string, examId?: string): Promise<SubjectFile[]> {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('files', 'readonly');
@@ -422,28 +422,20 @@ export const indexedDbService = {
         req = store.getAll();
       }
 
-      req.onsuccess = () => resolve(req.result || []);
+      req.onsuccess = () => {
+        let results = req.result || [];
+        if (examId) {
+          results = results.filter(f => !f.examId || f.examId === examId);
+        }
+        resolve(results);
+      };
       req.onerror = () => reject(req.error);
     });
   },
 
-  async getFileCount(subjectId?: string): Promise<number> {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('files', 'readonly');
-      const store = tx.objectStore('files');
-
-      let req: IDBRequest<number>;
-      if (subjectId) {
-        const index = store.index('subjectId');
-        req = index.count(subjectId);
-      } else {
-        req = store.count();
-      }
-
-      req.onsuccess = () => resolve(req.result || 0);
-      req.onerror = () => reject(req.error);
-    });
+  async getFileCount(subjectId?: string, examId?: string): Promise<number> {
+    const files = await this.getFiles(subjectId, examId);
+    return files.length;
   },
 
   async addFile(file: SubjectFile): Promise<void> {

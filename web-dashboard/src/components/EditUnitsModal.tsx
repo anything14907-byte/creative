@@ -31,24 +31,16 @@ export const EditUnitsModal: React.FC<EditUnitsModalProps> = ({
   };
 
   const handleDeleteUnit = (id: string) => {
-    setUnits(prev => {
-      const filtered = prev.filter(u => u.id !== id);
-      // Re-index unit numbers
-      return filtered.map((u, idx) => ({
-        ...u,
-        unit: idx + 1
-      }));
-    });
+    setUnits(prev => prev.filter(u => u.id !== id));
   };
 
   const handleAddUnit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const nextUnitNum = units.length + 1;
     const newUnit: SubjectUnit = {
       id: `u-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-      unit: nextUnitNum,
+      unitNumber: newTitle.trim(),
       title: newTitle.trim(),
       name: newTitle.trim()
     };

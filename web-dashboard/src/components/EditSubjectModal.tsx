@@ -49,12 +49,11 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
       .map(line => line.trim())
       .filter(Boolean)
       .map((line, idx) => {
-        const cleanTitle = line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || `Unit ${idx + 1}`;
         return {
-          id: subject.units[idx]?.id || `u${idx + 1}`,
-          unit: idx + 1,
-          title: cleanTitle,
-          name: cleanTitle
+          id: subject.units[idx]?.id || `unit-${Date.now().toString(36)}-${idx}`,
+          title: line,
+          name: line,
+          unitNumber: line
         };
       });
 

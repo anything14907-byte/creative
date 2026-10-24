@@ -13,7 +13,8 @@ import {
   Flashcard,
   DayStudyPlan,
   PlannerDayTopic,
-  FullBackupData
+  FullBackupData,
+  ExamSession
 } from '../types';
 import { INITIAL_QUESTIONS } from '../data/pyqData';
 
@@ -350,27 +351,29 @@ export function normalizeSubjectUnits(subject: any): SubjectUnit[] {
   if (Array.isArray(raw) && raw.length > 0) {
     return raw.map((item: any, idx: number) => {
       if (typeof item === 'string') {
-        const cleanTitle = item.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || item.trim();
+        const title = item.trim();
         return {
-          id: `u${idx + 1}`,
+          id: `unit-${idx + 1}-${title.replace(/\s+/g, '-').slice(0, 10)}`,
           unit: idx + 1,
-          title: cleanTitle || `Unit ${idx + 1}`,
-          name: cleanTitle || `Unit ${idx + 1}`
+          unitNumber: title,
+          title: title,
+          name: title
         };
       }
       if (typeof item === 'object' && item !== null) {
-        const uNum = Number(item.unit) || (idx + 1);
-        const title = (item.title || item.name || `Unit ${uNum}`).trim();
+        const title = (item.title || item.name || `Unit ${idx + 1}`).trim();
         return {
-          id: String(item.id || `u${uNum}`),
-          unit: uNum,
+          id: String(item.id || `unit-${idx + 1}-${Date.now()}`),
+          unit: item.unit !== undefined ? Number(item.unit) : (idx + 1),
+          unitNumber: item.unitNumber || item.unit || title,
           title: title,
           name: title
         };
       }
       return {
-        id: `u${idx + 1}`,
+        id: `u-${idx + 1}`,
         unit: idx + 1,
+        unitNumber: `Unit ${idx + 1}`,
         title: `Unit ${idx + 1}`,
         name: `Unit ${idx + 1}`
       };
@@ -526,6 +529,8 @@ export function calculateCountdown(examDateString: string): CountdownTime {
 
 // EXACT STORAGE KEYS (PRESERVED FOR ZERO DATA LOSS)
 const STORAGE_KEYS = {
+  EXAM_SESSIONS: 'exam_hub_v3_exam_sessions',
+  ACTIVE_EXAM: 'exam_hub_v3_active_exam',
   SUBJECTS: 'exam_hub_v3_subjects',
   QUESTIONS: 'exam_hub_v3_questions',
   TASKS: 'exam_hub_v3_tasks',
@@ -537,6 +542,21 @@ const STORAGE_KEYS = {
   ACTIVE_SUBJECT: 'exam_hub_v3_active_subject',
   THEME: 'exam_hub_v3_theme',
 };
+
+export const DEFAULT_EXAM_SESSIONS: ExamSession[] = [
+  { id: 'mid-sem', name: 'Mid Sem', isDefault: true, createdAt: 1 },
+  { id: 'end-sem', name: 'End Sem', isDefault: false, createdAt: 2 },
+  { id: 'internals', name: 'Internals', isDefault: false, createdAt: 3 },
+  { id: 'other-exam', name: 'Other Exam', isDefault: false, createdAt: 4 }
+];
+
+function getExamStorageKey(baseKey: string, examId?: string): string {
+  const active = examId || storageService.getActiveExam();
+  if (active === 'mid-sem') {
+    return baseKey; // 100% Zero-data-loss guarantee for existing data!
+  }
+  return `${baseKey}_${active}`;
+}
 
 // FALLBACK KEYS FROM PREVIOUS VERSIONS (ONLY CHECKED IF CURRENT KEY IS COMPLETELY EMPTY)
 const FALLBACK_KEYS = {
@@ -552,15 +572,78 @@ const FALLBACK_KEYS = {
  * Guarantees zero data loss for existing user-entered subjects and resources.
  */
 export const storageService = {
-  // SUBJECTS
-  getSubjects(): SubjectMeta[] {
+  // EXAM SESSIONS
+  getExamSessions(): ExamSession[] {
     try {
-      // 1. First check the primary storage key
-      const data = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
+      const data = localStorage.getItem(STORAGE_KEYS.EXAM_SESSIONS);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Non-destructively normalize units while preserving all user data
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    localStorage.setItem(STORAGE_KEYS.EXAM_SESSIONS, JSON.stringify(DEFAULT_EXAM_SESSIONS));
+    return DEFAULT_EXAM_SESSIONS;
+  },
+
+  saveExamSessions(sessions: ExamSession[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.EXAM_SESSIONS, JSON.stringify(sessions));
+    } catch (e) {}
+  },
+
+  getActiveExam(): string {
+    return localStorage.getItem(STORAGE_KEYS.ACTIVE_EXAM) || 'mid-sem';
+  },
+
+  setActiveExam(examId: string): void {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_EXAM, examId);
+  },
+
+  addExamSession(name: string): ExamSession {
+    const sessions = this.getExamSessions();
+    const id = `exam-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+    const newSession: ExamSession = {
+      id,
+      name: name.trim(),
+      isDefault: false,
+      createdAt: Date.now()
+    };
+    const updated = [...sessions, newSession];
+    this.saveExamSessions(updated);
+    this.setActiveExam(id);
+    return newSession;
+  },
+
+  renameExamSession(id: string, newName: string): ExamSession[] {
+    const sessions = this.getExamSessions();
+    const updated = sessions.map(s => s.id === id ? { ...s, name: newName.trim() } : s);
+    this.saveExamSessions(updated);
+    return updated;
+  },
+
+  deleteExamSession(id: string): ExamSession[] {
+    const sessions = this.getExamSessions();
+    if (sessions.length <= 1) return sessions;
+    const updated = sessions.filter(s => s.id !== id);
+    this.saveExamSessions(updated);
+    if (this.getActiveExam() === id) {
+      this.setActiveExam(updated[0].id);
+    }
+    return updated;
+  },
+
+  // SUBJECTS
+  getSubjects(examId?: string): SubjectMeta[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.SUBJECTS, activeExam);
+    try {
+      // 1. First check the primary storage key for this exam
+      const data = localStorage.getItem(key);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
           const upgraded = parsed.map((s: any) => ({
             ...s,
             accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
@@ -570,71 +653,139 @@ export const storageService = {
         }
       }
 
-      // 2. If primary is empty, inspect fallback keys to rescue previously entered data
-      for (const fallbackKey of FALLBACK_KEYS.SUBJECTS) {
-        const fallbackData = localStorage.getItem(fallbackKey);
-        if (fallbackData) {
-          const parsed = JSON.parse(fallbackData);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const upgraded = parsed.map((s: any) => ({
-              ...s,
-              accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
-              units: normalizeSubjectUnits(s)
-            }));
-            this.saveSubjects(upgraded);
-            return upgraded;
+      // 2. If mid-sem and empty, inspect fallback keys to rescue previously entered data
+      if (activeExam === 'mid-sem') {
+        for (const fallbackKey of FALLBACK_KEYS.SUBJECTS) {
+          const fallbackData = localStorage.getItem(fallbackKey);
+          if (fallbackData) {
+            const parsed = JSON.parse(fallbackData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const upgraded = parsed.map((s: any) => ({
+                ...s,
+                accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
+                units: normalizeSubjectUnits(s)
+              }));
+              this.saveSubjects(upgraded, 'mid-sem');
+              return upgraded;
+            }
           }
         }
+        // ONLY load defaults if user has ZERO subjects anywhere in mid-sem
+        this.saveSubjects(DEFAULT_SUBJECTS, 'mid-sem');
+        return DEFAULT_SUBJECTS;
       }
     } catch (e) {
       console.warn('Error reading subjects:', e);
     }
 
-    // 3. ONLY load defaults if user has ZERO subjects anywhere
-    this.saveSubjects(DEFAULT_SUBJECTS);
-    return DEFAULT_SUBJECTS;
+    return [];
   },
 
-  saveSubjects(subjects: SubjectMeta[]): void {
+  saveSubjects(subjects: SubjectMeta[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.SUBJECTS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
+      localStorage.setItem(key, JSON.stringify(subjects));
       this.broadcastToExtension();
     } catch (e) {
       console.error('Error saving subjects:', e);
     }
   },
 
-  addSubject(subject: SubjectMeta): SubjectMeta[] {
-    const list = this.getSubjects();
+  addSubject(subject: SubjectMeta, examId?: string): SubjectMeta[] {
+    const list = this.getSubjects(examId);
     const normalized: SubjectMeta = {
       ...subject,
       units: normalizeSubjectUnits(subject)
     };
     const updated = [...list, normalized];
-    this.saveSubjects(updated);
+    this.saveSubjects(updated, examId);
     return updated;
   },
 
-  updateSubject(subject: SubjectMeta): SubjectMeta[] {
-    const list = this.getSubjects();
+  updateSubject(subject: SubjectMeta, examId?: string): SubjectMeta[] {
+    const list = this.getSubjects(examId);
     const normalized: SubjectMeta = {
       ...subject,
       units: normalizeSubjectUnits(subject)
     };
     const updated = list.map(s => s.id === subject.id ? normalized : s);
-    this.saveSubjects(updated);
+    this.saveSubjects(updated, examId);
     return updated;
   },
 
-  updateSubjectUnits(subjectId: string, units: SubjectUnit[]): SubjectMeta[] {
-    const list = this.getSubjects();
+  // UNITS: ADD, RENAME, DELETE, REORDER WITHOUT AUTO-RENUMBERING
+  addUnit(subjectId: string, unitTitle: string, examId?: string): SubjectMeta[] {
+    const subjects = this.getSubjects(examId);
+    const target = subjects.find(s => s.id === subjectId);
+    if (!target) return subjects;
+    const newUnit: SubjectUnit = {
+      id: `unit-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+      title: unitTitle.trim(),
+      name: unitTitle.trim(),
+      unitNumber: unitTitle.trim()
+    };
+    target.units = [...(target.units || []), newUnit];
+    this.saveSubjects(subjects, examId);
+    return subjects;
+  },
+
+  renameUnit(subjectId: string, unitId: string, newTitle: string, examId?: string): SubjectMeta[] {
+    const subjects = this.getSubjects(examId);
+    const target = subjects.find(s => s.id === subjectId);
+    if (!target || !target.units) return subjects;
+    target.units = target.units.map(u => {
+      if (u.id === unitId) {
+        return {
+          ...u,
+          title: newTitle.trim(),
+          name: newTitle.trim(),
+          unitNumber: newTitle.trim()
+        };
+      }
+      return u;
+    });
+    this.saveSubjects(subjects, examId);
+    return subjects;
+  },
+
+  deleteUnit(subjectId: string, unitId: string, examId?: string): SubjectMeta[] {
+    const subjects = this.getSubjects(examId);
+    const target = subjects.find(s => s.id === subjectId);
+    if (!target || !target.units) return subjects;
+    target.units = target.units.filter(u => u.id !== unitId);
+    this.saveSubjects(subjects, examId);
+    // Also remove topics belonging to this unit
+    const topics = this.getTopics(examId).filter(t => t.unitId !== unitId);
+    this.saveTopics(topics, examId);
+    return subjects;
+  },
+
+  reorderUnit(subjectId: string, unitId: string, direction: 'up' | 'down', examId?: string): SubjectMeta[] {
+    const subjects = this.getSubjects(examId);
+    const target = subjects.find(s => s.id === subjectId);
+    if (!target || !target.units) return subjects;
+    const index = target.units.findIndex(u => u.id === unitId);
+    if (index === -1) return subjects;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= target.units.length) return subjects;
+    const reordered = [...target.units];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, moved);
+    target.units = reordered;
+    this.saveSubjects(subjects, examId);
+    return subjects;
+  },
+
+  updateSubjectUnits(subjectId: string, units: SubjectUnit[], examId?: string): SubjectMeta[] {
+    const list = this.getSubjects(examId);
     const updated = list.map(s => {
       if (s.id === subjectId) {
         return { ...s, units };
       }
       return s;
     });
-    this.saveSubjects(updated);
+    this.saveSubjects(updated, examId);
     return updated;
   },
 
@@ -655,9 +806,11 @@ export const storageService = {
   },
 
   // QUESTIONS
-  getQuestions(): PYQQuestion[] {
+  getQuestions(examId?: string): PYQQuestion[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.QUESTIONS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -668,36 +821,41 @@ export const storageService = {
         }
       }
 
-      for (const fallbackKey of FALLBACK_KEYS.QUESTIONS) {
-        const fallbackData = localStorage.getItem(fallbackKey);
-        if (fallbackData) {
-          const parsed = JSON.parse(fallbackData);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            this.saveQuestions(parsed);
-            return parsed;
+      if (activeExam === 'mid-sem') {
+        for (const fallbackKey of FALLBACK_KEYS.QUESTIONS) {
+          const fallbackData = localStorage.getItem(fallbackKey);
+          if (fallbackData) {
+            const parsed = JSON.parse(fallbackData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              this.saveQuestions(parsed, 'mid-sem');
+              return parsed;
+            }
           }
         }
+        this.saveQuestions(INITIAL_QUESTIONS, 'mid-sem');
+        return INITIAL_QUESTIONS;
       }
     } catch (e) {
       console.warn('Error reading questions:', e);
     }
-    this.saveQuestions(INITIAL_QUESTIONS);
-    return INITIAL_QUESTIONS;
+    return [];
   },
 
-  saveQuestions(questions: PYQQuestion[]): void {
+  saveQuestions(questions: PYQQuestion[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.QUESTIONS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(questions));
+      localStorage.setItem(key, JSON.stringify(questions));
       this.broadcastToExtension();
     } catch (e) {
       console.error('Error saving questions:', e);
     }
   },
 
-  addQuestion(question: PYQQuestion): PYQQuestion[] {
-    const list = this.getQuestions();
+  addQuestion(question: PYQQuestion, examId?: string): PYQQuestion[] {
+    const list = this.getQuestions(examId);
     const updated = [question, ...list];
-    this.saveQuestions(updated);
+    this.saveQuestions(updated, examId);
     return updated;
   },
 
@@ -717,9 +875,11 @@ export const storageService = {
   },
 
   // TASKS
-  getTasks(): StudyTask[] {
+  getTasks(examId?: string): StudyTask[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.TASKS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.TASKS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
@@ -730,56 +890,63 @@ export const storageService = {
         }
       }
 
-      for (const fallbackKey of FALLBACK_KEYS.TASKS) {
-        const fallbackData = localStorage.getItem(fallbackKey);
-        if (fallbackData) {
-          const parsed = JSON.parse(fallbackData);
-          if (Array.isArray(parsed)) {
-            this.saveTasks(parsed);
-            return parsed;
+      if (activeExam === 'mid-sem') {
+        for (const fallbackKey of FALLBACK_KEYS.TASKS) {
+          const fallbackData = localStorage.getItem(fallbackKey);
+          if (fallbackData) {
+            const parsed = JSON.parse(fallbackData);
+            if (Array.isArray(parsed)) {
+              this.saveTasks(parsed, 'mid-sem');
+              return parsed;
+            }
           }
         }
+        this.saveTasks(DEFAULT_TASKS, 'mid-sem');
+        return DEFAULT_TASKS;
       }
     } catch (e) {
       console.warn('Error reading tasks:', e);
     }
-    this.saveTasks(DEFAULT_TASKS);
-    return DEFAULT_TASKS;
+    return [];
   },
 
-  saveTasks(tasks: StudyTask[]): void {
+  saveTasks(tasks: StudyTask[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.TASKS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+      localStorage.setItem(key, JSON.stringify(tasks));
     } catch (e) {
       console.error('Error saving tasks:', e);
     }
   },
 
-  addTask(task: StudyTask): StudyTask[] {
-    const list = this.getTasks();
+  addTask(task: StudyTask, examId?: string): StudyTask[] {
+    const list = this.getTasks(examId);
     const updated = [task, ...list];
-    this.saveTasks(updated);
+    this.saveTasks(updated, examId);
     return updated;
   },
 
-  toggleTask(taskId: string): StudyTask[] {
-    const list = this.getTasks();
+  toggleTask(taskId: string, examId?: string): StudyTask[] {
+    const list = this.getTasks(examId);
     const updated = list.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t);
-    this.saveTasks(updated);
+    this.saveTasks(updated, examId);
     return updated;
   },
 
-  deleteTask(taskId: string): StudyTask[] {
-    const list = this.getTasks();
+  deleteTask(taskId: string, examId?: string): StudyTask[] {
+    const list = this.getTasks(examId);
     const updated = list.filter(t => t.id !== taskId);
-    this.saveTasks(updated);
+    this.saveTasks(updated, examId);
     return updated;
   },
 
   // VIDEOS
-  getVideos(): VideoResource[] {
+  getVideos(examId?: string): VideoResource[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.VIDEOS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.VIDEOS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
@@ -790,63 +957,70 @@ export const storageService = {
         }
       }
 
-      for (const fallbackKey of FALLBACK_KEYS.VIDEOS) {
-        const fallbackData = localStorage.getItem(fallbackKey);
-        if (fallbackData) {
-          const parsed = JSON.parse(fallbackData);
-          if (Array.isArray(parsed)) {
-            this.saveVideos(parsed);
-            return parsed;
+      if (activeExam === 'mid-sem') {
+        for (const fallbackKey of FALLBACK_KEYS.VIDEOS) {
+          const fallbackData = localStorage.getItem(fallbackKey);
+          if (fallbackData) {
+            const parsed = JSON.parse(fallbackData);
+            if (Array.isArray(parsed)) {
+              this.saveVideos(parsed, 'mid-sem');
+              return parsed;
+            }
           }
         }
+        this.saveVideos(DEFAULT_VIDEOS, 'mid-sem');
+        return DEFAULT_VIDEOS;
       }
     } catch (e) {
       console.warn('Error reading videos:', e);
     }
-    this.saveVideos(DEFAULT_VIDEOS);
-    return DEFAULT_VIDEOS;
+    return [];
   },
 
-  saveVideos(videos: VideoResource[]): void {
+  saveVideos(videos: VideoResource[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.VIDEOS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(videos));
+      localStorage.setItem(key, JSON.stringify(videos));
     } catch (e) {
       console.error('Error saving videos:', e);
     }
   },
 
-  addVideo(video: VideoResource): VideoResource[] {
-    const list = this.getVideos();
+  addVideo(video: VideoResource, examId?: string): VideoResource[] {
+    const list = this.getVideos(examId);
     const updated = [video, ...list];
-    this.saveVideos(updated);
+    this.saveVideos(updated, examId);
     return updated;
   },
 
-  updateVideoNotes(videoId: string, notes: string): VideoResource[] {
-    const list = this.getVideos();
+  updateVideoNotes(videoId: string, notes: string, examId?: string): VideoResource[] {
+    const list = this.getVideos(examId);
     const updated = list.map(v => v.id === videoId ? { ...v, notes } : v);
-    this.saveVideos(updated);
+    this.saveVideos(updated, examId);
     return updated;
   },
 
-  toggleVideoWatched(videoId: string): VideoResource[] {
-    const list = this.getVideos();
+  toggleVideoWatched(videoId: string, examId?: string): VideoResource[] {
+    const list = this.getVideos(examId);
     const updated = list.map(v => v.id === videoId ? { ...v, isWatched: !v.isWatched } : v);
-    this.saveVideos(updated);
+    this.saveVideos(updated, examId);
     return updated;
   },
 
-  deleteVideo(videoId: string): VideoResource[] {
-    const list = this.getVideos();
+  deleteVideo(videoId: string, examId?: string): VideoResource[] {
+    const list = this.getVideos(examId);
     const updated = list.filter(v => v.id !== videoId);
-    this.saveVideos(updated);
+    this.saveVideos(updated, examId);
     return updated;
   },
 
   // PDFS
-  getPdfs(): PdfResource[] {
+  getPdfs(examId?: string): PdfResource[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.PDFS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.PDFS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
@@ -857,42 +1031,47 @@ export const storageService = {
         }
       }
 
-      for (const fallbackKey of FALLBACK_KEYS.PDFS) {
-        const fallbackData = localStorage.getItem(fallbackKey);
-        if (fallbackData) {
-          const parsed = JSON.parse(fallbackData);
-          if (Array.isArray(parsed)) {
-            this.savePdfs(parsed);
-            return parsed;
+      if (activeExam === 'mid-sem') {
+        for (const fallbackKey of FALLBACK_KEYS.PDFS) {
+          const fallbackData = localStorage.getItem(fallbackKey);
+          if (fallbackData) {
+            const parsed = JSON.parse(fallbackData);
+            if (Array.isArray(parsed)) {
+              this.savePdfs(parsed, 'mid-sem');
+              return parsed;
+            }
           }
         }
+        this.savePdfs(DEFAULT_PDFS, 'mid-sem');
+        return DEFAULT_PDFS;
       }
     } catch (e) {
       console.warn('Error reading pdfs:', e);
     }
-    this.savePdfs(DEFAULT_PDFS);
-    return DEFAULT_PDFS;
+    return [];
   },
 
-  savePdfs(pdfs: PdfResource[]): void {
+  savePdfs(pdfs: PdfResource[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.PDFS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.PDFS, JSON.stringify(pdfs));
+      localStorage.setItem(key, JSON.stringify(pdfs));
     } catch (e) {
       console.error('Error saving pdfs:', e);
     }
   },
 
-  addPdf(pdf: PdfResource): PdfResource[] {
-    const list = this.getPdfs();
+  addPdf(pdf: PdfResource, examId?: string): PdfResource[] {
+    const list = this.getPdfs(examId);
     const updated = [pdf, ...list];
-    this.savePdfs(updated);
+    this.savePdfs(updated, examId);
     return updated;
   },
 
-  deletePdf(pdfId: string): PdfResource[] {
-    const list = this.getPdfs();
+  deletePdf(pdfId: string, examId?: string): PdfResource[] {
+    const list = this.getPdfs(examId);
     const updated = list.filter(p => p.id !== pdfId);
-    this.savePdfs(updated);
+    this.savePdfs(updated, examId);
     return updated;
   },
 
@@ -941,9 +1120,11 @@ export const storageService = {
   // ==========================================
   // SYLLABUS TOPICS TRACKER
   // ==========================================
-  getTopics(subjectId?: string): SyllabusTopic[] {
+  getTopics(subjectId?: string, examId?: string): SyllabusTopic[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.TOPICS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -954,78 +1135,110 @@ export const storageService = {
       console.warn('Error reading topics:', e);
     }
 
-    // Initialize default topics + seed topics for custom subjects from units if needed
-    const subjects = this.getSubjects();
-    const seededTopics: SyllabusTopic[] = [...DEFAULT_TOPICS];
+    if (activeExam === 'mid-sem') {
+      // Initialize default topics + seed topics for custom subjects from units if needed
+      const subjects = this.getSubjects('mid-sem');
+      const seededTopics: SyllabusTopic[] = [...DEFAULT_TOPICS];
 
-    // For any user-created subjects not in defaults, seed initial topics from their units
-    subjects.forEach(sub => {
-      const existing = seededTopics.filter(t => t.subjectId === sub.id);
-      if (existing.length === 0) {
-        sub.units.forEach((u, uIdx) => {
-          seededTopics.push({
-            id: `top-${sub.id}-${u.id || uIdx + 1}-1`,
-            subjectId: sub.id,
-            unitId: u.id,
-            unitNumber: u.unit,
-            title: u.title,
-            completed: false,
-            mastery: 'okay',
-            pyqCount: 1
+      subjects.forEach(sub => {
+        const existing = seededTopics.filter(t => t.subjectId === sub.id);
+        if (existing.length === 0) {
+          sub.units.forEach((u, uIdx) => {
+            seededTopics.push({
+              id: `top-${sub.id}-${u.id || uIdx + 1}-1`,
+              subjectId: sub.id,
+              unitId: u.id,
+              unitNumber: u.unitNumber || u.unit || (uIdx + 1),
+              title: u.title,
+              completed: false,
+              mastery: 'okay',
+              pyqCount: 1
+            });
           });
-        });
-      }
-    });
+        }
+      });
 
-    this.saveTopics(seededTopics);
-    return subjectId ? seededTopics.filter(t => t.subjectId === subjectId) : seededTopics;
+      this.saveTopics(seededTopics, 'mid-sem');
+      return subjectId ? seededTopics.filter(t => t.subjectId === subjectId) : seededTopics;
+    }
+
+    return [];
   },
 
-  saveTopics(topics: SyllabusTopic[]): void {
+  saveTopics(topics: SyllabusTopic[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.TOPICS, JSON.stringify(topics));
+      localStorage.setItem(key, JSON.stringify(topics));
     } catch (e) {
       console.error('Error saving topics:', e);
     }
   },
 
-  addTopic(topic: SyllabusTopic): SyllabusTopic[] {
-    const list = this.getTopics();
+  addTopic(topic: SyllabusTopic, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
     const updated = [...list, topic];
-    this.saveTopics(updated);
+    this.saveTopics(updated, examId);
     return updated;
   },
 
-  updateTopic(topic: SyllabusTopic): SyllabusTopic[] {
-    const list = this.getTopics();
+  updateTopic(topic: SyllabusTopic, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
     const updated = list.map(t => t.id === topic.id ? topic : t);
-    this.saveTopics(updated);
+    this.saveTopics(updated, examId);
     return updated;
   },
 
-  deleteTopic(topicId: string): SyllabusTopic[] {
-    const list = this.getTopics();
+  deleteTopic(topicId: string, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
     const updated = list.filter(t => t.id !== topicId);
-    this.saveTopics(updated);
+    this.saveTopics(updated, examId);
     return updated;
   },
 
-  toggleTopicCompleted(topicId: string): SyllabusTopic[] {
-    const list = this.getTopics();
+  toggleTopicCompleted(topicId: string, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
     const updated = list.map(t => t.id === topicId ? { ...t, completed: !t.completed } : t);
-    this.saveTopics(updated);
+    this.saveTopics(updated, examId);
     return updated;
   },
 
-  setTopicMastery(topicId: string, mastery: TopicMastery): SyllabusTopic[] {
-    const list = this.getTopics();
+  setTopicMastery(topicId: string, mastery: TopicMastery, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
     const updated = list.map(t => t.id === topicId ? { ...t, mastery } : t);
-    this.saveTopics(updated);
+    this.saveTopics(updated, examId);
     return updated;
   },
 
-  getSubjectProgress(subjectId: string, customTopics?: SyllabusTopic[]) {
-    const allTopics = customTopics || this.getTopics();
+  addTopicVideo(topicId: string, videoUrl: string, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
+    const updated = list.map(t => {
+      if (t.id === topicId) {
+        const vUrls = t.videoUrls || [];
+        if (!vUrls.includes(videoUrl.trim())) {
+          return { ...t, videoUrls: [...vUrls, videoUrl.trim()] };
+        }
+      }
+      return t;
+    });
+    this.saveTopics(updated, examId);
+    return updated;
+  },
+
+  removeTopicVideo(topicId: string, videoUrl: string, examId?: string): SyllabusTopic[] {
+    const list = this.getTopics(undefined, examId);
+    const updated = list.map(t => {
+      if (t.id === topicId && t.videoUrls) {
+        return { ...t, videoUrls: t.videoUrls.filter(u => u !== videoUrl) };
+      }
+      return t;
+    });
+    this.saveTopics(updated, examId);
+    return updated;
+  },
+
+  getSubjectProgress(subjectId: string, customTopics?: SyllabusTopic[], examId?: string) {
+    const allTopics = customTopics || this.getTopics(undefined, examId);
     const subTopics = allTopics.filter(t => t.subjectId === subjectId);
     const total = subTopics.length;
     const completed = subTopics.filter(t => t.completed).length;
@@ -1040,38 +1253,45 @@ export const storageService = {
   // ==========================================
   // POMODORO FOCUS LOGS
   // ==========================================
-  getPomodoroLogs(): PomodoroSession[] {
+  getPomodoroLogs(examId?: string): PomodoroSession[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.POMODORO_LOGS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.POMODORO_LOGS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) return parsed;
       }
+      if (activeExam === 'mid-sem') {
+        const today = new Date();
+        const defaultLogs: PomodoroSession[] = [
+          { id: 'pomo-1', subjectId: 'os', subjectName: 'Operating Systems', accentColor: '#3B82F6', minutes: 50, date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 3 },
+          { id: 'pomo-2', subjectId: 'dbms', subjectName: 'Database Systems', accentColor: '#F97316', minutes: 75, date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 2 },
+          { id: 'pomo-3', subjectId: 'cn', subjectName: 'Computer Networks', accentColor: '#10B981', minutes: 50, date: new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 1 },
+          { id: 'pomo-4', subjectId: 'dsa', subjectName: 'Data Structures & Algorithms', accentColor: '#06B6D4', minutes: 25, date: today.toISOString().split('T')[0], timestamp: Date.now() }
+        ];
+        this.savePomodoroLogs(defaultLogs, 'mid-sem');
+        return defaultLogs;
+      }
     } catch (e) {
       console.warn('Error reading pomodoro logs:', e);
     }
-    const today = new Date();
-    const defaultLogs: PomodoroSession[] = [
-      { id: 'pomo-1', subjectId: 'os', subjectName: 'Operating Systems', accentColor: '#3B82F6', minutes: 50, date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 3 },
-      { id: 'pomo-2', subjectId: 'dbms', subjectName: 'Database Systems', accentColor: '#F97316', minutes: 75, date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 2 },
-      { id: 'pomo-3', subjectId: 'cn', subjectName: 'Computer Networks', accentColor: '#10B981', minutes: 50, date: new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0], timestamp: Date.now() - 86400000 * 1 },
-      { id: 'pomo-4', subjectId: 'dsa', subjectName: 'Data Structures & Algorithms', accentColor: '#06B6D4', minutes: 25, date: today.toISOString().split('T')[0], timestamp: Date.now() }
-    ];
-    this.savePomodoroLogs(defaultLogs);
-    return defaultLogs;
+    return [];
   },
 
-  savePomodoroLogs(logs: PomodoroSession[]): void {
+  savePomodoroLogs(logs: PomodoroSession[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.POMODORO_LOGS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.POMODORO_LOGS, JSON.stringify(logs));
+      localStorage.setItem(key, JSON.stringify(logs));
     } catch (e) {
       console.error('Error saving pomodoro logs:', e);
     }
   },
 
-  logPomodoroSession(subjectId: string, minutes: number): PomodoroSession[] {
-    const list = this.getPomodoroLogs();
-    const subjects = this.getSubjects();
+  logPomodoroSession(subjectId: string, minutes: number, examId?: string): PomodoroSession[] {
+    const list = this.getPomodoroLogs(examId);
+    const subjects = this.getSubjects(examId);
     const sub = subjects.find(s => s.id === subjectId);
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -1086,12 +1306,12 @@ export const storageService = {
     };
 
     const updated = [newLog, ...list];
-    this.savePomodoroLogs(updated);
+    this.savePomodoroLogs(updated, examId);
     return updated;
   },
 
-  getWeeklyPomodoroStats(): { day: string; date: string; minutes: number }[] {
-    const logs = this.getPomodoroLogs();
+  getWeeklyPomodoroStats(examId?: string): { day: string; date: string; minutes: number }[] {
+    const logs = this.getPomodoroLogs(examId);
     const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const result: { day: string; date: string; minutes: number }[] = [];
 
@@ -1117,39 +1337,46 @@ export const storageService = {
   // ==========================================
   // FLASHCARDS WITH SPACED REPETITION
   // ==========================================
-  getFlashcards(subjectId?: string): Flashcard[] {
+  getFlashcards(subjectId?: string, examId?: string): Flashcard[] {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.FLASHCARDS, activeExam);
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.FLASHCARDS);
+      const data = localStorage.getItem(key);
       if (data) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return subjectId ? parsed.filter(c => c.subjectId === subjectId) : parsed;
         }
       }
+      if (activeExam === 'mid-sem') {
+        this.saveFlashcards(DEFAULT_FLASHCARDS, 'mid-sem');
+        return subjectId ? DEFAULT_FLASHCARDS.filter(c => c.subjectId === subjectId) : DEFAULT_FLASHCARDS;
+      }
     } catch (e) {
       console.warn('Error reading flashcards:', e);
     }
-    this.saveFlashcards(DEFAULT_FLASHCARDS);
-    return subjectId ? DEFAULT_FLASHCARDS.filter(c => c.subjectId === subjectId) : DEFAULT_FLASHCARDS;
+    return [];
   },
 
-  saveFlashcards(cards: Flashcard[]): void {
+  saveFlashcards(cards: Flashcard[], examId?: string): void {
+    const activeExam = examId || this.getActiveExam();
+    const key = getExamStorageKey(STORAGE_KEYS.FLASHCARDS, activeExam);
     try {
-      localStorage.setItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(cards));
+      localStorage.setItem(key, JSON.stringify(cards));
     } catch (e) {
       console.error('Error saving flashcards:', e);
     }
   },
 
-  addFlashcard(card: Flashcard): Flashcard[] {
-    const list = this.getFlashcards();
+  addFlashcard(card: Flashcard, examId?: string): Flashcard[] {
+    const list = this.getFlashcards(undefined, examId);
     const updated = [card, ...list];
-    this.saveFlashcards(updated);
+    this.saveFlashcards(updated, examId);
     return updated;
   },
 
-  reviewFlashcard(cardId: string, rating: 'hard' | 'good' | 'easy'): Flashcard[] {
-    const list = this.getFlashcards();
+  reviewFlashcard(cardId: string, rating: 'hard' | 'good' | 'easy', examId?: string): Flashcard[] {
+    const list = this.getFlashcards(undefined, examId);
     const today = new Date();
 
     const updated = list.map(c => {
@@ -1181,19 +1408,19 @@ export const storageService = {
       return c;
     });
 
-    this.saveFlashcards(updated);
+    this.saveFlashcards(updated, examId);
     return updated;
   },
 
-  deleteFlashcard(cardId: string): Flashcard[] {
-    const list = this.getFlashcards();
+  deleteFlashcard(cardId: string, examId?: string): Flashcard[] {
+    const list = this.getFlashcards(undefined, examId);
     const updated = list.filter(c => c.id !== cardId);
-    this.saveFlashcards(updated);
+    this.saveFlashcards(updated, examId);
     return updated;
   },
 
-  getDueFlashcards(subjectId?: string): Flashcard[] {
-    const cards = this.getFlashcards(subjectId);
+  getDueFlashcards(subjectId?: string, examId?: string): Flashcard[] {
+    const cards = this.getFlashcards(subjectId, examId);
     const todayStr = new Date().toISOString().split('T')[0];
     return cards.filter(c => !c.nextReviewDate || c.nextReviewDate <= todayStr);
   },
@@ -1237,7 +1464,7 @@ export const storageService = {
       }
       if (a.mastery === 'weak' && b.mastery !== 'weak') return -1;
       if (b.mastery === 'weak' && a.mastery !== 'weak') return 1;
-      return a.unitNumber - b.unitNumber;
+      return (Number(a.unitNumber) || 0) - (Number(b.unitNumber) || 0);
     });
   },
 

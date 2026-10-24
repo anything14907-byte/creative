@@ -18,7 +18,6 @@ export type ExtendedNavView =
   | 'today' 
   | 'syllabus' 
   | 'pyqs' 
-  | 'planner' 
   | 'timer' 
   | 'flashcards' 
   | 'vault' 
@@ -45,12 +44,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     { id: 'today', label: 'Today', icon: <Sparkles className="w-5 h-5" /> },
     { id: 'syllabus', label: 'Syllabus', icon: <BookOpen className="w-5 h-5" /> },
     { id: 'pyqs', label: 'PYQs', icon: <Flame className="w-5 h-5" /> },
-    { id: 'planner', label: 'Planner', icon: <Calendar className="w-5 h-5" /> },
     { id: 'timer', label: 'Timer', icon: <Timer className="w-5 h-5" /> },
+    { id: 'flashcards', label: 'Flashcards', icon: <Brain className="w-5 h-5" /> },
   ];
 
   const moreTabs: { id: ExtendedNavView; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'flashcards', label: 'Flashcards', icon: <Brain className="w-5 h-5" />, badge: dueFlashcardsCount > 0 ? `${dueFlashcardsCount} Due` : undefined },
     { id: 'vault', label: 'YouTube Vault', icon: <Video className="w-5 h-5" /> },
     { id: 'pdf', label: 'PDF Notes Tool', icon: <FileText className="w-5 h-5" /> },
     { id: 'overview', label: 'All Subjects Grid', icon: <Layers className="w-5 h-5" /> },

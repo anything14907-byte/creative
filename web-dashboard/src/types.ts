@@ -6,10 +6,18 @@ export type QuestionStatus = 'not-started' | 'mastered';
 
 export type TopicMastery = 'weak' | 'okay' | 'strong';
 
+export interface ExamSession {
+  id: string; // e.g. 'mid-sem', 'end-sem', 'internals'
+  name: string; // e.g. 'Mid Sem', 'End Sem', 'Internals'
+  isDefault?: boolean;
+  createdAt: number;
+}
+
 export interface SubjectUnit {
   id: string; // e.g. 'u1' or 'unit-1'
-  unit: number; // 1, 2, 3...
-  title: string; // e.g. 'Process Scheduling & CPU Algorithms'
+  unit?: number; // 1, 2, 3...
+  unitNumber?: string | number; // e.g. "Unit 3", "Unit 4", or custom
+  title: string; // e.g. 'Process Scheduling & CPU Algorithms' or 'Thermodynamics'
   name?: string; // alias for title
 }
 
@@ -17,12 +25,14 @@ export interface SyllabusTopic {
   id: string;
   subjectId: SubjectId;
   unitId: string;
-  unitNumber: number;
+  unitNumber?: string | number;
   title: string;
   completed: boolean;
   mastery: TopicMastery;
+  videoUrls?: string[]; // YouTube video links attached to this topic
   notes?: string;
   pyqCount?: number;
+  createdAt?: number;
 }
 
 export interface PYQQuestion {
@@ -190,7 +200,7 @@ export interface PlannerDayTopic {
   subjectId: SubjectId;
   subjectName: string;
   accentColor: string;
-  unitNumber: number;
+  unitNumber?: string | number;
   title: string;
   mastery: TopicMastery;
   frequency: number; // PYQ count
@@ -224,6 +234,7 @@ export type FileCategory = 'pyq' | 'notes' | 'images';
 
 export interface SubjectFile {
   id: string;
+  examId?: string; // Links file to a specific ExamSession
   subjectId: string;
   name: string; // Title / filename
   category: FileCategory; // 'pyq' | 'notes' | 'images'

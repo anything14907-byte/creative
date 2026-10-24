@@ -169,13 +169,6 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
               Automatically sorted by upcoming exam date (closest exam first). Click any Unit pill to jump directly to its materials.
             </p>
           </div>
-
-          <button
-            onClick={onOpenAddSubject}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg flex items-center gap-1.5 btn-tactile shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> + Add Subject
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -379,20 +372,6 @@ export const CommandCenterOverview: React.FC<CommandCenterOverviewProps> = ({
               </div>
             );
           })}
-
-          {/* Add Subject Card */}
-          <div
-            onClick={onOpenAddSubject}
-            className="p-6 rounded-2xl border-2 border-dashed border-paper-border dark:border-night-border hover:border-emerald-500 dark:hover:border-emerald-400 bg-paper-card/60 dark:bg-night-card/60 hover:bg-paper-card dark:hover:bg-night-card cursor-pointer transition-all flex flex-col items-center justify-center text-center group min-h-[320px] btn-tactile"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <Plus className="w-6 h-6" />
-            </div>
-            <h4 className="text-sm font-bold text-paper-ink dark:text-night-text mb-1">+ Add Subject</h4>
-            <p className="text-xs text-paper-muted dark:text-night-muted max-w-[200px]">
-              Set your exam date and syllabus units to track live countdowns and study materials.
-            </p>
-          </div>
         </div>
       </div>
 

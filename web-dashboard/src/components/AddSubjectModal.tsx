@@ -31,18 +31,17 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
     e.preventDefault();
     if (!name.trim() || !examDate) return;
 
-    // Parse units
+    // Parse units (Preserve user typed unit titles without stripping or renumbering)
     const parsedUnits: SubjectUnit[] = unitsInput
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
       .map((line, idx) => {
-        const cleanTitle = line.replace(/^Unit\s*\d+[:\-.]\s*/i, '').trim() || `Unit ${idx + 1}`;
         return {
-          id: `u${idx + 1}`,
-          unit: idx + 1,
-          title: cleanTitle,
-          name: cleanTitle
+          id: `unit-${Date.now().toString(36)}-${idx}`,
+          title: line,
+          name: line,
+          unitNumber: line
         };
       });
 
@@ -176,7 +175,7 @@ export const AddSubjectModal: React.FC<AddSubjectModalProps> = ({
               style={{ backgroundColor: accentColor }}
             >
               <Plus className="w-4 h-4" />
-              <span>+ Add Subject</span>
+              <span>Add Subject</span>
             </button>
           </div>
         </form>
