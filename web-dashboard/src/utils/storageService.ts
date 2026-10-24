@@ -275,9 +275,11 @@ export function formatUnitDisplayName(unit?: any): string {
   if (!unit) return 'Unit';
   if (typeof unit === 'string') {
     const trimmed = unit.trim();
-    const match = trimmed.match(/^(unit\s*[\d\w]+|[a-z]+\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+    const match = trimmed.match(/^(?:((?:unit|module|chapter|part|section)\s*[\d\w]+)[:\s\-\–]+|([a-z0-9\s]{2,15})[:\-\–]+)(.*)$/i);
     if (match) {
-      return `${match[1].trim()}: ${match[2].trim()}`;
+      const lbl = (match[1] || match[2]).trim();
+      const ttl = (match[3] || '').trim();
+      return `${lbl}: ${ttl}`;
     }
     return trimmed || 'Unit';
   }
@@ -300,10 +302,10 @@ export function formatUnitDisplayName(unit?: any): string {
 
   // If label is still empty, check if title starts with "Unit X:" or similar
   if (!label && title) {
-    const match = title.match(/^(unit\s*[\d\w]+|[a-z]+\s*[\d\w]+)[:\s\-\–]+(.*)$/i);
+    const match = title.match(/^(?:((?:unit|module|chapter|part|section)\s*[\d\w]+)[:\s\-\–]+|([a-z0-9\s]{2,15})[:\-\–]+)(.*)$/i);
     if (match) {
-      label = match[1].trim();
-      title = match[2].trim();
+      label = (match[1] || match[2]).trim();
+      title = (match[3] || '').trim();
     }
   }
 

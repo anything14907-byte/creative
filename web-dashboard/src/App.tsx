@@ -27,6 +27,7 @@ import { EditSubjectModal } from './components/EditSubjectModal';
 import { BackupModal } from './components/BackupModal';
 import { MobileBottomNav, ExtendedNavView } from './components/MobileBottomNav';
 import { Toast, ToastMessage } from './components/Toast';
+import { SearchIndexItem } from './utils/searchService';
 
 function DashboardContent() {
   // 1. Multiple Exams State (Requirement 3)
@@ -174,6 +175,50 @@ function DashboardContent() {
     handleSelectSubject(subId);
     setCurrentView('syllabus');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigateToSearchResult = (item: SearchIndexItem) => {
+    if (item.examId && item.examId !== activeExamId) {
+      handleSelectExam(item.examId);
+    }
+    handleSelectSubject(item.subjectId, item.unitId);
+
+    if (item.type === 'flashcard') {
+      setCurrentView('flashcards');
+    } else if (item.type === 'task') {
+      setCurrentView('today');
+    } else {
+      setCurrentView('syllabus');
+    }
+
+    if (item.type === 'topic') {
+      setHighlightedTopicId(item.id);
+      setTimeout(() => {
+        setHighlightedTopicId(undefined);
+      }, 4500);
+    }
+
+    // Scroll to element after view renders and flash highlight
+    setTimeout(() => {
+      let targetEl: HTMLElement | null = null;
+      if (item.type === 'topic') {
+        targetEl = document.getElementById(`topic-${item.id}`);
+      } else if (item.type === 'unit') {
+        targetEl = document.getElementById(`unit-${item.unitId || item.id}`);
+      } else if (item.type === 'subject') {
+        targetEl = document.getElementById(`subject-${item.subjectId}`);
+      } else if (item.type === 'pyq') {
+        targetEl = document.getElementById(`q-${item.id}`) || document.getElementById(`pyq-${item.id}`);
+      }
+
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetEl.classList.add('ring-4', 'ring-emerald-500', 'ring-offset-2', 'transition-all', 'duration-500');
+        setTimeout(() => {
+          targetEl?.classList.remove('ring-4', 'ring-emerald-500', 'ring-offset-2');
+        }, 3000);
+      }
+    }, 200);
   };
 
   const handleSelectSubjectAndOpenWorkspace = (id: string, unitId?: string) => {
@@ -454,10 +499,16 @@ function DashboardContent() {
         onSelectView={setCurrentView}
         subjects={subjects}
         topics={topics}
+        questions={questions}
+        tasks={tasks}
+        videos={videos}
+        pdfs={pdfs}
+        flashcards={flashcards}
         activeSubjectId={activeSubjectId}
         onSelectSubject={handleSelectSubject}
         onNavigateToTopic={handleNavigateToTopic}
         onNavigateToSubject={handleNavigateToSubject}
+        onNavigateToSearchResult={handleNavigateToSearchResult}
         onOpenBackup={() => setIsBackupModalOpen(true)}
         examSessions={examSessions}
         activeExamId={activeExamId}

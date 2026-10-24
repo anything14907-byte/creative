@@ -1,5 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { SubjectMeta, ExamSession, SyllabusTopic } from '../types';
+import React, { useState } from 'react';
+import { 
+  SubjectMeta, 
+  ExamSession, 
+  SyllabusTopic,
+  PYQQuestion, 
+  StudyTask, 
+  VideoResource, 
+  PdfResource, 
+  Flashcard, 
+  SubjectFile 
+} from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Sparkles, 
@@ -8,7 +18,7 @@ import {
   Database, 
   ChevronDown, 
   BookOpen, 
-  Layers,
+  Layers, 
   Timer, 
   Brain, 
   Video, 
@@ -24,6 +34,8 @@ import {
 } from 'lucide-react';
 import { ConfirmModal } from './ConfirmModal';
 import { formatUnitDisplayName } from '../utils/storageService';
+import { GlobalSearchBar } from './GlobalSearchBar';
+import { SearchIndexItem } from '../utils/searchService';
 
 export type MainNavView = 
   | 'today' 
@@ -41,7 +53,7 @@ interface NavbarProps {
   onSelectView: (view: MainNavView) => void;
   subjects: SubjectMeta[];
   activeSubjectId: string;
-  onSelectSubject?: (id: string) => void;
+  onSelectSubject?: (id: string, unitId?: string) => void;
   onOpenBackup: () => void;
   examSessions: ExamSession[];
   activeExamId: string;
@@ -50,8 +62,15 @@ interface NavbarProps {
   onRenameExam: (examId: string, newName: string) => void;
   onDeleteExam: (examId: string) => void;
   topics?: SyllabusTopic[];
+  questions?: PYQQuestion[];
+  tasks?: StudyTask[];
+  videos?: VideoResource[];
+  pdfs?: PdfResource[];
+  flashcards?: Flashcard[];
+  files?: SubjectFile[];
   onNavigateToTopic?: (subjectId: string, unitId: string, topicId: string) => void;
   onNavigateToSubject?: (subjectId: string) => void;
+  onNavigateToSearchResult?: (item: SearchIndexItem) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -68,8 +87,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRenameExam,
   onDeleteExam,
   topics = [],
+  questions = [],
+  tasks = [],
+  videos = [],
+  pdfs = [],
+  flashcards = [],
+  files = [],
   onNavigateToTopic,
-  onNavigateToSubject
+  onNavigateToSubject,
+  onNavigateToSearchResult
 }) => {
   const { theme, toggleTheme } = useTheme();
   const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
@@ -77,11 +103,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [newExamName, setNewExamName] = useState('');
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [editingExamName, setEditingExamName] = useState('');
-
-  // Search Bar State (Requirement 1)
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [examToDelete, setExamToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const activeExam = examSessions.find(e => e.id === activeExamId) || examSessions[0] || { id: 'mid-sem', name: 'Mid Sem' };
@@ -97,30 +118,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'overview', label: 'All Subjects', icon: <Layers className="w-4 h-4" /> },
   ];
 
-  // Close search results dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setIsSearchOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Filter search results case-insensitively
-  const cleanQuery = searchQuery.trim().toLowerCase();
-  const isSearching = cleanQuery.length > 0;
-
-  const matchedSubjects = isSearching
-    ? subjects.filter(s => s.name.toLowerCase().includes(cleanQuery))
-    : [];
-
-  const matchedTopics = isSearching
-    ? topics.filter(t => t.title.toLowerCase().includes(cleanQuery))
-    : [];
-
-  const hasResults = matchedSubjects.length > 0 || matchedTopics.length > 0;
+  const handleSearchResultNavigation = (item: SearchIndexItem) => {
+    if (onNavigateToSearchResult) {
+      onNavigateToSearchResult(item);
+    } else if (item.type === 'topic' && onNavigateToTopic && item.unitId) {
+      onNavigateToTopic(item.subjectId, item.unitId, item.id);
+    } else if (item.type === 'subject' && onNavigateToSubject) {
+      onNavigateToSubject(item.subjectId);
+    } else {
+      if (onSelectSubject) onSelectSubject(item.subjectId, item.unitId);
+      onSelectView('syllabus');
+    }
+  };
 
   const handleCreateExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,27 +155,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     setExamToDelete({ id: examId, name });
   };
 
-  const handleTopicClick = (topic: SyllabusTopic) => {
-    setIsSearchOpen(false);
-    setSearchQuery('');
-    if (onNavigateToTopic) {
-      onNavigateToTopic(topic.subjectId, topic.unitId, topic.id);
-    } else {
-      if (onSelectSubject) onSelectSubject(topic.subjectId);
-      onSelectView('syllabus');
-    }
-  };
-
-  const handleSubjectClick = (subjectId: string) => {
-    setIsSearchOpen(false);
-    setSearchQuery('');
-    if (onNavigateToSubject) {
-      onNavigateToSubject(subjectId);
-    } else {
-      if (onSelectSubject) onSelectSubject(subjectId);
-      onSelectView('syllabus');
-    }
-  };
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
@@ -350,124 +338,20 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Center-Left: REQUIREMENT 1 - Search Bar (Desktop) */}
-          <div ref={searchContainerRef} className="hidden md:block relative flex-1 max-w-xs lg:max-w-sm">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-paper-muted absolute left-3 top-2.5 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setIsSearchOpen(true);
-                }}
-                onFocus={() => setIsSearchOpen(true)}
-                placeholder={`Search ${activeExam.name} topics & subjects...`}
-                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text placeholder-paper-muted focus:outline-none focus:border-emerald-500 transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="p-1 text-paper-muted hover:text-paper-ink absolute right-1.5 top-1.5"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Desktop Search Results Dropdown */}
-            {isSearchOpen && isSearching && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl rounded-2xl p-2 z-50 max-h-96 overflow-y-auto animate-scale-up space-y-2">
-                
-                {/* Topic Results */}
-                {matchedTopics.length > 0 && (
-                  <div>
-                    <div className="text-[10px] font-bold text-paper-muted dark:text-night-muted uppercase tracking-wider px-2 py-1">
-                      Topics ({matchedTopics.length})
-                    </div>
-                    <div className="space-y-1">
-                      {matchedTopics.map(topic => {
-                        const sub = subjects.find(s => s.id === topic.subjectId);
-                        const unit = sub?.units?.find(u => u.id === topic.unitId);
-                        const unitLabel = unit ? formatUnitDisplayName(unit) : formatUnitDisplayName({ unitNumber: topic.unitNumber, unitLabel: (topic as any).unitLabel, title: (topic as any).unitTitle });
-
-                        return (
-                          <div
-                            key={topic.id}
-                            onClick={() => handleTopicClick(topic)}
-                            className="p-2.5 rounded-xl hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated cursor-pointer transition-colors border border-transparent hover:border-emerald-500/30 flex items-start justify-between gap-2"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-bold text-paper-ink dark:text-night-text line-clamp-1">
-                                {topic.title}
-                              </div>
-                              <div className="text-[10px] text-paper-muted flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span 
-                                  className="font-bold px-1.5 py-0.2 rounded font-mono"
-                                  style={{ backgroundColor: `${sub?.accentColor || '#10B981'}20`, color: sub?.accentColor || '#10B981' }}
-                                >
-                                  {sub?.name || 'Subject'}
-                                </span>
-                                <span>•</span>
-                                <span>{unitLabel}</span>
-                              </div>
-                            </div>
-
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
-                              topic.mastery === 'weak' ? 'bg-rose-500/10 text-rose-500' :
-                              topic.mastery === 'strong' ? 'bg-emerald-500/10 text-emerald-500' :
-                              'bg-amber-500/10 text-amber-500'
-                            }`}>
-                              {topic.mastery}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Subject Results */}
-                {matchedSubjects.length > 0 && (
-                  <div>
-                    <div className="text-[10px] font-bold text-paper-muted dark:text-night-muted uppercase tracking-wider px-2 py-1">
-                      Subjects ({matchedSubjects.length})
-                    </div>
-                    <div className="space-y-1">
-                      {matchedSubjects.map(sub => (
-                        <div
-                          key={sub.id}
-                          onClick={() => handleSubjectClick(sub.id)}
-                          className="p-2.5 rounded-xl hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated cursor-pointer transition-colors border border-transparent hover:border-emerald-500/30 flex items-center justify-between gap-2"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sub.accentColor }} />
-                            <span className="text-xs font-bold text-paper-ink dark:text-night-text truncate">{sub.name}</span>
-                          </div>
-                          <span className="text-[10px] text-paper-muted font-mono shrink-0">
-                            {sub.units?.length || 0} Units →
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* No Results Found */}
-                {!hasResults && (
-                  <div className="py-6 px-4 text-center">
-                    <Search className="w-5 h-5 text-paper-muted mx-auto mb-1.5 opacity-50" />
-                    <div className="text-xs font-bold text-paper-ink dark:text-night-text">No results found</div>
-                    <div className="text-[11px] text-paper-muted mt-0.5">
-                      No topics or subjects match "{searchQuery}" in {activeExam.name}.
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            )}
-          </div>
+          <GlobalSearchBar
+            activeExamId={activeExamId}
+            examSessions={examSessions}
+            subjects={subjects}
+            topics={topics}
+            questions={questions}
+            tasks={tasks}
+            videos={videos}
+            pdfs={pdfs}
+            flashcards={flashcards}
+            files={files}
+            onNavigateToSearchResult={handleSearchResultNavigation}
+            className="hidden md:block relative flex-1 max-w-xs lg:max-w-sm"
+          />
 
           {/* Center-Right: Desktop Navigation Tabs (PYQ Ranker is removed per Req 3) */}
           <nav className="hidden lg:flex items-center gap-1 overflow-x-auto max-w-xl py-1">
@@ -520,117 +404,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Mobile Search Bar Row (Requirement 1: Visible at top on every page) */}
         <div className="pb-3 md:hidden">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-paper-muted absolute left-3 top-2.5 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              placeholder={`Search ${activeExam.name} topics & subjects...`}
-              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text placeholder-paper-muted focus:outline-none focus:border-emerald-500 transition-colors"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="p-1 text-paper-muted hover:text-paper-ink absolute right-1.5 top-1.5"
-                title="Clear search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-
-            {/* Mobile Search Results Dropdown */}
-            {isSearchOpen && isSearching && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-2xl rounded-2xl p-2 z-50 max-h-80 overflow-y-auto animate-scale-up space-y-2">
-                {matchedTopics.length > 0 && (
-                  <div>
-                    <div className="text-[10px] font-bold text-paper-muted uppercase tracking-wider px-2 py-1">
-                      Topics ({matchedTopics.length})
-                    </div>
-                    <div className="space-y-1">
-                      {matchedTopics.map(topic => {
-                        const sub = subjects.find(s => s.id === topic.subjectId);
-                        const unit = sub?.units?.find(u => u.id === topic.unitId);
-                        const unitLabel = unit ? formatUnitDisplayName(unit) : formatUnitDisplayName({ unitNumber: topic.unitNumber, unitLabel: (topic as any).unitLabel, title: (topic as any).unitTitle });
-
-                        return (
-                          <div
-                            key={topic.id}
-                            onClick={() => handleTopicClick(topic)}
-                            className="p-2.5 rounded-xl hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated cursor-pointer transition-colors border border-transparent hover:border-emerald-500/30 flex items-start justify-between gap-2"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-bold text-paper-ink dark:text-night-text line-clamp-1">
-                                {topic.title}
-                              </div>
-                              <div className="text-[10px] text-paper-muted flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span 
-                                  className="font-bold px-1.5 py-0.2 rounded font-mono"
-                                  style={{ backgroundColor: `${sub?.accentColor || '#10B981'}20`, color: sub?.accentColor || '#10B981' }}
-                                >
-                                  {sub?.name || 'Subject'}
-                                </span>
-                                <span>•</span>
-                                <span>{unitLabel}</span>
-                              </div>
-                            </div>
-
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0 ${
-                              topic.mastery === 'weak' ? 'bg-rose-500/10 text-rose-500' :
-                              topic.mastery === 'strong' ? 'bg-emerald-500/10 text-emerald-500' :
-                              'bg-amber-500/10 text-amber-500'
-                            }`}>
-                              {topic.mastery}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {matchedSubjects.length > 0 && (
-                  <div>
-                    <div className="text-[10px] font-bold text-paper-muted uppercase tracking-wider px-2 py-1">
-                      Subjects ({matchedSubjects.length})
-                    </div>
-                    <div className="space-y-1">
-                      {matchedSubjects.map(sub => (
-                        <div
-                          key={sub.id}
-                          onClick={() => handleSubjectClick(sub.id)}
-                          className="p-2.5 rounded-xl hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated cursor-pointer transition-colors border border-transparent hover:border-emerald-500/30 flex items-center justify-between gap-2"
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sub.accentColor }} />
-                            <span className="text-xs font-bold text-paper-ink dark:text-night-text truncate">{sub.name}</span>
-                          </div>
-                          <span className="text-[10px] text-paper-muted font-mono shrink-0">
-                            {sub.units?.length || 0} Units →
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!hasResults && (
-                  <div className="py-6 px-4 text-center">
-                    <Search className="w-5 h-5 text-paper-muted mx-auto mb-1.5 opacity-50" />
-                    <div className="text-xs font-bold text-paper-ink dark:text-night-text">No results found</div>
-                    <div className="text-[11px] text-paper-muted mt-0.5">
-                      No topics or subjects match "{searchQuery}" in {activeExam.name}.
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <GlobalSearchBar
+            activeExamId={activeExamId}
+            examSessions={examSessions}
+            subjects={subjects}
+            topics={topics}
+            questions={questions}
+            tasks={tasks}
+            videos={videos}
+            pdfs={pdfs}
+            flashcards={flashcards}
+            files={files}
+            onNavigateToSearchResult={handleSearchResultNavigation}
+            isMobile={true}
+          />
         </div>
 
       </div>

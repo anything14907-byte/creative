@@ -554,6 +554,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
           return (
             <div 
               key={unit.id}
+              id={`unit-${unit.id}`}
               className="p-5 sm:p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4"
               style={{ borderLeft: `5px solid ${currentSubject.accentColor}` }}
             >
