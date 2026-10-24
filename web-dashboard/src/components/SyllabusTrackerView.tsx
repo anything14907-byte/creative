@@ -17,7 +17,8 @@ import {
   Upload,
   Calendar,
   ExternalLink,
-  Tag
+  Tag,
+  ChevronDown
 } from 'lucide-react';
 import { getExamUrgencyColor, extractYoutubeId } from '../utils/storageService';
 import { indexedDbService } from '../utils/indexedDbService';
@@ -26,6 +27,7 @@ interface SyllabusTrackerViewProps {
   subjects: SubjectMeta[];
   activeSubjectId: string;
   activeExamId: string;
+  highlightedTopicId?: string;
   onSelectSubject: (id: string) => void;
   topics: SyllabusTopic[];
   onToggleTopicCompleted: (topicId: string) => void;
@@ -47,6 +49,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   subjects,
   activeSubjectId,
   activeExamId,
+  highlightedTopicId,
   onSelectSubject,
   topics,
   onToggleTopicCompleted,
@@ -64,7 +67,33 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   onShowToast
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(activeSubjectId || subjects[0]?.id || 'os');
-  
+  const [expandedTopicIds, setExpandedTopicIds] = useState<Set<string>>(new Set());
+
+  const toggleTopicExpand = (topicId: string) => {
+    setExpandedTopicIds(prev => {
+      const next = new Set(prev);
+      if (next.has(topicId)) {
+        next.delete(topicId);
+      } else {
+        next.add(topicId);
+      }
+      return next;
+    });
+  };
+
+  // Auto-scroll to highlighted topic if provided
+  useEffect(() => {
+    if (highlightedTopicId) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`topic-${highlightedTopicId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedTopicId]);
+
   // Topic creation form state
   const [isAddingTopicUnitId, setIsAddingTopicUnitId] = useState<string | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState('');
@@ -624,22 +653,27 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                 {unitTopics.map(topic => {
                   const videosList = topic.videoUrls || [];
                   const isAddingVideo = addingVideoTopicId === topic.id;
+                  const isHighlighted = highlightedTopicId === topic.id;
+                  const isExpanded = expandedTopicIds.has(topic.id);
 
                   return (
                     <div 
                       key={topic.id}
+                      id={`topic-${topic.id}`}
                       className={`p-3.5 rounded-2xl border transition-all flex flex-col gap-2 group ${
-                        topic.completed
+                        isHighlighted
+                          ? 'ring-2 ring-emerald-500 bg-emerald-500/15 border-emerald-500 shadow-md shadow-emerald-500/20'
+                          : topic.completed
                           ? 'bg-emerald-500/5 border-emerald-500/20 opacity-80'
                           : 'bg-paper-cardElevated dark:bg-night-cardElevated border-paper-border dark:border-night-border hover:border-emerald-500/50'
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         {/* Checkbox + Title */}
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                           <button
                             onClick={() => onToggleTopicCompleted(topic.id)}
-                            className="p-1 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 transition-colors btn-tactile shrink-0"
+                            className="p-1 mt-0.5 sm:mt-0 text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 transition-colors btn-tactile shrink-0"
                             title={topic.completed ? 'Mark uncompleted' : 'Mark completed'}
                           >
                             {topic.completed ? (
@@ -649,9 +683,36 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
                             )}
                           </button>
 
-                          <span className={`text-xs font-bold line-clamp-1 ${topic.completed ? 'line-through text-paper-muted dark:text-night-muted' : 'text-paper-ink dark:text-night-text'}`}>
-                            {topic.title}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <span 
+                              title={topic.title}
+                              className={`text-xs font-bold break-words select-text ${
+                                isExpanded ? '' : 'line-clamp-2 sm:line-clamp-3'
+                              } ${
+                                topic.completed 
+                                  ? 'line-through text-paper-muted dark:text-night-muted' 
+                                  : 'text-paper-ink dark:text-night-text'
+                              }`}
+                            >
+                              {topic.title}
+                            </span>
+                            
+                            {/* Expand / Show Full Name Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTopicExpand(topic.id);
+                              }}
+                              className={`p-1 rounded-md text-paper-muted hover:text-emerald-600 dark:text-night-muted dark:hover:text-emerald-400 hover:bg-paper-card dark:hover:bg-night-card transition-colors shrink-0 ${
+                                isExpanded ? 'text-emerald-600 dark:text-emerald-400' : ''
+                              }`}
+                              title={isExpanded ? 'Collapse topic name' : 'Show full topic name'}
+                              aria-label={isExpanded ? 'Collapse topic name' : 'Show full topic name'}
+                            >
+                              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-emerald-500' : ''}`} />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Mastery Tags & Actions */}

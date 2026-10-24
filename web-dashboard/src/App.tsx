@@ -16,7 +16,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { Navbar, MainNavView } from './components/Navbar';
 import { TodayScreen } from './components/TodayScreen';
 import { SyllabusTrackerView } from './components/SyllabusTrackerView';
-import { PyqRankerView } from './components/PyqRankerView';
 import { FocusTimerView } from './components/FocusTimerView';
 import { FlashcardsView } from './components/FlashcardsView';
 import { YouTubeVaultView } from './components/YouTubeVaultView';
@@ -52,6 +51,14 @@ function DashboardContent() {
     return localStorage.getItem('exam_hub_v3_active_subject') || subjects[0]?.id || 'os';
   });
   const [activeUnitId, setActiveUnitId] = useState<string>('all');
+  const [highlightedTopicId, setHighlightedTopicId] = useState<string | undefined>(undefined);
+
+  // Redirect 'pyqs' view to 'syllabus' if previously selected
+  useEffect(() => {
+    if (currentView === ('pyqs' as any)) {
+      setCurrentView('syllabus');
+    }
+  }, [currentView]);
 
   // Modal states
   const [isAddSubjectOpen, setIsAddSubjectOpen] = useState(false);
@@ -150,6 +157,23 @@ function DashboardContent() {
     setActiveSubjectId(id);
     setActiveUnitId(unitId || 'all');
     localStorage.setItem('exam_hub_v3_active_subject', id);
+  };
+
+  // Search navigation handlers
+  const handleNavigateToTopic = (subId: string, unitId: string, topicId: string) => {
+    handleSelectSubject(subId, unitId);
+    setHighlightedTopicId(topicId);
+    setCurrentView('syllabus');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      setHighlightedTopicId(undefined);
+    }, 4500);
+  };
+
+  const handleNavigateToSubject = (subId: string) => {
+    handleSelectSubject(subId);
+    setCurrentView('syllabus');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectSubjectAndOpenWorkspace = (id: string, unitId?: string) => {
@@ -396,13 +420,16 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
       
-      {/* Top Header Bar with MULTIPLE EXAMS SWITCHER (Requirement 3) */}
+      {/* Top Header Bar with MULTIPLE EXAMS SWITCHER & GLOBAL SEARCH */}
       <Navbar
         currentView={currentView}
         onSelectView={setCurrentView}
         subjects={subjects}
+        topics={topics}
         activeSubjectId={activeSubjectId}
         onSelectSubject={handleSelectSubject}
+        onNavigateToTopic={handleNavigateToTopic}
+        onNavigateToSubject={handleNavigateToSubject}
         onOpenBackup={() => setIsBackupModalOpen(true)}
         examSessions={examSessions}
         activeExamId={activeExamId}
@@ -436,12 +463,13 @@ function DashboardContent() {
           />
         )}
 
-        {/* VIEW 2: SYLLABUS TRACKER (Restored + custom units + topic videos + unit reorder + IndexedDB files) */}
+        {/* VIEW 2: SYLLABUS TRACKER (Restored + custom units + topic videos + unit reorder + IndexedDB files + topic highlight) */}
         {currentView === 'syllabus' && (
           <SyllabusTrackerView
             subjects={subjects}
             activeSubjectId={activeSubjectId}
             activeExamId={activeExamId}
+            highlightedTopicId={highlightedTopicId}
             onSelectSubject={handleSelectSubject}
             topics={topics}
             onToggleTopicCompleted={handleToggleTopicCompleted}
@@ -456,22 +484,6 @@ function DashboardContent() {
             onReorderUnit={handleReorderUnit}
             onOpenAddSubject={() => setIsAddSubjectOpen(true)}
             onEditSubject={(sub) => setEditingSubject(sub)}
-            onShowToast={showToast}
-          />
-        )}
-
-        {/* VIEW 3: PYQ RANKER */}
-        {currentView === 'pyqs' && (
-          <PyqRankerView
-            subjects={subjects}
-            activeSubjectId={activeSubjectId}
-            onSelectSubject={handleSelectSubject}
-            questions={questions}
-            topics={topics}
-            onToggleMastered={handleToggleMastered}
-            onSaveAnswer={handleSaveAnswer}
-            onAddQuestion={handleAddQuestion}
-            onSetTopicMastery={handleSetTopicMastery}
             onShowToast={showToast}
           />
         )}
