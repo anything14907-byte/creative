@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'timer', label: 'Timer', icon: <Timer className="w-4 h-4" /> },
     { id: 'flashcards', label: 'Flashcards', icon: <Brain className="w-4 h-4" /> },
     { id: 'vault', label: 'Vault', icon: <Video className="w-4 h-4" /> },
-    { id: 'pdf', label: 'PDF Notes', icon: <FileText className="w-4 h-4" /> },
+    { id: 'pdf', label: 'PDF Notes Extractor', icon: <FileText className="w-4 h-4" /> },
     { id: 'overview', label: 'All Subjects', icon: <Layers className="w-4 h-4" /> },
   ];
 

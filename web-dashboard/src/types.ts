@@ -27,6 +27,7 @@ export interface SyllabusTopic {
   subjectId: SubjectId;
   unitId: string;
   unitNumber?: string | number;
+  unitLabel?: string;
   title: string;
   completed: boolean;
   mastery: TopicMastery;

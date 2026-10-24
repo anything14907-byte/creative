@@ -559,16 +559,18 @@ function DashboardContent() {
           />
         )}
 
-        {/* VIEW 7: PDF NOTES TOOL */}
+        {/* VIEW 7: PDF NOTES EXTRACTOR */}
         {currentView === 'pdf' && (
           <PdfNotesView
             subjects={subjects}
             activeSubjectId={activeSubjectId}
+            topics={topics}
             pdfs={pdfs}
             onAddPdf={handleAddPdf}
             onDeletePdf={handleDeletePdf}
             onAddQuestion={handleAddQuestion}
             onAddFlashcard={handleAddFlashcard}
+            onAddTopic={handleAddTopic}
             onShowToast={showToast}
           />
         )}
