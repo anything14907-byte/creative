@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SubjectMeta, SubjectUnit } from '../types';
-import { ACCENT_PALETTE, formatUnitDisplayName } from '../utils/storageService';
+import { ACCENT_PALETTE, formatUnitDisplayName, storageService } from '../utils/storageService';
 import { Edit3, X, Trash2, Calendar, BookOpen, Tag, Check } from 'lucide-react';
 
 interface EditSubjectModalProps {
@@ -39,6 +39,12 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
   }, [subject]);
 
   if (!isOpen || !subject) return null;
+
+  const topicsCount = storageService.getTopics(subject.id).length;
+  const questionsCount = storageService.getQuestions().filter(q => q.subjectId === subject.id).length;
+  const tasksCount = storageService.getTasks().filter(t => t.subjectId === subject.id).length;
+  const flashcardsCount = storageService.getFlashcards(subject.id).length;
+  const totalLost = topicsCount + questionsCount + tasksCount + flashcardsCount;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,52 +192,63 @@ export const EditSubjectModal: React.FC<EditSubjectModalProps> = ({
           </div>
 
           {/* Delete Section */}
-          <div className="pt-2 border-t border-paper-border dark:border-night-border flex items-center justify-between">
+          <div className="pt-2 border-t border-paper-border dark:border-night-border">
             {!showDeleteConfirm ? (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="px-3 py-1.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 btn-tactile transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Subject</span>
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-3 py-1.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1.5 btn-tactile transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Subject</span>
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 rounded-xl border border-paper-border dark:border-night-border text-paper-body dark:text-night-text text-xs font-semibold hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-sm"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+              </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-rose-600 dark:text-rose-400 font-bold">Confirm delete?</span>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="px-3 py-1 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 btn-tactile transition-colors"
-                >
-                  Yes, Delete
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-2 py-1 rounded-xl border border-paper-border dark:border-night-border text-paper-body dark:text-night-text text-xs btn-tactile"
-                >
-                  Cancel
-                </button>
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 space-y-2.5">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <Trash2 className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                  <span>Confirm deletion? {totalLost} item(s) will be lost</span>
+                </div>
+                <p className="text-[11px] text-paper-muted dark:text-night-muted leading-relaxed">
+                  Permanently deletes <strong className="text-paper-ink dark:text-night-text">{subject.name}</strong> and all its associated data:
+                  {' '}{topicsCount} topic(s), {questionsCount} question(s), {tasksCount} task(s), and {flashcardsCount} flashcard(s).
+                </p>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-3 py-1.5 rounded-xl border border-paper-border dark:border-night-border text-paper-body dark:text-night-text text-xs btn-tactile"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    className="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 btn-tactile transition-colors"
+                  >
+                    Yes, Delete ({totalLost} items)
+                  </button>
+                </div>
               </div>
             )}
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-paper-border dark:border-night-border text-paper-body dark:text-night-text text-xs font-semibold hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated btn-tactile"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-night-bg text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-sm"
-              >
-                <Check className="w-4 h-4" />
-                <span>Save Changes</span>
-              </button>
-            </div>
           </div>
         </form>
       </div>

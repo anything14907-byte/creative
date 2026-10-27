@@ -110,7 +110,7 @@ export const TopicScannerView: React.FC<TopicScannerViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       
       {/* View Header */}
       <div className="text-center max-w-xl mx-auto space-y-1">

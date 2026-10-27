@@ -489,8 +489,13 @@ export function executeSearch(
 
   // STEP 1: Multi-word substring matching anywhere in the text
   // Every word typed must appear somewhere in item.normText in any order
+  const getItemNormText = (item: SearchIndexItem): string => {
+    return item.normText || normalizeForSearch(`${item.title} ${item.subtitle || ''} ${item.subjectName || ''}`);
+  };
+
   const exactMatches = index.filter(item => {
-    return queryWords.every(word => item.normText.includes(word));
+    const text = getItemNormText(item);
+    return queryWords.every(word => text.includes(word));
   });
 
   let matchedItems = exactMatches;
@@ -499,11 +504,12 @@ export function executeSearch(
   // STEP 2: Light typo tolerance as a last step ONLY when there are no exact matches
   if (matchedItems.length === 0) {
     const typoCandidates = index.filter(item => {
-      const itemWords = item.normText.split(' ').filter(Boolean);
+      const text = getItemNormText(item);
+      const itemWords = text.split(' ').filter(Boolean);
 
       return queryWords.every(qWord => {
         // If word is exact substring, pass
-        if (item.normText.includes(qWord)) return true;
+        if (text.includes(qWord)) return true;
 
         // If word has >= 5 characters, allow 1 typo
         if (qWord.length >= 5) {

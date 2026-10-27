@@ -158,10 +158,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         
         {/* Main Header Bar */}
-        <div className="h-16 flex items-center justify-between gap-3">
+        <div className="h-16 flex items-center justify-between gap-3 w-full">
           
           {/* Left: Brand Logo + MULTIPLE EXAMS SWITCHER */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
@@ -379,11 +379,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             
             <button
               onClick={onOpenBackup}
-              className="p-2 rounded-xl border border-paper-border dark:border-night-border text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile flex items-center gap-1.5"
-              title="Backup & Restore (JSON)"
+              className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm"
+              title="1-Click Data Backup & Restore (JSON)"
             >
               <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-bold hidden sm:inline">Backup</span>
+              <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">💾 Backup Data</span>
             </button>
 
             <button

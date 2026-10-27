@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SubjectMeta, VideoResource } from '../types';
-import { extractYoutubeId } from '../utils/storageService';
+import { extractYoutubeId, storageService } from '../utils/storageService';
+import { YouTubeIframePlayer } from './YouTubeIframePlayer';
 import { 
   Video, 
   Play, 
@@ -10,16 +11,15 @@ import {
   Trash2, 
   ExternalLink, 
   Clock, 
-  Layers, 
-  Sparkles,
-  BookOpen,
-  X
+  X,
+  Tv
 } from 'lucide-react';
 
 interface YouTubeVaultViewProps {
   subjects: SubjectMeta[];
   activeSubjectId: string;
   videos: VideoResource[];
+  isViewActive?: boolean;
   onAddVideo: (video: VideoResource) => void;
   onUpdateVideoNotes: (id: string, notes: string) => void;
   onToggleVideoWatched: (id: string) => void;
@@ -31,6 +31,7 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
   subjects,
   activeSubjectId,
   videos,
+  isViewActive = true,
   onAddVideo,
   onUpdateVideoNotes,
   onToggleVideoWatched,
@@ -38,8 +39,14 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
   onShowToast
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
-  const [activePlayingId, setActivePlayingId] = useState<string>('');
-  const [seekTimestampSeconds, setSeekTimestampSeconds] = useState<number>(0);
+  const [activePlayingId, setActivePlayingId] = useState<string>(() => {
+    const saved = storageService.getVaultActiveVideoId();
+    if (saved && videos.some(v => v.id === saved || v.videoId === saved)) {
+      return saved;
+    }
+    return videos[0]?.id || '';
+  });
+  const [seekTimestampSeconds, setSeekTimestampSeconds] = useState<number | null>(null);
 
   // Add video modal
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -49,13 +56,35 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
   const [unitNum, setUnitNum] = useState(1);
   const [initialNotes, setInitialNotes] = useState('');
 
+  // Keep activePlayingId valid if videos change
+  useEffect(() => {
+    if (videos.length > 0) {
+      const exists = videos.some(v => v.id === activePlayingId || v.videoId === activePlayingId);
+      if (!exists) {
+        const saved = storageService.getVaultActiveVideoId();
+        if (saved && videos.some(v => v.id === saved || v.videoId === saved)) {
+          setActivePlayingId(saved);
+        } else {
+          setActivePlayingId(videos[0].id);
+        }
+      }
+    }
+  }, [videos, activePlayingId]);
+
+  // Synchronize activePlayingId with localStorage
+  const handleSelectVideo = (id: string) => {
+    setActivePlayingId(id);
+    storageService.setVaultActiveVideoId(id);
+    setSeekTimestampSeconds(null);
+  };
+
   const filteredVideos = videos.filter(v => {
     if (selectedSubjectId !== 'all' && v.subjectId !== selectedSubjectId) return false;
     return true;
   });
 
-  // Group videos by subject
-  const currentSubject = subjects.find(s => s.id === subjectId) || subjects[0];
+  const activeVideo = videos.find(v => v.id === activePlayingId || v.videoId === activePlayingId) || videos[0];
+  const activeSub = subjects.find(s => s.id === activeVideo?.subjectId);
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +110,7 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
     };
 
     onAddVideo(newVid);
+    handleSelectVideo(newVid.id);
     setVideoTitle('');
     setYoutubeUrl('');
     setInitialNotes('');
@@ -101,9 +131,9 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
 
   const handleTimestampClick = (vidId: string, timestampStr: string) => {
     const seconds = parseTimestamp(timestampStr);
-    setActivePlayingId(vidId);
+    handleSelectVideo(vidId);
     setSeekTimestampSeconds(seconds);
-    onShowToast(`Seeking to ${timestampStr} in video...`, 'info');
+    onShowToast(`Jumping to ${timestampStr} in player...`, 'info');
   };
 
   // Render notes with clickable timestamps
@@ -113,7 +143,6 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
       return <span className="italic text-paper-muted dark:text-night-muted">No notes yet. Add timestamps like 02:30 below.</span>;
     }
 
-    // Split text by timestamp pattern (e.g. 01:25 or 12:45 or 1:05:20)
     const regex = /\b(\d{1,2}:\d{2}(?::\d{2})?)\b/g;
     const parts: (string | React.ReactNode)[] = [];
     let lastIndex = 0;
@@ -162,7 +191,7 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
             <span>YouTube Lecture Vault & Timestamps</span>
           </h2>
           <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-            Group lectures by subject and topic, track watched status, and jump directly to key video timestamps.
+            Embedded YouTube player with auto-saved positions, clickable timestamp notes, and picture-in-picture.
           </p>
         </div>
 
@@ -175,55 +204,166 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
         </button>
       </div>
 
-      {/* Subject Filter Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-paper-border dark:border-night-border max-w-full">
-        <button
-          onClick={() => setSelectedSubjectId('all')}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold btn-tactile whitespace-nowrap ${
-            selectedSubjectId === 'all'
-              ? 'bg-cyan-600 text-white shadow-xs'
-              : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
-          }`}
+      {/* 1. DEDICATED ACTIVE PLAYER THEATRE (Created once, never destroyed by timers or list redraws) */}
+      {activeVideo && (
+        <div 
+          className="p-4 sm:p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4"
+          style={{ borderTop: `4px solid ${activeSub?.accentColor || '#06B6D4'}` }}
         >
-          All Subjects ({videos.length})
-        </button>
+          {/* Active Video Header Info */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span 
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-md font-mono"
+                  style={{ backgroundColor: `${activeSub?.accentColor || '#06B6D4'}18`, color: activeSub?.accentColor || '#06B6D4' }}
+                >
+                  {activeSub?.name || activeVideo.subjectId} • Unit {activeVideo.unit || 1}
+                </span>
 
-        {subjects.map(s => {
-          const isSelected = s.id === selectedSubjectId;
-          const count = videos.filter(v => v.subjectId === s.id).length;
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-mono flex items-center gap-1">
+                  <Tv className="w-3 h-3" />
+                  <span>Now Playing</span>
+                </span>
 
-          return (
-            <button
-              key={s.id}
-              onClick={() => setSelectedSubjectId(s.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap ${
-                isSelected
-                  ? 'text-white shadow-xs'
-                  : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
-              }`}
-              style={{ backgroundColor: isSelected ? s.accentColor : undefined }}
-            >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? '#FFFFFF' : s.accentColor }} />
-              <span>{s.name}</span>
-              <span className="opacity-75 font-mono text-[10px]">({count})</span>
-            </button>
-          );
-        })}
+                {/* Watched Toggle Badge */}
+                <button
+                  onClick={() => onToggleVideoWatched(activeVideo.id)}
+                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+                    activeVideo.isWatched
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                      : 'bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted dark:text-night-muted border border-paper-border dark:border-night-border'
+                  }`}
+                >
+                  {activeVideo.isWatched ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
+                  <span>{activeVideo.isWatched ? 'Watched' : 'To Watch'}</span>
+                </button>
+              </div>
+
+              <h3 className="text-base sm:text-lg font-bold text-paper-ink dark:text-night-text truncate">
+                {activeVideo.title}
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={activeVideo.youtubeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 rounded-xl border border-paper-border dark:border-night-border text-xs font-semibold text-paper-body dark:text-night-text hover:text-cyan-600 dark:hover:text-cyan-400 flex items-center gap-1.5 btn-tactile"
+                title="Open in YouTube App for background playback"
+              >
+                <span>Open in YouTube</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+
+          {/* Persistent YouTube Iframe Player Component */}
+          <YouTubeIframePlayer
+            videoId={activeVideo.videoId}
+            videoItemId={activeVideo.id}
+            videoTitle={activeVideo.title}
+            youtubeUrl={activeVideo.youtubeUrl}
+            isWatched={activeVideo.isWatched}
+            isViewActive={isViewActive}
+            seekTimestampSeconds={seekTimestampSeconds}
+            onClearSeek={() => setSeekTimestampSeconds(null)}
+            onToggleWatched={() => onToggleVideoWatched(activeVideo.id)}
+            onShowToast={onShowToast}
+          />
+
+          {/* Active Video Timestamps & Notes */}
+          <div className="p-3.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <span>Timestamps & Notes for Active Lecture:</span>
+              </span>
+              <button
+                onClick={() => insertTimestampIntoNotes(activeVideo)}
+                className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 hover:underline btn-tactile"
+              >
+                + Add 02:15 Stamp
+              </button>
+            </div>
+
+            <div className="text-xs text-paper-body dark:text-night-text leading-relaxed whitespace-pre-wrap">
+              {renderNotesWithClickableTimestamps(activeVideo)}
+            </div>
+
+            <textarea
+              rows={2}
+              placeholder="Type formulas, notes, or timestamps like 03:45..."
+              value={activeVideo.notes || ''}
+              onChange={e => onUpdateVideoNotes(activeVideo.id, e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-xs font-mono text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500 resize-none mt-2"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 2. VAULT LIBRARY FILTER BAR */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="text-sm font-bold text-paper-ink dark:text-night-text">
+            Saved Vault Lectures ({filteredVideos.length})
+          </h3>
+          <span className="text-[11px] text-paper-muted dark:text-night-muted">
+            Click any lecture to load in the player
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-paper-border dark:border-night-border max-w-full">
+          <button
+            onClick={() => setSelectedSubjectId('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold btn-tactile whitespace-nowrap ${
+              selectedSubjectId === 'all'
+                ? 'bg-cyan-600 text-white shadow-xs'
+                : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
+            }`}
+          >
+            All Subjects ({videos.length})
+          </button>
+
+          {subjects.map(s => {
+            const isSelected = s.id === selectedSubjectId;
+            const count = videos.filter(v => v.subjectId === s.id).length;
+
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSubjectId(s.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap ${
+                  isSelected
+                    ? 'text-white shadow-xs'
+                    : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-body dark:text-night-text'
+                }`}
+                style={{ backgroundColor: isSelected ? s.accentColor : undefined }}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? '#FFFFFF' : s.accentColor }} />
+                <span>{s.name}</span>
+                <span className="opacity-75 font-mono text-[10px]">({count})</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Video Grid */}
+      {/* 3. VAULT VIDEO CARDS GRID (Redrawn separately from the persistent player) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredVideos.map(vid => {
           const sub = subjects.find(s => s.id === vid.subjectId);
-          const isPlaying = activePlayingId === vid.id;
-          const embedUrl = isPlaying 
-            ? `https://www.youtube-nocookie.com/embed/${vid.videoId}?start=${seekTimestampSeconds}&autoplay=1&rel=0`
-            : `https://www.youtube-nocookie.com/embed/${vid.videoId}?rel=0`;
+          const isCurrentlyActive = (activeVideo?.id === vid.id);
 
           return (
             <div 
               key={vid.id}
-              className="p-5 sm:p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4 flex flex-col justify-between"
+              className={`p-5 sm:p-6 rounded-3xl bg-paper-card dark:bg-night-card border transition-all space-y-4 flex flex-col justify-between ${
+                isCurrentlyActive
+                  ? 'border-cyan-500/70 shadow-md ring-2 ring-cyan-500/20'
+                  : 'border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card'
+              }`}
               style={{ borderTop: `4px solid ${sub?.accentColor || '#06B6D4'}` }}
             >
               <div className="space-y-3">
@@ -237,6 +377,12 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
                       >
                         {sub?.name || vid.subjectId} • Unit {vid.unit || 1}
                       </span>
+
+                      {isCurrentlyActive && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-mono">
+                          ▶ In Player
+                        </span>
+                      )}
 
                       {/* Watched Toggle Badge */}
                       <button
@@ -278,30 +424,26 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
                   </div>
                 </div>
 
-                {/* Video Player */}
-                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-xs">
-                  {isPlaying ? (
-                    <iframe
-                      src={embedUrl}
-                      title={vid.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full border-0"
-                    />
-                  ) : (
-                    <div 
-                      onClick={() => { setActivePlayingId(vid.id); setSeekTimestampSeconds(0); }}
-                      className="w-full h-full flex flex-col items-center justify-center cursor-pointer bg-slate-900 text-white relative group"
-                    >
-                      <img 
-                        src={`https://img.youtube.com/vi/${vid.videoId}/hqdefault.jpg`} 
-                        alt={vid.title}
-                        className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
-                        onError={(e) => { (e.target as any).style.display = 'none'; }}
-                      />
-                      <div className="absolute w-14 h-14 rounded-2xl bg-cyan-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <Play className="w-6 h-6 fill-current ml-0.5" />
-                      </div>
+                {/* Video Card Thumbnail (Clicking switches the active player to this video) */}
+                <div 
+                  onClick={() => handleSelectVideo(vid.id)}
+                  className="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-xs relative cursor-pointer group"
+                >
+                  <img 
+                    src={`https://img.youtube.com/vi/${vid.videoId}/hqdefault.jpg`} 
+                    alt={vid.title}
+                    className="w-full h-full object-cover opacity-75 group-hover:opacity-95 transition-opacity"
+                    onError={(e) => { (e.target as any).style.display = 'none'; }}
+                  />
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div className="w-13 h-13 rounded-2xl bg-cyan-600/90 group-hover:bg-cyan-600 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <Play className="w-6 h-6 fill-current ml-0.5" />
+                    </div>
+                  </div>
+                  {isCurrentlyActive && (
+                    <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-lg bg-black/80 text-cyan-400 font-mono text-[10px] font-bold backdrop-blur-xs flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      <span>Loaded in Player</span>
                     </div>
                   )}
                 </div>
@@ -311,7 +453,7 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-                      <span>Timestamps & Exam Notes:</span>
+                      <span>Timestamps & Notes:</span>
                     </span>
                     <button
                       onClick={() => insertTimestampIntoNotes(vid)}
@@ -361,89 +503,101 @@ export const YouTubeVaultView: React.FC<YouTubeVaultViewProps> = ({
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-2.5">
-              <Video className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-              <h3 className="text-base font-bold text-paper-ink dark:text-night-text">
-                + Save Video Lecture to Vault
+            <div>
+              <h3 className="text-lg font-extrabold text-paper-ink dark:text-night-text flex items-center gap-2">
+                <Video className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                <span>Add YouTube Lecture to Vault</span>
               </h3>
+              <p className="text-xs text-paper-muted dark:text-night-muted">
+                Save full lectures or topic tutorials with clickable timestamps.
+              </p>
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Subject</label>
-                  <select
-                    value={subjectId}
-                    onChange={e => setSubjectId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-cyan-500"
-                  >
-                    {subjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-paper-muted dark:text-night-muted mb-1">
+                  Subject
+                </label>
+                <select
+                  value={subjectId}
+                  onChange={e => setSubjectId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500"
+                >
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-paper-muted dark:text-night-muted mb-1">
+                    Lecture Title
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Process Synchronization & Deadlocks"
+                    value={videoTitle}
+                    onChange={e => setVideoTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Unit Number</label>
+                  <label className="block text-xs font-bold text-paper-muted dark:text-night-muted mb-1">
+                    Unit No.
+                  </label>
                   <input
                     type="number"
                     min={1}
-                    max={10}
+                    max={20}
                     value={unitNum}
-                    onChange={e => setUnitNum(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-cyan-500"
+                    onChange={e => setUnitNum(Number(e.target.value) || 1)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1">Lecture Title</label>
+                <label className="block text-xs font-bold text-paper-muted dark:text-night-muted mb-1">
+                  YouTube URL
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Banker's Algorithm Full Numerical with Gantt Chart"
-                  value={videoTitle}
-                  onChange={e => setVideoTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold mb-1">YouTube URL</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="https://www.youtube.com/watch?v=..."
+                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
                   value={youtubeUrl}
                   onChange={e => setYoutubeUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1">Initial Notes with Timestamps (Optional)</label>
+                <label className="block text-xs font-bold text-paper-muted dark:text-night-muted mb-1">
+                  Initial Timestamp Notes (Optional)
+                </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. 02:15 Safe state condition&#10;08:30 Need matrix formula"
+                  placeholder="e.g. 02:15 - Semaphore theory&#10;14:30 - Peterson solution code"
                   value={initialNotes}
                   onChange={e => setInitialNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono focus:outline-none focus:border-cyan-500 resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-xs font-mono text-paper-ink dark:text-night-text focus:outline-none focus:border-cyan-500 resize-none"
                 />
               </div>
 
-              <div className="flex gap-2.5 pt-2">
+              <div className="flex justify-end gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsAddOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-paper-border dark:border-night-border text-xs font-bold btn-tactile"
+                  className="px-4 py-2 rounded-xl border border-paper-border dark:border-night-border text-xs font-bold text-paper-muted hover:text-paper-ink dark:hover:text-night-text btn-tactile"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-cyan-600 text-white text-xs font-bold btn-tactile shadow-sm"
+                  className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold btn-tactile shadow-sm"
                 >
-                  Save Lecture
+                  + Save Lecture to Vault
                 </button>
               </div>
             </form>

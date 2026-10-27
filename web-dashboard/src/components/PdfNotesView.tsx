@@ -261,6 +261,11 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const MAX_SIZE = 25 * 1024 * 1024; // 25 MB
+    if (file.size > MAX_SIZE) {
+      onShowToast(`Warning: "${file.name}" exceeds 25 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB). Large files may impact performance or exceed browser memory.`, 'error');
+    }
+
     setSelectedFile(file);
     setIsProcessing(true);
     setOcrProgress(null);
@@ -613,7 +618,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
   };
 
   return (
-    <div className="space-y-8 animate-fade-slide-up max-w-5xl mx-auto pb-16">
+    <div className="space-y-8 animate-fade-slide-up w-full pb-16">
       
       {/* 1. HONEST NAMING: Header & Smart Analysis Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

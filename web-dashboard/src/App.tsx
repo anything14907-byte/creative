@@ -90,6 +90,14 @@ function DashboardContent() {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      showToast('Update available! Reload to apply latest changes. 🔄', 'info');
+    };
+    window.addEventListener('pyq-app-update-available', handleUpdate);
+    return () => window.removeEventListener('pyq-app-update-available', handleUpdate);
+  }, [showToast]);
+
   // Reload all data when active exam changes (Requirement 3: Each exam has separate data)
   const reloadExamData = useCallback((examId: string) => {
     const subs = storageService.getSubjects(examId);
@@ -408,27 +416,27 @@ function DashboardContent() {
   // ==========================================
   // VIDEO HANDLERS (YOUTUBE VAULT)
   // ==========================================
-  const handleAddVideo = (video: VideoResource) => {
+  const handleAddVideo = useCallback((video: VideoResource) => {
     const updated = storageService.addVideo(video, activeExamId);
     setVideos(updated);
     showToast('Lecture saved to YouTube Vault! 🎥', 'success');
-  };
+  }, [activeExamId, showToast]);
 
-  const handleUpdateVideoNotes = (id: string, notes: string) => {
+  const handleUpdateVideoNotes = useCallback((id: string, notes: string) => {
     const updated = storageService.updateVideoNotes(id, notes, activeExamId);
     setVideos(updated);
-  };
+  }, [activeExamId]);
 
-  const handleToggleVideoWatched = (id: string) => {
+  const handleToggleVideoWatched = useCallback((id: string) => {
     const updated = storageService.toggleVideoWatched(id, activeExamId);
     setVideos(updated);
-  };
+  }, [activeExamId]);
 
-  const handleDeleteVideo = (id: string) => {
+  const handleDeleteVideo = useCallback((id: string) => {
     const updated = storageService.deleteVideo(id, activeExamId);
     setVideos(updated);
     showToast('Video removed from Vault.', 'info');
-  };
+  }, [activeExamId, showToast]);
 
   // ==========================================
   // PDF HANDLERS
@@ -519,7 +527,7 @@ function DashboardContent() {
       />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-8">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8">
         
         {/* VIEW 1: TODAY / DASHBOARD SCREEN (Restored + without auto-generated planner + single + Add Subject) */}
         {currentView === 'today' && (
@@ -530,16 +538,18 @@ function DashboardContent() {
             tasks={tasks}
             flashcards={flashcards}
             pomodoroLogs={pomodoroLogs}
+            videos={videos}
             onToggleTopicCompleted={handleToggleTopicCompleted}
             onSelectSubject={(id, unitId) => {
               handleSelectSubject(id, unitId);
-              setCurrentView('syllabus');
+              setCurrentView('workspace');
             }}
             onNavigateView={setCurrentView}
             onShowToast={showToast}
             onOpenAddSubject={() => setIsAddSubjectOpen(true)}
             onEditSubject={(sub) => setEditingSubject(sub)}
             onOpenBackup={() => setIsBackupModalOpen(true)}
+            onReorderSubjects={handleReorderSubjects}
           />
         )}
 
@@ -597,7 +607,7 @@ function DashboardContent() {
         )}
 
         {/* VIEW 6: YOUTUBE VAULT */}
-        {currentView === 'vault' && (
+        <div className={currentView === 'vault' ? 'block' : 'hidden'} key="pyq-vault-view-wrapper">
           <YouTubeVaultView
             subjects={subjects}
             activeSubjectId={activeSubjectId}
@@ -607,8 +617,9 @@ function DashboardContent() {
             onToggleVideoWatched={handleToggleVideoWatched}
             onDeleteVideo={handleDeleteVideo}
             onShowToast={showToast}
+            isViewActive={currentView === 'vault'}
           />
-        )}
+        </div>
 
         {/* VIEW 7: PDF NOTES EXTRACTOR */}
         {currentView === 'pdf' && (
@@ -664,6 +675,10 @@ function DashboardContent() {
             onMoveItemToUnit={handleMoveItemToUnit}
             onUpdateSubject={handleUpdateSubject}
             onDeleteSubject={handleDeleteSubject}
+            activeExamId={activeExamId}
+            topics={topics}
+            pomodoroLogs={pomodoroLogs}
+            onLogPomodoro={handleLogPomodoro}
             onBackToOverview={() => setCurrentView('overview')}
             onShowToast={showToast}
           />

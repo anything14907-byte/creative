@@ -35,7 +35,7 @@ export const CheatSheetView: React.FC<CheatSheetViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full">
       
       {/* Control Toolbar (Hidden in Print) */}
       <div className="print:hidden p-4 sm:p-5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-card dark:bg-night-card shadow-sm flex flex-wrap items-center justify-between gap-4">

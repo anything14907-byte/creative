@@ -20,6 +20,8 @@ export interface SubjectUnit {
   unitNumber?: string | number; // e.g. "Unit 3", "Unit 4", or custom
   title: string; // e.g. 'Continuous Distribution, Central Limit Theorem'
   name?: string; // alias for title
+  unitProgress?: number; // 0 - 100% live readiness
+  studyMinutes?: number;
 }
 
 export interface SyllabusTopic {
@@ -77,6 +79,7 @@ export interface SubjectMeta {
   units: SubjectUnit[];
   syllabus?: any;
   topics?: any;
+  studyMinutes?: number;
 }
 
 export interface CountdownTime {
@@ -232,6 +235,8 @@ export interface FullBackupData {
   pdfs: PdfResource[];
   pomodoroLogs: PomodoroSession[];
   flashcards: Flashcard[];
+  videoPositions?: Record<string, number>;
+  vaultActiveVideoId?: string;
 }
 
 export type FileCategory = 'pyq' | 'notes' | 'images';
@@ -246,6 +251,7 @@ export interface SubjectFile {
   category: FileCategory; // 'pyq' | 'notes' | 'images'
   fileType: 'pdf' | 'image' | string;
   dataUrl: string; // Base64 data URL for instant offline preview & rendering
+  content?: string; // Optional raw text content for notes
   size: number; // Bytes
   year?: string; // For PYQ Papers: e.g. "2024", "2023"
   examType?: string; // For PYQ Papers: e.g. "End Sem", "Mid Sem", "Internal 1"

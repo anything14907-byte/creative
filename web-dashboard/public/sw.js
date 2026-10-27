@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pyqranker-cache-v1';
+const CACHE_NAME = 'pyqranker-cache-v2';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -7,10 +7,11 @@ const PRECACHE_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_URLS);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -34,10 +35,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network First for HTML navigation requests so users never serve old code after an update
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cached) => cached || caches.match('./index.html') || caches.match('./'));
+        })
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for static assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached response and update cache in background
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
@@ -48,7 +67,6 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // Fetch from network and cache
       return fetch(event.request).then((response) => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
@@ -60,11 +78,6 @@ self.addEventListener('fetch', (event) => {
         });
 
         return response;
-      }).catch(() => {
-        // Fallback for document requests to offline root
-        if (event.request.destination === 'document') {
-          return caches.match('./index.html') || caches.match('./');
-        }
       });
     })
   );

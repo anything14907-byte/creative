@@ -107,7 +107,7 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fade-slide-up max-w-4xl mx-auto pb-16">
+    <div className="space-y-6 animate-fade-slide-up w-full pb-16">
       
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -608,6 +608,87 @@ export function calculateCountdown(examDateString: string): CountdownTime {
   };
 }
 
+/**
+ * Calculates a live readiness percentage (0-100%) for a unit based on
+ * completed tasks, watched videos, mastered PYQs, and completed syllabus topics.
+ */
+export function calculateUnitReadiness(
+  unit: SubjectUnit,
+  tasks: StudyTask[] = [],
+  videos: VideoResource[] = [],
+  questions: PYQQuestion[] = [],
+  topics: SyllabusTopic[] = []
+): {
+  percentage: number;
+  totalItems: number;
+  completedItems: number;
+  tasksCount: number;
+  tasksCompleted: number;
+  videosCount: number;
+  videosWatched: number;
+  questionsCount: number;
+  questionsMastered: number;
+  topicsCount: number;
+  topicsCompleted: number;
+} {
+  const uTasks = tasks.filter(t => t.unitId === unit.id || (unit.unit !== undefined && t.unit === unit.unit));
+  const uVideos = videos.filter(v => v.unitId === unit.id || (unit.unit !== undefined && v.unit === unit.unit));
+  const uQuestions = questions.filter(q => q.unitId === unit.id || (unit.unit !== undefined && q.unit === unit.unit));
+  const uTopics = topics.filter(tp => tp.unitId === unit.id);
+
+  const tasksCount = uTasks.length;
+  const tasksCompleted = uTasks.filter(t => t.completed).length;
+
+  const videosCount = uVideos.length;
+  const videosWatched = uVideos.filter(v => v.isWatched).length;
+
+  const questionsCount = uQuestions.length;
+  const questionsMastered = uQuestions.filter(q => q.userStatus === 'mastered').length;
+
+  const topicsCount = uTopics.length;
+  const topicsCompleted = uTopics.filter(tp => tp.completed).length;
+
+  const totalItems = tasksCount + videosCount + questionsCount + topicsCount;
+  const completedItems = tasksCompleted + videosWatched + questionsMastered + topicsCompleted;
+
+  const percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+  return {
+    percentage,
+    totalItems,
+    completedItems,
+    tasksCount,
+    tasksCompleted,
+    videosCount,
+    videosWatched,
+    questionsCount,
+    questionsMastered,
+    topicsCount,
+    topicsCompleted
+  };
+}
+
+/**
+ * Returns total studied minutes for a subject across all recorded Pomodoro sessions.
+ */
+export function getSubjectTotalStudiedMinutes(subjectId: string, pomodoroLogs: PomodoroSession[] = []): number {
+  return pomodoroLogs
+    .filter(log => log.subjectId === subjectId)
+    .reduce((sum, log) => sum + (Number(log.minutes) || 0), 0);
+}
+
+/**
+ * Formats minutes into human-readable e.g. "45m", "1h 30m"
+ */
+export function formatStudiedTime(minutes: number): string {
+  if (!minutes || minutes <= 0) return '0m';
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+
 // EXACT STORAGE KEYS (PRESERVED FOR ZERO DATA LOSS)
 const STORAGE_KEYS = {
   EXAM_SESSIONS: 'exam_hub_v3_exam_sessions',
@@ -622,6 +703,8 @@ const STORAGE_KEYS = {
   FLASHCARDS: 'exam_hub_v3_flashcards',
   ACTIVE_SUBJECT: 'exam_hub_v3_active_subject',
   THEME: 'exam_hub_v3_theme',
+  VIDEO_PLAYBACK_POSITIONS: 'pyq_video_playback_positions',
+  VAULT_ACTIVE_VIDEO: 'pyq_vault_active_video_id',
 };
 
 export const DEFAULT_EXAM_SESSIONS: ExamSession[] = [
@@ -704,6 +787,13 @@ export const storageService = {
     return updated;
   },
 
+  updateExamSession(id: string, updates: Partial<ExamSession>): ExamSession[] {
+    const sessions = this.getExamSessions();
+    const updated = sessions.map(s => s.id === id ? { ...s, ...updates } : s);
+    this.saveExamSessions(updated);
+    return updated;
+  },
+
   deleteExamSession(id: string): ExamSession[] {
     const sessions = this.getExamSessions();
     if (sessions.length <= 1) return sessions;
@@ -715,6 +805,22 @@ export const storageService = {
     return updated;
   },
 
+  getSubjectSortMode(): 'date' | 'custom' {
+    try {
+      return (localStorage.getItem('pyq_subject_sort_mode') as 'date' | 'custom') || 'date';
+    } catch {
+      return 'date';
+    }
+  },
+
+  setSubjectSortMode(mode: 'date' | 'custom'): void {
+    try {
+      localStorage.setItem('pyq_subject_sort_mode', mode);
+    } catch (e) {
+      console.error('Error saving subject sort mode:', e);
+    }
+  },
+
   // SUBJECTS
   getSubjects(examId?: string): SubjectMeta[] {
     const activeExam = examId || this.getActiveExam();
@@ -722,9 +828,9 @@ export const storageService = {
     try {
       // 1. First check the primary storage key for this exam
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const upgraded = parsed.map((s: any) => ({
             ...s,
             accentColor: s.accentColor || ACCENT_PALETTE[0].hex,
@@ -751,9 +857,6 @@ export const storageService = {
             }
           }
         }
-        // ONLY load defaults if user has ZERO subjects anywhere in mid-sem
-        this.saveSubjects(DEFAULT_SUBJECTS, 'mid-sem');
-        return DEFAULT_SUBJECTS;
       }
     } catch (e) {
       console.warn('Error reading subjects:', e);
@@ -917,9 +1020,9 @@ export const storageService = {
     const key = getExamStorageKey(STORAGE_KEYS.QUESTIONS, activeExam);
     try {
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed.map((q: any) => ({
             ...q,
             unitId: q.unitId || (q.unit ? `u${q.unit}` : undefined)
@@ -938,8 +1041,6 @@ export const storageService = {
             }
           }
         }
-        this.saveQuestions(INITIAL_QUESTIONS, 'mid-sem');
-        return INITIAL_QUESTIONS;
       }
     } catch (e) {
       console.warn('Error reading questions:', e);
@@ -980,13 +1081,20 @@ export const storageService = {
     return updated;
   },
 
+  deleteQuestion(questionId: string, examId?: string): PYQQuestion[] {
+    const list = this.getQuestions(examId);
+    const updated = list.filter(q => q.id !== questionId);
+    this.saveQuestions(updated, examId);
+    return updated;
+  },
+
   // TASKS
   getTasks(examId?: string): StudyTask[] {
     const activeExam = examId || this.getActiveExam();
     const key = getExamStorageKey(STORAGE_KEYS.TASKS, activeExam);
     try {
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
           return parsed.map((t: any) => ({
@@ -1001,14 +1109,12 @@ export const storageService = {
           const fallbackData = localStorage.getItem(fallbackKey);
           if (fallbackData) {
             const parsed = JSON.parse(fallbackData);
-            if (Array.isArray(parsed)) {
+            if (Array.isArray(parsed) && parsed.length > 0) {
               this.saveTasks(parsed, 'mid-sem');
               return parsed;
             }
           }
         }
-        this.saveTasks(DEFAULT_TASKS, 'mid-sem');
-        return DEFAULT_TASKS;
       }
     } catch (e) {
       console.warn('Error reading tasks:', e);
@@ -1053,7 +1159,7 @@ export const storageService = {
     const key = getExamStorageKey(STORAGE_KEYS.VIDEOS, activeExam);
     try {
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
           return parsed.map((v: any) => ({
@@ -1068,14 +1174,12 @@ export const storageService = {
           const fallbackData = localStorage.getItem(fallbackKey);
           if (fallbackData) {
             const parsed = JSON.parse(fallbackData);
-            if (Array.isArray(parsed)) {
+            if (Array.isArray(parsed) && parsed.length > 0) {
               this.saveVideos(parsed, 'mid-sem');
               return parsed;
             }
           }
         }
-        this.saveVideos(DEFAULT_VIDEOS, 'mid-sem');
-        return DEFAULT_VIDEOS;
       }
     } catch (e) {
       console.warn('Error reading videos:', e);
@@ -1121,13 +1225,78 @@ export const storageService = {
     return updated;
   },
 
+  // ==========================================
+  // VIDEO PLAYBACK POSITIONS & VAULT ACTIVE STATE
+  // ==========================================
+  getVideoPlaybackPositions(): Record<string, number> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.VIDEO_PLAYBACK_POSITIONS);
+      if (data) return JSON.parse(data);
+    } catch (e) {
+      console.warn('Error reading video playback positions:', e);
+    }
+    return {};
+  },
+
+  saveVideoPlaybackPosition(videoId: string, seconds: number): void {
+    try {
+      if (!videoId) return;
+      const current = this.getVideoPlaybackPositions();
+      current[videoId] = Math.max(0, Math.floor(seconds));
+      localStorage.setItem(STORAGE_KEYS.VIDEO_PLAYBACK_POSITIONS, JSON.stringify(current));
+    } catch (e) {
+      console.error('Error saving video playback position:', e);
+    }
+  },
+
+  getVideoPlaybackPosition(videoId: string): number {
+    if (!videoId) return 0;
+    const current = this.getVideoPlaybackPositions();
+    return current[videoId] || 0;
+  },
+
+  clearVideoPlaybackPosition(videoId: string): void {
+    try {
+      if (!videoId) return;
+      const current = this.getVideoPlaybackPositions();
+      delete current[videoId];
+      localStorage.setItem(STORAGE_KEYS.VIDEO_PLAYBACK_POSITIONS, JSON.stringify(current));
+    } catch (e) {
+      console.error('Error clearing video playback position:', e);
+    }
+  },
+
+  saveVideoPlaybackPositions(positions: Record<string, number>): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.VIDEO_PLAYBACK_POSITIONS, JSON.stringify(positions || {}));
+    } catch (e) {
+      console.error('Error saving all video playback positions:', e);
+    }
+  },
+
+  getVaultActiveVideoId(): string {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.VAULT_ACTIVE_VIDEO) || '';
+    } catch {
+      return '';
+    }
+  },
+
+  setVaultActiveVideoId(id: string): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.VAULT_ACTIVE_VIDEO, id || '');
+    } catch (e) {
+      console.error('Error saving vault active video ID:', e);
+    }
+  },
+
   // PDFS
   getPdfs(examId?: string): PdfResource[] {
     const activeExam = examId || this.getActiveExam();
     const key = getExamStorageKey(STORAGE_KEYS.PDFS, activeExam);
     try {
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
           return parsed.map((p: any) => ({
@@ -1142,14 +1311,12 @@ export const storageService = {
           const fallbackData = localStorage.getItem(fallbackKey);
           if (fallbackData) {
             const parsed = JSON.parse(fallbackData);
-            if (Array.isArray(parsed)) {
+            if (Array.isArray(parsed) && parsed.length > 0) {
               this.savePdfs(parsed, 'mid-sem');
               return parsed;
             }
           }
         }
-        this.savePdfs(DEFAULT_PDFS, 'mid-sem');
-        return DEFAULT_PDFS;
       }
     } catch (e) {
       console.warn('Error reading pdfs:', e);
@@ -1231,41 +1398,14 @@ export const storageService = {
     const key = getExamStorageKey(STORAGE_KEYS.TOPICS, activeExam);
     try {
       const data = localStorage.getItem(key);
-      if (data) {
+      if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return subjectId ? parsed.filter(t => t.subjectId === subjectId) : parsed;
         }
       }
     } catch (e) {
       console.warn('Error reading topics:', e);
-    }
-
-    if (activeExam === 'mid-sem') {
-      // Initialize default topics + seed topics for custom subjects from units if needed
-      const subjects = this.getSubjects('mid-sem');
-      const seededTopics: SyllabusTopic[] = [...DEFAULT_TOPICS];
-
-      subjects.forEach(sub => {
-        const existing = seededTopics.filter(t => t.subjectId === sub.id);
-        if (existing.length === 0) {
-          sub.units.forEach((u, uIdx) => {
-            seededTopics.push({
-              id: `top-${sub.id}-${u.id || uIdx + 1}-1`,
-              subjectId: sub.id,
-              unitId: u.id,
-              unitNumber: u.unitNumber || u.unit || (uIdx + 1),
-              title: u.title,
-              completed: false,
-              mastery: 'okay',
-              pyqCount: 1
-            });
-          });
-        }
-      });
-
-      this.saveTopics(seededTopics, 'mid-sem');
-      return subjectId ? seededTopics.filter(t => t.subjectId === subjectId) : seededTopics;
     }
 
     return [];
@@ -1684,7 +1824,9 @@ export const storageService = {
       videos: this.getVideos(),
       pdfs: this.getPdfs(),
       pomodoroLogs: this.getPomodoroLogs(),
-      flashcards: this.getFlashcards()
+      flashcards: this.getFlashcards(),
+      videoPositions: this.getVideoPlaybackPositions(),
+      vaultActiveVideoId: this.getVaultActiveVideoId()
     };
 
     const json = JSON.stringify(backup, null, 2);
@@ -1730,6 +1872,12 @@ export const storageService = {
       if (Array.isArray(data.flashcards)) {
         this.saveFlashcards(data.flashcards);
       }
+      if (data.videoPositions && typeof data.videoPositions === 'object') {
+        this.saveVideoPlaybackPositions(data.videoPositions);
+      }
+      if (data.vaultActiveVideoId && typeof data.vaultActiveVideoId === 'string') {
+        this.setVaultActiveVideoId(data.vaultActiveVideoId);
+      }
 
       return { success: true, message: 'All study data, syllabus topics, and countdowns imported successfully!' };
     } catch (e: any) {
@@ -1770,19 +1918,21 @@ export const storageService = {
       const activeSubjectId = localStorage.getItem(STORAGE_KEYS.ACTIVE_SUBJECT) || 'os';
       const theme = (localStorage.getItem(STORAGE_KEYS.THEME) as 'light' | 'dark') || 'dark';
 
-      window.postMessage({
-        type: 'PYQ_SYNC_DATA',
-        payload: {
-          version: '3.0.0',
-          timestamp: Date.now(),
-          subjects,
-          questions,
-          activeSubjectId,
-          theme
-        }
-      }, '*');
+      if (typeof window !== 'undefined' && typeof window.postMessage === 'function') {
+        window.postMessage({
+          type: 'PYQ_SYNC_DATA',
+          payload: {
+            version: '3.0.0',
+            timestamp: Date.now(),
+            subjects,
+            questions,
+            activeSubjectId,
+            theme
+          }
+        }, '*');
+      }
     } catch (e) {
-      console.warn('Extension broadcast notice:', e);
+      // In non-browser or extension restricted environments
     }
   }
 };

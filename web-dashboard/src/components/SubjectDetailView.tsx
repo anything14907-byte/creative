@@ -6,6 +6,7 @@ import {
   VideoResource 
 } from '../types';
 import { getExamUrgencyColor, extractYoutubeId } from '../utils/storageService';
+import { YouTubeIframePlayer } from './YouTubeIframePlayer';
 import { 
   ArrowLeft, 
   Clock, 
@@ -1005,19 +1006,21 @@ export const SubjectDetailView: React.FC<SubjectDetailViewProps> = ({
                     }`}
                   >
                     {/* Video Player or Thumbnail */}
-                    <div className="aspect-video w-full bg-black relative">
+                    <div className="w-full bg-black relative">
                       {isPlaying ? (
-                        <iframe
-                          src={`https://www.youtube.com/embed/${vid.videoId}?autoplay=1`}
-                          title={vid.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="w-full h-full"
+                        <YouTubeIframePlayer
+                          videoId={vid.videoId}
+                          videoItemId={vid.id}
+                          videoTitle={vid.title}
+                          youtubeUrl={vid.youtubeUrl}
+                          isWatched={vid.isWatched}
+                          onToggleWatched={() => onToggleVideoWatched(vid.id)}
+                          onShowToast={onShowToast}
                         />
                       ) : (
                         <div 
                           onClick={() => setActivePlayingVideoId(vid.id)}
-                          className="w-full h-full relative cursor-pointer group"
+                          className="aspect-video w-full relative cursor-pointer group"
                         >
                           <img
                             src={`https://img.youtube.com/vi/${vid.videoId}/hqdefault.jpg`}

@@ -319,26 +319,12 @@ export const indexedDbService = {
       req.onsuccess = async () => {
         let subjects: SubjectMeta[] = req.result || [];
 
-        // If empty in IndexedDB, migrate from localStorage or seed rich defaults
+        // If empty in IndexedDB, migrate from localStorage if present
         if (subjects.length === 0) {
           const localSaved = storageService.getSubjects();
           if (localSaved && localSaved.length > 0) {
             subjects = localSaved;
-          } else {
-            subjects = DEFAULT_SUBJECTS;
-          }
-
-          // Populate IndexedDB
-          await this.saveAllSubjects(subjects);
-
-          // Also seed demo files if files store is empty
-          const fileCount = await this.getFileCount();
-          if (fileCount === 0) {
-            await this.addFiles(getInitialDemoFiles());
-            // Seed initial notes
-            for (const s of subjects) {
-              await this.saveNotes(s.id, getInitialDemoNotes(s.id));
-            }
+            await this.saveAllSubjects(subjects);
           }
         }
 
@@ -425,7 +411,7 @@ export const indexedDbService = {
       req.onsuccess = () => {
         let results = req.result || [];
         if (examId) {
-          results = results.filter(f => !f.examId || f.examId === examId);
+          results = results.filter(f => (f.examId || 'mid-sem') === examId);
         }
         resolve(results);
       };
@@ -439,24 +425,42 @@ export const indexedDbService = {
   },
 
   async addFile(file: SubjectFile): Promise<void> {
+    const activeExam = file.examId || storageService.getActiveExam() || 'mid-sem';
+    const normalizedFile: SubjectFile = { ...file, examId: activeExam };
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('files', 'readwrite');
       const store = tx.objectStore('files');
-      const req = store.put(file);
+      const req = store.put(normalizedFile);
       req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
+      req.onerror = () => {
+        const err = req.error;
+        if (err && (err.name === 'QuotaExceededError' || err.message?.toLowerCase().includes('quota'))) {
+          reject(new Error('Storage quota exceeded! Your device or browser storage is full. Please export a backup and delete some unused files to free up space. Existing data has not been lost.'));
+        } else {
+          reject(err);
+        }
+      };
     });
   },
 
   async addFiles(files: SubjectFile[]): Promise<void> {
+    const activeExam = storageService.getActiveExam() || 'mid-sem';
+    const normalizedFiles = files.map(f => ({ ...f, examId: f.examId || activeExam }));
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('files', 'readwrite');
       const store = tx.objectStore('files');
-      files.forEach(f => store.put(f));
+      normalizedFiles.forEach(f => store.put(f));
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+      tx.onerror = () => {
+        const err = tx.error;
+        if (err && (err.name === 'QuotaExceededError' || err.message?.toLowerCase().includes('quota'))) {
+          reject(new Error('Storage quota exceeded! Your device or browser storage is full. Please export a backup and delete some unused files to free up space. Existing data has not been lost.'));
+        } else {
+          reject(err);
+        }
+      };
     });
   },
 
@@ -620,12 +624,7 @@ export const indexedDbService = {
       }
 
       req.onsuccess = () => {
-        let list: VideoResource[] = req.result || [];
-        // If empty, pull from local storage demo
-        if (list.length === 0 && !subjectId) {
-          list = storageService.getVideos();
-          indexedDbService.saveAllVideos(list);
-        }
+        const list: VideoResource[] = req.result || [];
         resolve(list);
       };
       req.onerror = () => reject(req.error);
@@ -746,12 +745,35 @@ export const indexedDbService = {
   // EXPORT / IMPORT BACKUP (JSON)
   // ==========================================
   async exportCompleteBackup(): Promise<string> {
-    const subjects = await this.getSubjects();
-    const files = await this.getFiles();
-    const videos = await this.getVideos();
+    const activeExamId = storageService.getActiveExam();
+    const examSessions = storageService.getExamSessions();
+    const subjectSortMode = (localStorage.getItem('pyq_subject_sort_mode') as 'date' | 'custom') || 'date';
 
-    // Collect all notes
+    // Collect full study data for all exam sessions
+    const examData: Record<string, any> = {};
+    for (const session of examSessions) {
+      examData[session.id] = {
+        subjects: storageService.getSubjects(session.id),
+        topics: storageService.getTopics(undefined, session.id),
+        questions: storageService.getQuestions(session.id),
+        tasks: storageService.getTasks(session.id),
+        videos: storageService.getVideos(session.id),
+        pdfs: storageService.getPdfs(session.id),
+        pomodoroLogs: storageService.getPomodoroLogs(session.id),
+        flashcards: storageService.getFlashcards(undefined, session.id)
+      };
+    }
+
+    // Collect all IndexedDB files and notes
     const db = await openDB();
+    const files: SubjectFile[] = await new Promise((resolve) => {
+      const tx = db.transaction('files', 'readonly');
+      const store = tx.objectStore('files');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+
     const notes: SubjectNote[] = await new Promise((resolve) => {
       const tx = db.transaction('notes', 'readonly');
       const store = tx.objectStore('notes');
@@ -762,13 +784,28 @@ export const indexedDbService = {
 
     const storageUsage = await this.getStorageUsage();
 
-    const backupPayload: HubBackupData = {
-      version: 'pyqranker_idb_v1',
+    const backupPayload = {
+      version: '3.2.0-complete',
       exportedAt: new Date().toISOString(),
-      subjects,
+      activeExamId,
+      examSessions,
+      subjectSortMode,
+      // Root fields for active exam for backwards compatibility
+      subjects: examData[activeExamId]?.subjects || storageService.getSubjects(activeExamId),
+      topics: examData[activeExamId]?.topics || storageService.getTopics(undefined, activeExamId),
+      questions: examData[activeExamId]?.questions || storageService.getQuestions(activeExamId),
+      tasks: examData[activeExamId]?.tasks || storageService.getTasks(activeExamId),
+      videos: examData[activeExamId]?.videos || storageService.getVideos(activeExamId),
+      pdfs: examData[activeExamId]?.pdfs || storageService.getPdfs(activeExamId),
+      pomodoroLogs: examData[activeExamId]?.pomodoroLogs || storageService.getPomodoroLogs(activeExamId),
+      flashcards: examData[activeExamId]?.flashcards || storageService.getFlashcards(undefined, activeExamId),
+      videoPositions: storageService.getVideoPlaybackPositions(),
+      vaultActiveVideoId: storageService.getVaultActiveVideoId(),
+      // All exam data
+      examData,
+      // Binary files and notes
       files,
       notes,
-      videos,
       storageBytes: storageUsage.totalBytes
     };
 
@@ -788,46 +825,91 @@ export const indexedDbService = {
 
   async importCompleteBackup(jsonContent: string): Promise<{ success: boolean; message: string }> {
     try {
-      const parsed: HubBackupData = JSON.parse(jsonContent);
+      const parsed = JSON.parse(jsonContent);
 
-      if (!parsed || !Array.isArray(parsed.subjects)) {
+      if (!parsed || typeof parsed !== 'object') {
         return {
           success: false,
-          message: 'Invalid backup file format. Missing subjects array.'
+          message: 'Invalid backup file format. Expected a valid JSON object.'
         };
       }
 
-      const db = await openDB();
+      // 1. Restore Exam Sessions & Active Exam if present
+      if (Array.isArray(parsed.examSessions) && parsed.examSessions.length > 0) {
+        storageService.saveExamSessions(parsed.examSessions);
+      }
+      if (parsed.activeExamId && typeof parsed.activeExamId === 'string') {
+        storageService.setActiveExam(parsed.activeExamId);
+      }
+      if (parsed.subjectSortMode) {
+        localStorage.setItem('pyq_subject_sort_mode', parsed.subjectSortMode);
+      }
+      if (parsed.videoPositions && typeof parsed.videoPositions === 'object') {
+        storageService.saveVideoPlaybackPositions(parsed.videoPositions);
+      }
+      if (parsed.vaultActiveVideoId && typeof parsed.vaultActiveVideoId === 'string') {
+        storageService.setVaultActiveVideoId(parsed.vaultActiveVideoId);
+      }
 
+      const activeExam = parsed.activeExamId || storageService.getActiveExam() || 'mid-sem';
+
+      // 2. Restore full multi-exam study data
+      if (parsed.examData && typeof parsed.examData === 'object') {
+        for (const [examId, data] of Object.entries(parsed.examData as Record<string, any>)) {
+          if (data && typeof data === 'object') {
+            if (Array.isArray(data.subjects)) storageService.saveSubjects(data.subjects, examId);
+            if (Array.isArray(data.topics)) storageService.saveTopics(data.topics, examId);
+            if (Array.isArray(data.questions)) storageService.saveQuestions(data.questions, examId);
+            if (Array.isArray(data.tasks)) storageService.saveTasks(data.tasks, examId);
+            if (Array.isArray(data.videos)) storageService.saveVideos(data.videos, examId);
+            if (Array.isArray(data.pdfs)) storageService.savePdfs(data.pdfs, examId);
+            if (Array.isArray(data.pomodoroLogs)) storageService.savePomodoroLogs(data.pomodoroLogs, examId);
+            if (Array.isArray(data.flashcards)) storageService.saveFlashcards(data.flashcards, examId);
+          }
+        }
+      } else {
+        // Fallback for legacy backups
+        if (Array.isArray(parsed.subjects)) storageService.saveSubjects(parsed.subjects, activeExam);
+        if (Array.isArray(parsed.topics)) storageService.saveTopics(parsed.topics, activeExam);
+        if (Array.isArray(parsed.questions)) storageService.saveQuestions(parsed.questions, activeExam);
+        if (Array.isArray(parsed.tasks)) storageService.saveTasks(parsed.tasks, activeExam);
+        if (Array.isArray(parsed.videos)) storageService.saveVideos(parsed.videos, activeExam);
+        if (Array.isArray(parsed.pdfs)) storageService.savePdfs(parsed.pdfs, activeExam);
+        if (Array.isArray(parsed.pomodoroLogs)) storageService.savePomodoroLogs(parsed.pomodoroLogs, activeExam);
+        if (Array.isArray(parsed.flashcards)) storageService.saveFlashcards(parsed.flashcards, activeExam);
+      }
+
+      // 3. Restore IndexedDB stores (files, notes, subjects, videos)
+      const db = await openDB();
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(['subjects', 'files', 'notes', 'videos'], 'readwrite');
 
-        // Clear existing data
         tx.objectStore('subjects').clear();
         tx.objectStore('files').clear();
         tx.objectStore('notes').clear();
         tx.objectStore('videos').clear();
 
-        // Restore subjects
+        // Restore active subjects into IndexedDB cache
+        const currentSubjects = storageService.getSubjects(activeExam);
         const subjectStore = tx.objectStore('subjects');
-        parsed.subjects.forEach(s => subjectStore.put(s));
+        currentSubjects.forEach(s => subjectStore.put(s));
 
         // Restore files
         if (Array.isArray(parsed.files)) {
           const fileStore = tx.objectStore('files');
-          parsed.files.forEach(f => fileStore.put(f));
+          parsed.files.forEach((f: any) => fileStore.put(f));
         }
 
         // Restore notes
         if (Array.isArray(parsed.notes)) {
           const notesStore = tx.objectStore('notes');
-          parsed.notes.forEach(n => notesStore.put(n));
+          parsed.notes.forEach((n: any) => notesStore.put(n));
         }
 
         // Restore videos
         if (Array.isArray(parsed.videos)) {
           const videoStore = tx.objectStore('videos');
-          parsed.videos.forEach(v => videoStore.put(v));
+          parsed.videos.forEach((v: any) => videoStore.put(v));
         }
 
         tx.oncomplete = () => resolve();
@@ -836,7 +918,7 @@ export const indexedDbService = {
 
       return {
         success: true,
-        message: `Successfully restored ${parsed.subjects.length} subjects and ${parsed.files?.length || 0} files!`
+        message: `Successfully restored backup! Restored study data, ${parsed.files?.length || 0} file(s), and notes.`
       };
     } catch (err: any) {
       return {

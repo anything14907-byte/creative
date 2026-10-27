@@ -5,9 +5,18 @@ import {
   PYQQuestion, 
   StudyTask, 
   Flashcard, 
-  PomodoroSession 
+  PomodoroSession,
+  VideoResource
 } from '../types';
-import { getExamUrgencyColor, sortSubjectsByExamUrgency, storageService } from '../utils/storageService';
+import { 
+  getExamUrgencyColor, 
+  sortSubjectsByExamUrgency, 
+  storageService,
+  calculateUnitReadiness,
+  getSubjectTotalStudiedMinutes,
+  formatStudiedTime,
+  formatUnitDisplayName
+} from '../utils/storageService';
 import { 
   Clock, 
   Calendar, 
@@ -20,7 +29,10 @@ import {
   Edit3,
   Database,
   Download,
-  X
+  X,
+  ArrowUp,
+  ArrowDown,
+  GripVertical
 } from 'lucide-react';
 
 interface TodayScreenProps {
@@ -30,6 +42,7 @@ interface TodayScreenProps {
   tasks: StudyTask[];
   flashcards: Flashcard[];
   pomodoroLogs: PomodoroSession[];
+  videos?: VideoResource[];
   onToggleTopicCompleted: (topicId: string) => void;
   onSelectSubject: (subjectId: string, unitId?: string) => void;
   onNavigateView: (view: any) => void;
@@ -37,6 +50,7 @@ interface TodayScreenProps {
   onOpenAddSubject?: () => void;
   onEditSubject?: (subject: SubjectMeta) => void;
   onOpenBackup?: () => void;
+  onReorderSubjects?: (subjects: SubjectMeta[]) => void;
 }
 
 export const TodayScreen: React.FC<TodayScreenProps> = ({
@@ -46,21 +60,79 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   tasks,
   flashcards,
   pomodoroLogs,
+  videos = [],
   onToggleTopicCompleted,
   onSelectSubject,
   onNavigateView,
   onShowToast,
   onOpenAddSubject,
   onEditSubject,
-  onOpenBackup
+  onOpenBackup,
+  onReorderSubjects
 }) => {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [dismissedBackupReminder, setDismissedBackupReminder] = React.useState(false);
   const lastBackupTs = Number(localStorage.getItem('pyq_last_backup_export_ts') || 0);
   const daysSinceBackup = lastBackupTs > 0 ? (Date.now() - lastBackupTs) / (1000 * 60 * 60 * 24) : 999;
   const showBackupReminder = !dismissedBackupReminder && daysSinceBackup >= 7;
 
-  const sortedSubjects = React.useMemo(() => sortSubjectsByExamUrgency(subjects), [subjects]);
-  const nextSubject = sortedSubjects.find(s => {
+  // Sorting: by date (closest exam first) or custom order (saved)
+  const [sortMode, setSortMode] = React.useState<'date' | 'custom'>(() => {
+    return (localStorage.getItem('pyq_subject_sort_mode') as 'date' | 'custom') || 'date';
+  });
+  const [draggedIdx, setDraggedIdx] = React.useState<number | null>(null);
+
+  const displaySubjects = React.useMemo(() => {
+    if (sortMode === 'date') {
+      return sortSubjectsByExamUrgency(subjects);
+    }
+    return subjects;
+  }, [subjects, sortMode]);
+
+  const handleMoveSubject = (idx: number, offset: number) => {
+    const target = idx + offset;
+    if (target < 0 || target >= displaySubjects.length) return;
+    const reordered = [...displaySubjects];
+    const [removed] = reordered.splice(idx, 1);
+    reordered.splice(target, 0, removed);
+    storageService.saveSubjects(reordered);
+    if (onReorderSubjects) {
+      onReorderSubjects(reordered);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (sortMode !== 'custom') return;
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (sortMode !== 'custom') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    if (sortMode !== 'custom' || draggedIdx === null || draggedIdx === targetIndex) return;
+    e.preventDefault();
+    const reordered = [...displaySubjects];
+    const [removed] = reordered.splice(draggedIdx, 1);
+    reordered.splice(targetIndex, 0, removed);
+    setDraggedIdx(null);
+    storageService.saveSubjects(reordered);
+    if (onReorderSubjects) {
+      onReorderSubjects(reordered);
+    }
+  };
+
+  const sortedSubjectsForNext = React.useMemo(() => sortSubjectsByExamUrgency(subjects), [subjects]);
+  const nextSubject = sortedSubjectsForNext.find(s => {
     if (!s.examDate || !s.examDate.trim()) return false;
     const u = getExamUrgencyColor(s.examDate);
     return u.hasDate && u.fractionalDays > 0;
@@ -123,10 +195,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         </div>
       )}
       
-      {/* 1. NEXT EXAM COUNTDOWN HERO BANNER */}
+      {/* 1. NEXT EXAM COUNTDOWN HERO BANNER (100% Widescreen Horizontal Layout) */}
       {nextSubject && nextUrgency && nextUrgency.hasDate && (
         <div 
-          className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card transition-all"
+          className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card transition-all w-full"
           style={{ borderLeft: `8px solid ${nextSubject.accentColor}` }}
         >
           {/* Subtle background glow */}
@@ -135,8 +207,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
             style={{ backgroundColor: nextSubject.accentColor }}
           />
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-2">
+          <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 w-full">
+            
+            {/* Left: Priority #1 Subject & Target Exam Date */}
+            <div className="space-y-2 xl:max-w-md shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span 
                   className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 shadow-sm"
@@ -147,17 +221,21 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                   }}
                 >
                   <Clock className="w-3.5 h-3.5" />
-                  <span>{nextUrgency.statusLabel}</span>
+                  <span>Priority #1 • {nextUrgency.statusLabel}</span>
                 </span>
 
                 <span className="text-xs font-semibold text-paper-muted dark:text-night-muted flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Next Exam: {nextUrgency.formattedExamDate}</span>
+                  <span>Target: {nextUrgency.formattedExamDate}</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl sm:text-4xl font-extrabold text-paper-ink dark:text-night-text tracking-tight">
+                <h1 
+                  onClick={() => onSelectSubject(nextSubject.id)}
+                  className="text-2xl sm:text-3xl font-extrabold text-paper-ink dark:text-night-text tracking-tight cursor-pointer hover:underline"
+                  title="Open Subject Workspace"
+                >
                   {nextSubject.name}
                 </h1>
                 {onEditSubject && (
@@ -171,45 +249,87 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 )}
               </div>
 
-              <p className="text-xs sm:text-sm text-paper-body dark:text-night-muted max-w-xl leading-relaxed">
-                {nextUrgency.fractionalDays <= 5
-                  ? `🚨 Critical countdown: Only ${nextUrgency.days} days and ${nextUrgency.hours} hours remaining. Prioritize highest-repeated PYQs and weak topics today.`
-                  : `Target exam locked. Review your syllabus checklist, active recall flashcards, and study your high-frequency questions.`}
-              </p>
+              <div className="flex items-center gap-3 text-xs text-paper-muted dark:text-night-muted">
+                <span>⏱️ Studied: <strong className="text-paper-ink dark:text-night-text">{formatStudiedTime(getSubjectTotalStudiedMinutes(nextSubject.id, pomodoroLogs))}</strong></span>
+                <span>•</span>
+                <span>{nextSubject.units.length} Units</span>
+                {nextSubject.code && (
+                  <>
+                    <span>•</span>
+                    <span className="font-mono uppercase font-bold">{nextSubject.code}</span>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Countdown Box & Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+            {/* Center: Live DAYS : HOURS : MINUTES : SECONDS Urgency Clock */}
+            <div 
+              className="flex flex-col items-center justify-center px-6 py-4 rounded-2xl border shadow-sm transition-all text-center xl:min-w-[300px] shrink-0"
+              style={{ 
+                backgroundColor: `${nextUrgency.hslColor}10`,
+                borderColor: `${nextUrgency.hslColor}40`
+              }}
+            >
+              <div className="text-[10px] font-bold uppercase tracking-widest text-paper-muted dark:text-night-muted mb-1 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" style={{ color: nextUrgency.hslColor }} />
+                <span>Urgency Countdown Clock</span>
+              </div>
               <div 
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl text-center border shadow-sm transition-all"
-                style={{ 
-                  backgroundColor: `${nextUrgency.hslColor}10`,
-                  borderColor: `${nextUrgency.hslColor}40`
-                }}
+                className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-mono tracking-tight"
+                style={{ color: nextUrgency.hslColor }}
               >
-                <div className="text-[10px] font-bold uppercase tracking-widest text-paper-muted dark:text-night-muted mb-0.5">
-                  Time Remaining
-                </div>
-                <div 
-                  className="text-2xl sm:text-3xl font-extrabold countdown-digit"
-                  style={{ color: nextUrgency.hslColor }}
-                >
-                  {nextUrgency.formattedCountdown}
-                </div>
+                {nextUrgency.formattedCountdown}
+              </div>
+              <div className="text-[10px] text-paper-muted dark:text-night-muted font-medium mt-1">
+                {nextUrgency.fractionalDays <= 5 ? '🚨 High Priority Exam' : 'Target Locked'}
+              </div>
+            </div>
+
+            {/* Right: Quick-Jump Unit Pills with mini progress bars */}
+            <div className="flex flex-col gap-3 xl:max-w-md w-full">
+              <div className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center justify-between">
+                <span>Quick-Jump Units</span>
+                <span className="text-[11px] text-paper-muted dark:text-night-muted">Readiness %</span>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
+                {nextSubject.units.map(unit => {
+                  const readiness = calculateUnitReadiness(unit, tasks, videos, questions, topics);
+                  return (
+                    <button
+                      key={unit.id}
+                      onClick={() => onSelectSubject(nextSubject.id, unit.id)}
+                      className="px-2.5 py-1.5 rounded-xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated hover:border-emerald-500 text-left transition-all btn-tactile group flex flex-col gap-1 min-w-[110px]"
+                      title={`Jump to ${formatUnitDisplayName(unit)} (${readiness.percentage}% ready)`}
+                    >
+                      <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-paper-ink dark:text-night-text">
+                        <span className="truncate max-w-[80px]">{formatUnitDisplayName(unit)}</span>
+                        <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400">{readiness.percentage}%</span>
+                      </div>
+                      <div className="w-full h-1 rounded-full bg-paper-card dark:bg-night-card overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all"
+                          style={{ 
+                            width: `${readiness.percentage}%`,
+                            backgroundColor: nextSubject.accentColor 
+                          }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   onClick={() => onNavigateView('timer')}
-                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 btn-tactile shadow-sm"
+                  className="flex-1 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
                 >
                   <Timer className="w-4 h-4" />
                   <span>Start Focus (25m)</span>
                 </button>
-
                 <button
                   onClick={() => onSelectSubject(nextSubject.id)}
-                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 btn-tactile shadow-sm"
+                  className="flex-1 px-3.5 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
                   style={{ backgroundColor: nextSubject.accentColor }}
                 >
                   <BookOpen className="w-4 h-4" />
@@ -217,6 +337,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       )}
@@ -291,7 +412,31 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Sort: by exam date / my own order */}
+            <div className="flex items-center gap-1 bg-paper-cardElevated dark:bg-night-cardElevated p-1 rounded-xl border border-paper-border dark:border-night-border text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setSortMode('date');
+                  localStorage.setItem('pyq_subject_sort_mode', 'date');
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${sortMode === 'date' ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-night-bg font-bold shadow-sm' : 'text-paper-muted dark:text-night-muted hover:text-paper-ink'}`}
+              >
+                By Date
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortMode('custom');
+                  localStorage.setItem('pyq_subject_sort_mode', 'custom');
+                }}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${sortMode === 'custom' ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-night-bg font-bold shadow-sm' : 'text-paper-muted dark:text-night-muted hover:text-paper-ink'}`}
+              >
+                My Order
+              </button>
+            </div>
+
             {/* REQUIREMENT 2: Single "+ Add Subject" button on Dashboard */}
             {onOpenAddSubject && (
               <button
@@ -312,26 +457,31 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {sortedSubjects.map(sub => {
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 w-full">
+          {displaySubjects.map((sub, idx) => {
             const urgency = getExamUrgencyColor(sub.examDate);
             const progress = storageService.getSubjectProgress(sub.id, topics);
             const subPyqs = questions.filter(q => q.subjectId === sub.id);
             const masteredPyqs = subPyqs.filter(q => q.userStatus === 'mastered').length;
+            const totalMinutesStudied = getSubjectTotalStudiedMinutes(sub.id, pomodoroLogs);
 
             return (
               <div
                 key={sub.id}
-                className="p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-all hover:shadow-md group"
+                draggable={sortMode === 'custom'}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, idx)}
+                className={`p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-all hover:shadow-md group ${draggedIdx === idx ? 'opacity-40 scale-95 border-dashed border-emerald-500' : ''}`}
                 style={{ borderTop: `4px solid ${sub.accentColor}` }}
               >
                 <div>
                   {/* Header: Title, Edit Button & Time Remaining Badge */}
-                  <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-start gap-1.5 min-w-0">
                       <h4 
                         onClick={() => onSelectSubject(sub.id)}
-                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline line-clamp-2 min-h-[3rem] leading-snug break-words"
+                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline line-clamp-2 min-h-[2.5rem] leading-snug break-words"
                         title={sub.name}
                       >
                         {sub.name}
@@ -348,6 +498,34 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       )}
+                      {sortMode === 'custom' && (
+                        <div className="flex items-center gap-0.5 text-paper-muted shrink-0 mt-0.5">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveSubject(idx, -1);
+                            }}
+                            className="p-1 rounded hover:text-paper-ink dark:hover:text-night-text disabled:opacity-20 disabled:cursor-not-allowed"
+                            title="Move subject left"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5 -rotate-90" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === displaySubjects.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveSubject(idx, 1);
+                            }}
+                            className="p-1 rounded hover:text-paper-ink dark:hover:text-night-text disabled:opacity-20 disabled:cursor-not-allowed"
+                            title="Move subject right"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5 -rotate-90" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <span 
@@ -363,8 +541,21 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     </span>
                   </div>
 
+                  {/* Total Studied Time & Code */}
+                  <div className="flex items-center gap-2 mb-3 text-[11px] text-paper-muted dark:text-night-muted flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border font-medium flex items-center gap-1">
+                      <span>⏱️</span>
+                      <span>Total Studied: <strong className="text-paper-ink dark:text-night-text">{formatStudiedTime(totalMinutesStudied)}</strong></span>
+                    </span>
+                    {sub.code && (
+                      <span className="font-mono text-[10px] uppercase font-bold text-paper-muted dark:text-night-muted">
+                        {sub.code}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Progress bar */}
-                  <div className="space-y-1.5 mb-4">
+                  <div className="space-y-1.5 mb-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-paper-body dark:text-night-text">Syllabus Completion</span>
                       <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{progress.percentage}%</span>
@@ -383,6 +574,49 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                       <span>{masteredPyqs}/{subPyqs.length} PYQs mastered</span>
                     </div>
                   </div>
+
+                  {/* Unit-Wise Progress Bars & Readiness Pills */}
+                  {sub.units.length > 0 && (
+                    <div className="space-y-1.5 mb-3">
+                      <div className="text-[10px] font-bold text-paper-muted dark:text-night-muted uppercase tracking-wider flex items-center justify-between">
+                        <span>Units Readiness</span>
+                        <span>{sub.units.length} Units</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                        {sub.units.map(unit => {
+                          const readiness = calculateUnitReadiness(unit, tasks, videos, questions, topics);
+                          return (
+                            <button
+                              key={unit.id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectSubject(sub.id, unit.id);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500 text-left transition-all btn-tactile flex items-center gap-1.5 group/unit"
+                              title={`${formatUnitDisplayName(unit)}: ${readiness.percentage}% completed (${readiness.completedItems}/${readiness.totalItems})`}
+                            >
+                              <span className="text-[10px] font-bold text-paper-ink dark:text-night-text max-w-[70px] truncate">
+                                {unit.unitLabel || `Unit ${unit.unit || ''}`}
+                              </span>
+                              <span className="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                {readiness.percentage}%
+                              </span>
+                              <div className="w-8 h-1 rounded-full bg-paper-border dark:bg-night-border overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all"
+                                  style={{ 
+                                    width: `${readiness.percentage}%`,
+                                    backgroundColor: sub.accentColor 
+                                  }}
+                                />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Topic Mastery Tags Breakdown */}
                   <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold mb-4">

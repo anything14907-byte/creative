@@ -14,6 +14,16 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(
       (registration) => {
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                window.dispatchEvent(new CustomEvent('pyq-app-update-available'));
+              }
+            });
+          }
+        });
         console.log('PyqRanker PWA ServiceWorker registered with scope:', registration.scope);
       },
       (err) => {

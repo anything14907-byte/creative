@@ -58,6 +58,14 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const confirmed = window.confirm(
+      "Restoring this backup will replace current study data, subjects, files, and notes with the backup contents. Are you sure you want to proceed?"
+    );
+    if (!confirmed) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsImporting(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
