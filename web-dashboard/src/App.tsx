@@ -499,7 +499,7 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
+    <div className="min-h-screen w-full bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
       
       {/* Top Header Bar with MULTIPLE EXAMS SWITCHER & GLOBAL SEARCH */}
       <Navbar
@@ -526,8 +526,8 @@ function DashboardContent() {
         onDeleteExam={handleDeleteExam}
       />
 
-      {/* Main Content Area */}
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8">
+      {/* Main Content Area: 100% corner-to-corner full viewport width */}
+      <main className="w-full px-4 sm:px-5 py-6 pb-24 md:pb-8 box-border">
         
         {/* VIEW 1: TODAY / DASHBOARD SCREEN (Restored + without auto-generated planner + single + Add Subject) */}
         {currentView === 'today' && (

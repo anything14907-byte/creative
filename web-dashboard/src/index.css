@@ -75,9 +75,9 @@
   }
 
   html, body, #root {
-    width: 100vw;
+    width: 100%;
     min-height: 100vh;
-    max-width: 100% !important;
+    max-width: 100vw !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow-x: hidden;
@@ -241,4 +241,24 @@ body > div[class*="floating-button"],
 body > div[class*="feedback-btn"] {
   display: none !important;
 }
+
+/* =========================================================================
+   FORCE 100% CORNER-TO-CORNER FULL VIEWPORT LAYOUT (ZERO HORIZONTAL MARGINS)
+   ========================================================================= */
+html, body, #root, #app, main, .app, .app-container, .dashboard, .main-content, .page-container, .container {
+  width: 100% !important;
+  max-width: 100vw !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+header, nav, .navbar, .header-container, .topbar {
+  width: 100% !important;
+  max-width: 100vw !important;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  box-sizing: border-box !important;
+}
+
 

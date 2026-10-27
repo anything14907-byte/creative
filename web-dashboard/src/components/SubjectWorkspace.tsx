@@ -542,7 +542,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
   };
 
   return (
-    <div className="w-full min-h-[calc(100vh-72px)] flex flex-col lg:flex-row gap-6 px-4 sm:px-6 py-5 animate-fade-slide-up">
+    <div className="w-full min-h-[calc(100vh-72px)] flex flex-col lg:flex-row gap-6 py-2 animate-fade-slide-up">
       
       {/* 1. LEFT STICKY COMMAND SIDEBAR */}
       <aside className="w-full lg:w-80 xl:w-96 shrink-0 space-y-5 lg:sticky lg:top-20 self-start">

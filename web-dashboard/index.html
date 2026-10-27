@@ -14,6 +14,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Force 100% Corner-to-Corner Full Viewport Layout */
+      html, body, #root, #app, main, .app, .app-container, .dashboard, .main-content, .page-container, .container {
+        width: 100% !important;
+        max-width: 100vw !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+      }
+
+      header, nav, .navbar, .header-container, .topbar {
+        width: 100% !important;
+        max-width: 100vw !important;
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+        box-sizing: border-box !important;
+      }
+    </style>
   </head>
   <body class="bg-paper-bg dark:bg-night-bg text-paper-body dark:text-night-text min-h-screen antialiased selection:bg-[#3F7D5F] selection:text-[#F8F6F0] dark:selection:bg-[#60A5FA] dark:selection:text-[#0F172A] transition-colors duration-200">
     <div id="root"></div>

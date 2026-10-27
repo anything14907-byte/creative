@@ -155,7 +155,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   const overallPercent = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
   return (
-    <div className="space-y-8 animate-fade-slide-up pb-16">
+    <div className="w-full space-y-8 animate-fade-slide-up pb-16">
 
       {/* 0. BACKUP REMINDER BANNER (Requirement 13: 7 days without export) */}
       {showBackupReminder && (
@@ -210,7 +210,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 w-full">
             
             {/* Left: Priority #1 Subject & Target Exam Date */}
-            <div className="space-y-2 xl:max-w-md shrink-0">
+            <div className="space-y-2 shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span 
                   className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-mono flex items-center gap-1.5 shadow-sm"
@@ -286,7 +286,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
             </div>
 
             {/* Right: Quick-Jump Unit Pills with mini progress bars */}
-            <div className="flex flex-col gap-3 xl:max-w-md w-full">
+            <div className="flex flex-col gap-3 xl:min-w-[320px] w-full">
               <div className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center justify-between">
                 <span>Quick-Jump Units</span>
                 <span className="text-[11px] text-paper-muted dark:text-night-muted">Readiness %</span>
@@ -478,10 +478,10 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 <div>
                   {/* Header: Title, Edit Button & Time Remaining Badge */}
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-start gap-1.5 min-w-0">
+                    <div className="flex items-start gap-1.5 flex-1 min-w-0">
                       <h4 
                         onClick={() => onSelectSubject(sub.id)}
-                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline line-clamp-2 min-h-[2.5rem] leading-snug break-words"
+                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline leading-snug break-words"
                         title={sub.name}
                       >
                         {sub.name}
