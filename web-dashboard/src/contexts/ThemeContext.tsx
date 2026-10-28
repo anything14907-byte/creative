@@ -20,12 +20,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+    
     if (theme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
+      document.body.classList.add('dark');
+      document.body.classList.remove('light');
     } else {
       root.classList.add('light');
       root.classList.remove('dark');
+      document.body.classList.add('light');
+      document.body.classList.remove('dark');
     }
     localStorage.setItem('pyq_ranker_theme_v1', theme);
 
@@ -36,7 +43,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       metaThemeColor.setAttribute('name', 'theme-color');
       document.head.appendChild(metaThemeColor);
     }
-    metaThemeColor.setAttribute('content', theme === 'dark' ? '#0F172A' : '#F5F1E8');
+    metaThemeColor.setAttribute('content', theme === 'dark' ? '#0B131E' : '#F3F0E8');
   }, [theme]);
 
   const toggleTheme = () => {

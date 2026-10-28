@@ -5,68 +5,66 @@
 /* =========================================================================
    CSS VARIABLES: THEME SPECIFICATION
    ========================================================================= */
-:root, .light {
-  /* LIGHT MODE */
-  /* Backgrounds and surfaces */
-  --bg-base: #F5F1E8;             /* soft eggshell / warm beige (never pure white) */
-  --surface-card: #FBF9F4;        /* cards, panels, modals, navbar */
-  --surface-hover: #EDE8DC;       /* hover or selected card */
-  --surface-input: #E7E3D9;       /* inputs, tags, empty states */
-  --border-color: rgba(9, 34, 64, 0.12); /* thin border */
-  --border-hover: rgba(9, 34, 64, 0.24);
+:root, .light, [data-theme="light"] {
+  /* LIGHT MODE (Warm Alabaster #F3F0E8 & Crisp White Cards #FFFFFF) */
+  --bg-base: #F3F0E8;             /* Warm Alabaster/Paper page background */
+  --surface-card: #FFFFFF;        /* Crisp white cards, panels, modals */
+  --surface-hover: #F8F7F2;       /* Subtle elevated surface */
+  --surface-input: #FFFFFF;       /* Clean white inputs */
+  --border-color: #CBD5E1;        /* Clear slate border (1px solid #CBD5E1) */
+  --border-hover: #94A3B8;
 
-  /* Text (>= 4.5:1 contrast, never harsh) */
-  --text-primary: #092240;        /* headings and titles: Oxford Blue (never pure black) */
-  --text-body: #333333;           /* body text: Jet */
-  --text-secondary: #5B6573;      /* captions, dates, hints */
+  /* Text: Deep Charcoal Ink text (#0F172A) for maximum sharpness */
+  --text-primary: #0F172A;        /* Deep Charcoal Ink (titles, countdowns, topic numbers) */
+  --text-body: #1E293B;           /* Dark Slate body text (>= 7:1 contrast) */
+  --text-secondary: #475569;      /* Captions, dates, hints */
 
   /* Accents & Buttons */
-  --accent-main: #3F7D5F;         /* muted green: active tab, progress bars, highlights */
-  --accent-hover: #356B51;
-  --btn-bg: #3F7D5F;              /* Add Subject, Save and similar */
-  --btn-text: #F8F6F0;
-  --btn-hover: #356B51;
+  --accent-main: #059669;         /* High-contrast emerald */
+  --accent-hover: #047857;
+  --btn-bg: #059669;
+  --btn-text: #FFFFFF;
+  --btn-hover: #047857;
 
   /* Links & Secondary Highlights */
-  --accent-link: #3B6A94;         /* links and secondary highlights */
-  --focus-outline: #3B6A94;       /* focus outline: 2px #3B6A94 */
+  --accent-link: #0284C7;
+  --focus-outline: #0284C7;
 
   /* Status Colors */
-  --status-done: #4F8F6A;         /* done / strong */
-  --status-okay: #B8892F;         /* okay */
-  --status-weak: #B25A4E;         /* weak */
+  --status-done: #059669;         /* Strong / Done */
+  --status-okay: #D97706;         /* Okay */
+  --status-weak: #DC2626;         /* Weak */
 }
 
-.dark {
-  /* DARK MODE */
-  /* Backgrounds and surfaces */
-  --bg-base: #0F172A;             /* deep navy (never pure black) */
-  --surface-card: #1E293B;        /* lighter than base, hierarchy from lightness */
-  --surface-hover: #263449;       /* hover or selected card */
-  --surface-input: #172033;       /* inputs background */
-  --border-color: rgba(255, 255, 255, 0.10); /* borders and dividers */
-  --border-hover: rgba(255, 255, 255, 0.20);
+.dark, [data-theme="dark"] {
+  /* DARK MODE (Deep Midnight Slate #0B131E & Elevated Cards #131F2E) */
+  --bg-base: #0B131E;             /* Deep Midnight Slate (zero purple) */
+  --surface-card: #131F2E;        /* Dark elevated cards, panels, modals */
+  --surface-hover: #1C2D42;       /* Hover or selected card */
+  --surface-input: #0E1825;       /* Inputs background */
+  --border-color: #23354D;        /* Subtle slate border (1px solid #23354D) */
+  --border-hover: #374E6F;
 
-  /* Text (>= 4.5:1 contrast, never harsh) */
-  --text-primary: #F1F5F9;        /* primary text: off-white (never pure white) */
-  --text-body: #F1F5F9;           /* body text: off-white */
-  --text-secondary: #94A3B8;      /* secondary text */
+  /* Typography: Crisp white/silver typography (#F8FAFC / #CBD5E1) */
+  --text-primary: #F8FAFC;        /* Crisp white primary text */
+  --text-body: #CBD5E1;           /* Silver body text */
+  --text-secondary: #94A3B8;      /* Muted silver */
 
   /* Accents & Buttons */
-  --accent-main: #60A5FA;         /* main accent: soft blue (no neon) */
-  --accent-hover: #93C5FD;
-  --btn-bg: #60A5FA;              /* slightly lighter shade of accent */
-  --btn-text: #0F172A;            /* dark text for high contrast on soft blue */
-  --btn-hover: #93C5FD;           /* slightly brighter hover */
+  --accent-main: #10B981;         /* Emerald accent */
+  --accent-hover: #34D399;
+  --btn-bg: #10B981;
+  --btn-text: #0B131E;
+  --btn-hover: #34D399;
 
   /* Links & Secondary Highlights */
-  --accent-link: #60A5FA;
-  --focus-outline: #60A5FA;       /* focus outline: 2px #60A5FA */
+  --accent-link: #38BDF8;
+  --focus-outline: #38BDF8;
 
   /* Status Colors */
-  --status-done: #4ADE80;         /* green */
-  --status-okay: #FBBF24;         /* amber */
-  --status-weak: #F87171;         /* coral */
+  --status-done: #34D399;         /* Strong (Green) */
+  --status-okay: #FBBF24;         /* Okay (Amber) */
+  --status-weak: #F87171;         /* Weak (Coral) */
 }
 
 @layer base {
@@ -138,14 +136,14 @@
 }
 
 /* Base Body Application Styles */
-.light body {
-  background-color: #F5F1E8;
-  color: #333333;
+.light body, [data-theme="light"] body {
+  background-color: #F3F0E8;
+  color: #1E293B;
 }
 
-.dark body {
-  background-color: #0F172A;
-  color: #F1F5F9;
+.dark body, [data-theme="dark"] body {
+  background-color: #0B131E;
+  color: #CBD5E1;
 }
 
 /* =========================================================================

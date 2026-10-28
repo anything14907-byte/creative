@@ -107,15 +107,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const activeExam = examSessions.find(e => e.id === activeExamId) || examSessions[0] || { id: 'mid-sem', name: 'Mid Sem' };
 
-  // Requirement 3: PYQ Ranker tab removed from navigation
+  // 6 Core Navigation Tabs per Requirement
   const navItems: { id: MainNavView; label: string; icon: React.ReactNode }[] = [
     { id: 'today', label: 'Today', icon: <Sparkles className="w-4 h-4" /> },
     { id: 'syllabus', label: 'Syllabus', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'timer', label: 'Timer', icon: <Timer className="w-4 h-4" /> },
     { id: 'flashcards', label: 'Flashcards', icon: <Brain className="w-4 h-4" /> },
     { id: 'vault', label: 'Vault', icon: <Video className="w-4 h-4" /> },
-    { id: 'pdf', label: 'PDF Notes Extractor', icon: <FileText className="w-4 h-4" /> },
-    { id: 'overview', label: 'All Subjects', icon: <Layers className="w-4 h-4" /> },
+    { id: 'pdf', label: 'PDF Notes', icon: <FileText className="w-4 h-4" /> },
   ];
 
   const handleSearchResultNavigation = (item: SearchIndexItem) => {
@@ -157,11 +156,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
-      <div className="w-full px-4 sm:px-6 py-2.5">
+    <header className="sticky top-0 z-40 w-full max-w-[100vw] backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
+      <div className="w-full px-4 sm:px-5 py-2.5">
         
-        {/* Main Header Bar (100vw Corner-to-Corner with flex-nowrap) */}
-        <div className="h-11 flex items-center justify-between gap-2 lg:gap-2.5 flex-nowrap w-full">
+        {/* Main Header Bar (3-Zone Balanced Flex Layout) */}
+        <div className="h-11 flex items-center justify-between gap-3 sm:gap-4 w-full">
           
           {/* Left: Brand Logo + MULTIPLE EXAMS SWITCHER */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
@@ -333,35 +332,35 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 </div>
               )}
+              {/* Search Input (Width: 180px - 220px on desktop) */}
+              <GlobalSearchBar
+                activeExamId={activeExamId}
+                examSessions={examSessions}
+                subjects={subjects}
+                topics={topics}
+                questions={questions}
+                tasks={tasks}
+                videos={videos}
+                pdfs={pdfs}
+                flashcards={flashcards}
+                files={files}
+                onNavigateToSearchResult={handleSearchResultNavigation}
+                className="hidden xl:block relative w-[180px] 2xl:w-[220px] shrink-0 ml-1"
+              />
+
             </div>
 
           </div>
 
-          {/* Center-Left: REQUIREMENT 1 - Search Bar (Desktop) */}
-          <GlobalSearchBar
-            activeExamId={activeExamId}
-            examSessions={examSessions}
-            subjects={subjects}
-            topics={topics}
-            questions={questions}
-            tasks={tasks}
-            videos={videos}
-            pdfs={pdfs}
-            flashcards={flashcards}
-            files={files}
-            onNavigateToSearchResult={handleSearchResultNavigation}
-            className="hidden xl:block relative flex-1 max-w-[200px] 2xl:max-w-xs shrink"
-          />
-
-          {/* Center-Right: Desktop Navigation Tabs (Pyq Ranker is removed per Req 3) */}
-          <nav className="hidden lg:flex items-center gap-1.5 py-0.5 shrink-0 flex-nowrap">
+          {/* ZONE 2: CENTER (flex: 1, justify-center, gap: 6px, min-width: 0) */}
+          <nav className="hidden lg:flex flex-1 justify-center items-center gap-1.5 py-0.5 min-w-0 flex-nowrap">
             {navItems.map(item => {
               const isActive = currentView === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => onSelectView(item.id)}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-[13.5px] font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all shrink-0 ${
                     isActive
                       ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
                       : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
@@ -374,27 +373,36 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Right Actions: Backup (JSON) & Theme Toggle */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* ZONE 3: RIGHT (flex-shrink: 0, gap: 10px) - Backup & Prominent Theme Toggle Pill Button */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             
+            {/* Backup Button */}
             <button
               onClick={onOpenBackup}
-              className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm"
+              className="px-3 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95"
               title="1-Click Data Backup & Restore (JSON)"
             >
               <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">💾 Backup Data</span>
+              <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">💾 Backup</span>
             </button>
 
+            {/* Prominent Theme Toggle Pill Button */}
             <button
+              type="button"
               onClick={toggleTheme}
-              className="p-2 rounded-xl text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated transition-colors btn-tactile"
-              title={`Switch to ${theme === 'dark' ? 'Warm Paper Day' : 'Deep Ocean Night'} mode`}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap bg-paper-cardElevated dark:bg-night-cardElevated border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-emerald-500/50"
+              title={`Switch to ${theme === 'dark' ? 'Warm Alabaster Light Mode' : 'Deep Midnight Dark Mode'}`}
             >
               {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
+                <>
+                  <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>☀️ Light Mode</span>
+                </>
               ) : (
-                <Moon className="w-4 h-4 text-slate-700" />
+                <>
+                  <Moon className="w-4 h-4 text-slate-700 dark:text-slate-200 shrink-0" />
+                  <span>🌙 Dark Mode</span>
+                </>
               )}
             </button>
 
