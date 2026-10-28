@@ -158,10 +158,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
-      <div className="w-full px-4 sm:px-5">
+      <div className="w-full px-4 sm:px-6 py-2.5">
         
-        {/* Main Header Bar */}
-        <div className="h-16 flex items-center justify-between gap-3 w-full">
+        {/* Main Header Bar (100vw Corner-to-Corner with flex-nowrap) */}
+        <div className="h-11 flex items-center justify-between gap-2 lg:gap-2.5 flex-nowrap w-full">
           
           {/* Left: Brand Logo + MULTIPLE EXAMS SWITCHER */}
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
@@ -350,18 +350,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             flashcards={flashcards}
             files={files}
             onNavigateToSearchResult={handleSearchResultNavigation}
-            className="hidden md:block relative flex-1 max-w-xs xl:max-w-sm shrink"
+            className="hidden xl:block relative flex-1 max-w-[200px] 2xl:max-w-xs shrink"
           />
 
           {/* Center-Right: Desktop Navigation Tabs (Pyq Ranker is removed per Req 3) */}
-          <nav className="hidden lg:flex items-center gap-1.5 py-1 shrink-0">
+          <nav className="hidden lg:flex items-center gap-1.5 py-0.5 shrink-0 flex-nowrap">
             {navItems.map(item => {
               const isActive = currentView === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => onSelectView(item.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all shrink-0 ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all shrink-0 ${
                     isActive
                       ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
                       : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'

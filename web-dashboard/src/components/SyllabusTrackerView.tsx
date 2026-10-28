@@ -20,7 +20,10 @@ import {
   Tag,
   ChevronDown,
   Flame,
-  GripVertical
+  GripVertical,
+  Clock,
+  Layers,
+  Edit3
 } from 'lucide-react';
 import { getExamUrgencyColor, extractYoutubeId, formatUnitDisplayName } from '../utils/storageService';
 import { indexedDbService } from '../utils/indexedDbService';
@@ -352,56 +355,169 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
   });
 
   return (
-    <div className="space-y-6 animate-fade-slide-up pb-16">
+    <div className="w-full flex flex-col lg:grid lg:grid-cols-[320px_1fr] gap-6 animate-fade-slide-up pb-16 items-start">
       
-      {/* Top Header & Single "+ Add Subject" Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-paper-ink dark:text-night-text flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            <span>Syllabus Tracker & Mastery Hub</span>
-          </h2>
-          <p className="text-xs text-paper-muted dark:text-night-muted mt-0.5">
-            Organized by units. Mark completion, track Weak / Okay / Strong mastery, and reorder.
-          </p>
+      {/* 1. LEFT PANEL: SUBJECT LIST SWITCHER, EXAM DATE & URGENCY COUNTDOWN, QUICK UNIT JUMP */}
+      <aside className="w-full space-y-4 lg:sticky lg:top-20 self-start">
+        {/* Subject Switcher List */}
+        <div className="p-4 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-night-border">
+            <span className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Subjects ({subjects.length})</span>
+            </span>
+            {onOpenAddSubject && (
+              <button
+                onClick={onOpenAddSubject}
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                title="Add New Subject"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1">
+            {subjects.map(s => {
+              const isSelected = s.id === currentSubject.id;
+              const sTopics = topics.filter(t => t.subjectId === s.id);
+              const sCompleted = sTopics.filter(t => t.completed).length;
+              const sPercent = sTopics.length > 0 ? Math.round((sCompleted / sTopics.length) * 100) : 0;
+              const sUrgency = getExamUrgencyColor(s.examDate);
+
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setSelectedSubjectId(s.id);
+                    onSelectSubject(s.id);
+                  }}
+                  className={`w-full p-2.5 rounded-2xl text-xs font-bold transition-all flex items-center justify-between gap-2 text-left btn-tactile ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-emerald-500'
+                  }`}
+                  style={{ borderLeft: `4px solid ${s.accentColor}` }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate">{s.name}</div>
+                    <div className={`text-[10px] font-normal truncate mt-0.5 ${isSelected ? 'text-white/80' : 'text-paper-muted dark:text-night-muted'}`}>
+                      {sUrgency.hasDate ? sUrgency.formattedCountdown : 'No date set'}
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-paper-card dark:bg-night-card text-emerald-600 dark:text-emerald-400 border border-paper-border dark:border-night-border'}`}>
+                    {sPercent}%
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Subject Selector Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {subjects.map(s => {
-          const isSelected = s.id === currentSubject.id;
-          const sTopics = topics.filter(t => t.subjectId === s.id);
-          const sCompleted = sTopics.filter(t => t.completed).length;
-          const sPercent = sTopics.length > 0 ? Math.round((sCompleted / sTopics.length) * 100) : 0;
+        {/* Active Subject Exam Date & Urgency Countdown Card */}
+        <div 
+          className="p-4 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-3"
+          style={{ borderTop: `4px solid ${currentSubject.accentColor}` }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-paper-ink dark:text-night-text flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Target Exam Date</span>
+            </span>
+            {onEditSubject && (
+              <button
+                onClick={() => onEditSubject(currentSubject)}
+                className="text-[11px] font-semibold text-paper-muted hover:text-paper-ink dark:hover:text-night-text flex items-center gap-1"
+                title="Edit Exam Date"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
+            )}
+          </div>
 
-          return (
+          <div 
+            className="p-3 rounded-2xl border text-center transition-all space-y-1"
+            style={{
+              backgroundColor: urgency.hasDate ? `${urgency.hslColor}10` : 'rgba(91, 101, 115, 0.08)',
+              borderColor: urgency.hasDate ? `${urgency.hslColor}35` : 'rgba(91, 101, 115, 0.2)'
+            }}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center justify-center gap-1">
+              <Clock className="w-3.5 h-3.5" style={{ color: urgency.hslColor }} />
+              <span>{urgency.statusLabel}</span>
+            </div>
+            <div className="text-xl font-extrabold font-mono tracking-tight" style={{ color: urgency.hslColor }}>
+              {urgency.formattedCountdown}
+            </div>
+            <div className="text-[11px] text-paper-muted dark:text-night-muted truncate">
+              {urgency.formattedExamDate}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Unit Jump List */}
+        <div className="p-4 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-paper-border dark:border-night-border">
+            <span className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Quick Unit Jump</span>
+            </span>
             <button
-              key={s.id}
-              onClick={() => {
-                setSelectedSubjectId(s.id);
-                onSelectSubject(s.id);
-              }}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2.5 shrink-0 btn-tactile ${
-                isSelected
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
-              }`}
+              onClick={() => setIsAddingUnit(true)}
+              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+              title="Add New Unit"
             >
-              <span>{s.name}</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${isSelected ? 'bg-white/20 text-white' : 'bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted'}`}>
-                {sPercent}%
-              </span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Unit</span>
             </button>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* Selected Subject Banner with Progress */}
-      <div 
-        className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4"
-        style={{ borderTop: `5px solid ${currentSubject.accentColor}` }}
-      >
+          <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+            {(currentSubject.units || []).map((u, uIdx) => {
+              const uTopics = subjectTopics.filter(t => t.unitId === u.id || t.unitNumber === u.unit || t.unitNumber === u.title);
+              const uDone = uTopics.filter(t => t.completed).length;
+              const uPct = uTopics.length > 0 ? Math.round((uDone / uTopics.length) * 100) : 0;
+              return (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    const el = document.getElementById(`unit-${u.id}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  className="w-full px-3 py-2 rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated hover:border-emerald-500 border border-paper-border dark:border-night-border text-left transition-all btn-tactile flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-paper-ink dark:text-night-text truncate">
+                      {formatUnitDisplayName(u)}
+                    </div>
+                    <div className="text-[10px] text-paper-muted dark:text-night-muted">
+                      {uDone}/{uTopics.length} topics
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    {uPct}%
+                  </span>
+                </button>
+              );
+            })}
+            {(currentSubject.units || []).length === 0 && (
+              <p className="text-xs text-paper-muted dark:text-night-muted italic text-center py-2">
+                No units created yet.
+              </p>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* 2. RIGHT WIDESCREEN PANEL: SUBJECT BANNER & UNITS CHECKLIST */}
+      <div className="min-w-0 w-full space-y-6">
+        {/* Selected Subject Banner with Progress */}
+        <div 
+          className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4"
+          style={{ borderTop: `5px solid ${currentSubject.accentColor}` }}
+        >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -994,6 +1110,7 @@ export const SyllabusTrackerView: React.FC<SyllabusTrackerViewProps> = ({
             </div>
           );
         })}
+      </div>
       </div>
 
       {/* Embedded YouTube Video Modal */}

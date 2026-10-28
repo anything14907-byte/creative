@@ -476,12 +476,12 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 style={{ borderTop: `4px solid ${sub.accentColor}` }}
               >
                 <div>
-                  {/* Header: Title, Edit Button & Time Remaining Badge */}
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  {/* Header: Title & Action Controls */}
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
                     <div className="flex items-start gap-1.5 flex-1 min-w-0">
                       <h4 
                         onClick={() => onSelectSubject(sub.id)}
-                        className="text-base font-bold text-paper-ink dark:text-night-text cursor-pointer hover:underline leading-snug break-words"
+                        className="text-base font-extrabold text-paper-ink dark:text-night-text cursor-pointer hover:underline leading-snug break-words"
                         title={sub.name}
                       >
                         {sub.name}
@@ -527,18 +527,36 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                         </div>
                       )}
                     </div>
+                  </div>
 
-                    <span 
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full font-mono shrink-0 whitespace-nowrap"
+                  {/* REQUIREMENT 2: Exact Formatted Exam Date + Smooth Color-Coded Urgency Badge */}
+                  <div 
+                    className="flex items-center justify-between gap-2 p-2.5 rounded-xl border text-[11px] font-semibold my-2.5 transition-all"
+                    style={{
+                      backgroundColor: urgency.hasDate ? `${urgency.hslColor}10` : 'rgba(91, 101, 115, 0.08)',
+                      borderColor: urgency.hasDate ? `${urgency.hslColor}35` : 'rgba(91, 101, 115, 0.2)'
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" style={{ color: urgency.hslColor }} />
+                      <span className="truncate text-paper-ink dark:text-night-text font-medium">
+                        {urgency.hasDate ? urgency.formattedExamDate : 'No exam date set'}
+                      </span>
+                    </div>
+                    <div 
+                      className="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold shrink-0 shadow-xs flex items-center gap-1"
                       style={{ 
-                        color: urgency.hasDate ? urgency.hslColor : '#5B6573',
-                        backgroundColor: urgency.hasDate ? `${urgency.hslColor}16` : '#5B657316'
+                        backgroundColor: urgency.hasDate ? `${urgency.hslColor}25` : 'rgba(91, 101, 115, 0.15)',
+                        color: urgency.hasDate ? urgency.hslColor : '#5B6573'
                       }}
                     >
-                      {urgency.hasDate 
-                        ? (urgency.fractionalDays > 0 ? `${urgency.days}d ${urgency.hours}h` : 'Passed')
-                        : 'Set exam date'}
-                    </span>
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        {urgency.hasDate 
+                          ? (urgency.fractionalDays > 0 ? `${urgency.days}d ${urgency.hours}h` : 'Exam Passed')
+                          : 'Set Date'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Total Studied Time & Code */}
@@ -554,7 +572,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     )}
                   </div>
 
-                  {/* Progress bar */}
+                  {/* Syllabus Progress bar */}
                   <div className="space-y-1.5 mb-3">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-paper-body dark:text-night-text">Syllabus Completion</span>
@@ -562,7 +580,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     </div>
                     <div className="w-full h-2 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated overflow-hidden border border-paper-border dark:border-night-border">
                       <div 
-                        className="h-full rounded-full transition-all duration-600"
+                        className="h-full rounded-full transition-all duration-500"
                         style={{ 
                           width: `${progress.percentage}%`,
                           backgroundColor: sub.accentColor 
@@ -575,51 +593,8 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Unit-Wise Progress Bars & Readiness Pills */}
-                  {sub.units.length > 0 && (
-                    <div className="space-y-1.5 mb-3">
-                      <div className="text-[10px] font-bold text-paper-muted dark:text-night-muted uppercase tracking-wider flex items-center justify-between">
-                        <span>Units Readiness</span>
-                        <span>{sub.units.length} Units</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-                        {sub.units.map(unit => {
-                          const readiness = calculateUnitReadiness(unit, tasks, videos, questions, topics);
-                          return (
-                            <button
-                              key={unit.id}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectSubject(sub.id, unit.id);
-                              }}
-                              className="px-2 py-1 rounded-lg bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500 text-left transition-all btn-tactile flex items-center gap-1.5 group/unit"
-                              title={`${formatUnitDisplayName(unit)}: ${readiness.percentage}% completed (${readiness.completedItems}/${readiness.totalItems})`}
-                            >
-                              <span className="text-[10px] font-bold text-paper-ink dark:text-night-text max-w-[70px] truncate">
-                                {unit.unitLabel || `Unit ${unit.unit || ''}`}
-                              </span>
-                              <span className="text-[9px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                {readiness.percentage}%
-                              </span>
-                              <div className="w-8 h-1 rounded-full bg-paper-border dark:bg-night-border overflow-hidden">
-                                <div 
-                                  className="h-full rounded-full transition-all"
-                                  style={{ 
-                                    width: `${readiness.percentage}%`,
-                                    backgroundColor: sub.accentColor 
-                                  }}
-                                />
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Topic Mastery Tags Breakdown */}
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold mb-4">
+                  {/* Topic Mastery Tags Breakdown (Weak / Okay / Strong) */}
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold mb-3">
                     <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                       <div>{progress.weakCount}</div>
                       <div className="text-[9px] font-normal opacity-80">Weak</div>
@@ -633,9 +608,61 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                       <div className="text-[9px] font-normal opacity-80">Strong</div>
                     </div>
                   </div>
+
+                  {/* REQUIREMENT 2.3: Clickable Unit / Top Topic Pills Below Mastery Counters */}
+                  <div className="space-y-1.5 mb-4">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-paper-muted dark:text-night-muted uppercase tracking-wider">
+                      <span>Units & Topics</span>
+                      <span className="font-mono">{sub.units.length} Units</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                      {sub.units.map(unit => {
+                        const readiness = calculateUnitReadiness(unit, tasks, videos, questions, topics);
+                        return (
+                          <div
+                            key={unit.id}
+                            className="inline-flex items-center rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border hover:border-emerald-500/50 transition-all text-[11px] overflow-hidden group/pill"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectSubject(sub.id, unit.id);
+                              }}
+                              className="px-2.5 py-1 font-bold text-paper-ink dark:text-night-text hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1.5 btn-tactile"
+                              title={`Jump to ${formatUnitDisplayName(unit)} in Syllabus (${readiness.percentage}% ready)`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: sub.accentColor }} />
+                              <span className="truncate max-w-[95px]">{formatUnitDisplayName(unit)}</span>
+                              <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-black/5 dark:bg-white/10 text-emerald-600 dark:text-emerald-400">
+                                {readiness.percentage}%
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectSubject(sub.id, unit.id);
+                              }}
+                              className="px-1.5 py-1 text-[10px] font-semibold text-paper-muted hover:text-cyan-600 dark:hover:text-cyan-400 border-l border-paper-border dark:border-night-border hover:bg-black/5 dark:hover:bg-white/5"
+                              title={`Quick Add Video or PDF in ${formatUnitDisplayName(unit)}`}
+                            >
+                              +Add
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {sub.units.length === 0 && (
+                        <span className="text-[11px] text-paper-muted dark:text-night-muted italic">
+                          No units added yet. Open subject to configure syllabus units.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Bottom Action Button */}
+                {/* Bottom Action Button (Styled in User's chosen Card Accent Color) */}
                 <button
                   onClick={() => onSelectSubject(sub.id)}
                   className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-sm btn-tactile btn-shimmer"

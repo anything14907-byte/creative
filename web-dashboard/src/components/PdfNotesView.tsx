@@ -768,124 +768,165 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
         </div>
       )}
 
-      {/* ANALYSIS OUTPUT BLOCKS */}
+      {/* ANALYSIS OUTPUT BLOCKS (50% Left / 50% Right Widescreen Split Layout) */}
       {analysis && analysis.quality.isReliable && (
-        <div className="space-y-6 p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-xs">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           
-          {/* Header Bar with Subject & Unit Destination */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-paper-border dark:border-night-border">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-paper-ink dark:text-night-text">
-                  {selectedFile?.name || 'Analyzed Document'}
+          {/* LEFT 50%: EMBEDDED DOCUMENT VIEWER & CLEANED TEXT DRAWER */}
+          <div className="w-full space-y-4 lg:sticky lg:top-20">
+            <div className="p-5 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-paper-border dark:border-night-border">
+                <span className="font-bold text-xs uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Document Viewer</span>
                 </span>
-                {/* Requirement 5.b: High-contrast badges in both light and dark mode */}
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border border-slate-700 dark:border-slate-300 shadow-xs">
-                  {analysis.cleanedText.length} characters
+                <span className="text-[11px] font-mono font-bold text-paper-ink dark:text-night-text truncate max-w-[200px]">
+                  {selectedFile?.name || 'Document Preview'}
                 </span>
-                {usedAiMode ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-400 dark:border-indigo-700 shadow-xs flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400 fill-indigo-500" />
-                    <span>Smart AI Mode</span>
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 shadow-xs">
-                    Rule-Based Mode
-                  </span>
-                )}
               </div>
-              <p className="text-xs text-paper-muted dark:text-night-muted">
-                Review contents, outline, key terms, and practice questions below.
-              </p>
-            </div>
 
-            {/* Target Subject and Unit Selectors (Requirement 5.a: Do not pre-select, show Choose subject/Choose unit) */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {suggestedSubject && !targetSubjectId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTargetSubjectId(suggestedSubject.id);
-                    setTargetUnitId('');
-                  }}
-                  className="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-200 text-xs font-semibold hover:bg-amber-500/25 transition-colors flex items-center gap-1"
-                  title="Click to apply suggested subject"
-                >
-                  <span>💡 Suggested: <strong>{suggestedSubject.name}</strong></span>
-                </button>
+              {fileDataUrl ? (
+                <div className="w-full h-[520px] rounded-2xl overflow-hidden bg-slate-900 border border-paper-border dark:border-night-border">
+                  {selectedFile?.type === 'application/pdf' ? (
+                    <iframe
+                      src={fileDataUrl}
+                      title="PDF Document Preview"
+                      className="w-full h-full border-none"
+                    />
+                  ) : (
+                    <img
+                      src={fileDataUrl}
+                      alt="Uploaded Document"
+                      className="w-full h-full object-contain"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="h-64 flex flex-col items-center justify-center text-paper-muted text-xs border border-dashed border-paper-border dark:border-night-border rounded-2xl">
+                  <FileText className="w-8 h-8 opacity-50 mb-2" />
+                  <span>Original Document Preview</span>
+                </div>
               )}
 
-              <select
-                value={targetSubjectId}
-                onChange={e => {
-                  setTargetSubjectId(e.target.value);
-                  setTargetUnitId('');
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none"
-              >
-                <option value="">Choose subject</option>
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              {/* EDITABLE TEXT DRAWER */}
+              <div className="border border-paper-border dark:border-night-border rounded-2xl overflow-hidden">
+                <button
+                  onClick={() => setIsTextEditorOpen(!isTextEditorOpen)}
+                  className="w-full px-4 py-2.5 bg-paper-cardElevated dark:bg-night-cardElevated flex items-center justify-between text-xs font-semibold text-paper-ink dark:text-night-text hover:bg-paper-cardElevated/80"
+                >
+                  <div className="flex items-center gap-2">
+                    <Edit3 className="w-3.5 h-3.5 text-paper-muted" />
+                    <span>View Extracted & Cleaned Text (Editable)</span>
+                  </div>
+                  {isTextEditorOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
 
-              <select
-                value={targetUnitId}
-                onChange={e => setTargetUnitId(e.target.value)}
-                disabled={!targetSubjectId || !targetSubject?.units || targetSubject.units.length === 0}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none max-w-[200px] truncate disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <option value="">Choose unit</option>
-                {targetSubject?.units?.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {formatUnitDisplayName(u)}
-                  </option>
-                ))}
-              </select>
+                {isTextEditorOpen && (
+                  <div className="p-4 space-y-3 bg-paper-card dark:bg-night-card border-t border-paper-border dark:border-night-border">
+                    <p className="text-[11px] text-paper-muted dark:text-night-muted">
+                      Page markers (like --- Page N ---) and repeated headers were cleaned. You can edit this text to correct any scan mistakes, then click "Analyze again".
+                    </p>
+                    <textarea
+                      value={editableText}
+                      onChange={e => setEditableText(e.target.value)}
+                      rows={8}
+                      className="w-full p-3 rounded-xl bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border font-mono text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 leading-relaxed resize-y"
+                      placeholder="Extracted cleaned text..."
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-paper-muted font-mono">
+                        {editableText.length} characters • {editableText.split(/\s+/).filter(Boolean).length} words
+                      </span>
+                      <button
+                        onClick={handleReanalyze}
+                        disabled={isProcessing || isAiAnalyzing}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Analyze again</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* EDITABLE TEXT DRAWER */}
-          <div className="border border-paper-border dark:border-night-border rounded-2xl overflow-hidden">
-            <button
-              onClick={() => setIsTextEditorOpen(!isTextEditorOpen)}
-              className="w-full px-4 py-2.5 bg-paper-cardElevated dark:bg-night-cardElevated flex items-center justify-between text-xs font-semibold text-paper-ink dark:text-night-text hover:bg-paper-cardElevated/80"
-            >
-              <div className="flex items-center gap-2">
-                <Edit3 className="w-3.5 h-3.5 text-paper-muted" />
-                <span>View Extracted & Cleaned Text (Editable)</span>
-              </div>
-              {isTextEditorOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-
-            {isTextEditorOpen && (
-              <div className="p-4 space-y-3 bg-paper-card dark:bg-night-card border-t border-paper-border dark:border-night-border">
-                <p className="text-[11px] text-paper-muted dark:text-night-muted">
-                  Page markers (like --- Page N ---) and repeated headers were cleaned. You can edit this text to correct any scan mistakes, then click "Analyze again".
-                </p>
-                <textarea
-                  value={editableText}
-                  onChange={e => setEditableText(e.target.value)}
-                  rows={8}
-                  className="w-full p-3 rounded-xl bg-paper-bg dark:bg-night-bg border border-paper-border dark:border-night-border font-mono text-xs text-paper-ink dark:text-night-text focus:outline-none focus:border-emerald-500 leading-relaxed resize-y"
-                  placeholder="Extracted cleaned text..."
-                />
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-paper-muted font-mono">
-                    {editableText.length} characters • {editableText.split(/\s+/).filter(Boolean).length} words
+          {/* RIGHT 50%: EXTRACTED NOTES, OUTLINE, KEY TERMS & PRACTICE QUESTIONS */}
+          <div className="w-full space-y-6 p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card">
+            
+            {/* Header Bar with Subject & Unit Destination */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-paper-border dark:border-night-border">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-paper-ink dark:text-night-text">
+                    {selectedFile?.name || 'Analyzed Document'}
                   </span>
-                  <button
-                    onClick={handleReanalyze}
-                    disabled={isProcessing || isAiAnalyzing}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 btn-tactile shadow-xs"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Analyze again</span>
-                  </button>
+                  {/* Requirement 5.b: High-contrast badges in both light and dark mode */}
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 border border-slate-700 dark:border-slate-300 shadow-xs">
+                    {analysis.cleanedText.length} characters
+                  </span>
+                  {usedAiMode ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-400 dark:border-indigo-700 shadow-xs flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400 fill-indigo-500" />
+                      <span>Smart AI Mode</span>
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 shadow-xs">
+                      Rule-Based Mode
+                    </span>
+                  )}
                 </div>
+                <p className="text-xs text-paper-muted dark:text-night-muted">
+                  Review contents, outline, key terms, and practice questions below.
+                </p>
               </div>
-            )}
-          </div>
+
+              {/* Target Subject and Unit Selectors (Requirement 5.a: Do not pre-select, show Choose subject/Choose unit) */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {suggestedSubject && !targetSubjectId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetSubjectId(suggestedSubject.id);
+                      setTargetUnitId('');
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-800 dark:text-amber-200 text-xs font-semibold hover:bg-amber-500/25 transition-colors flex items-center gap-1"
+                    title="Click to apply suggested subject"
+                  >
+                    <span>💡 Suggested: <strong>{suggestedSubject.name}</strong></span>
+                  </button>
+                )}
+
+                <select
+                  value={targetSubjectId}
+                  onChange={e => {
+                    setTargetSubjectId(e.target.value);
+                    setTargetUnitId('');
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none"
+                >
+                  <option value="">Choose subject</option>
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={targetUnitId}
+                  onChange={e => setTargetUnitId(e.target.value)}
+                  disabled={!targetSubjectId || !targetSubject?.units || targetSubject.units.length === 0}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text focus:outline-none max-w-[200px] truncate disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <option value="">Choose unit</option>
+                  {targetSubject?.units?.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {formatUnitDisplayName(u)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
           {/* BLOCK 1: Contents / Outline (Detected Sections in Order) */}
           <div className="space-y-3">
@@ -1147,6 +1188,7 @@ export const PdfNotesView: React.FC<PdfNotesViewProps> = ({
             </button>
           </div>
 
+        </div>
         </div>
       )}
 

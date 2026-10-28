@@ -526,8 +526,8 @@ function DashboardContent() {
         onDeleteExam={handleDeleteExam}
       />
 
-      {/* Main Content Area: 100% corner-to-corner full viewport width */}
-      <main className="w-full px-4 sm:px-5 py-6 pb-24 md:pb-8 box-border">
+      {/* Main Content Area: 100% corner-to-corner full viewport width (16px 28px edge padding) */}
+      <main className="w-full px-4 sm:px-7 py-4 pb-28 md:pb-12 box-border">
         
         {/* VIEW 1: TODAY / DASHBOARD SCREEN (Restored + without auto-generated planner + single + Add Subject) */}
         {currentView === 'today' && (

@@ -358,6 +358,15 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   const elapsedSeconds = totalDurationSeconds - secondsLeft;
   const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
+  // Subject time breakdown
+  const subjectTimeBreakdown = subjects.map(s => {
+    const mins = pomodoroLogs
+      .filter(l => l.subjectId === s.id)
+      .reduce((sum, l) => sum + (Number(l.minutes) || 0), 0);
+    return { subject: s, minutes: mins };
+  });
+  const maxSubjectMinutes = Math.max(1, ...subjectTimeBreakdown.map(b => b.minutes));
+
   return (
     <div className="space-y-8 animate-fade-slide-up w-full pb-16">
       
@@ -527,99 +536,108 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         </div>
       )}
 
-      {/* Main Pomodoro Clock Card */}
-      <div 
-        className="p-8 sm:p-12 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card text-center space-y-6 relative overflow-hidden transition-all"
-        style={{ borderTop: `6px solid ${selectedSubject?.accentColor || '#10B981'}` }}
-      >
-        {/* Mode Selector Buttons */}
-        <div className="inline-flex p-1.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border gap-1.5 shadow-xs flex-wrap justify-center">
-          <button
-            onClick={() => switchMode('focus')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
-              mode === 'focus' 
-                ? 'bg-emerald-600 text-white shadow-xs' 
-                : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
-            }`}
+      {/* 2-COLUMN WIDESCREEN STUDIO GRID */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        {/* LEFT COLUMN: LARGE FUTURISTIC POMODORO CLOCK + CONTROLS */}
+        <div className="lg:col-span-6 space-y-6 lg:sticky lg:top-20">
+          {/* Main Pomodoro Clock Card */}
+          <div 
+            className="p-8 sm:p-12 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card text-center space-y-6 relative overflow-hidden transition-all"
+            style={{ borderTop: `6px solid ${selectedSubject?.accentColor || '#10B981'}` }}
           >
-            🔥 Focus ({settings.focusDuration}m)
-          </button>
+            {/* Mode Selector Buttons */}
+            <div className="inline-flex p-1.5 rounded-2xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border gap-1.5 shadow-xs flex-wrap justify-center">
+              <button
+                onClick={() => switchMode('focus')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
+                  mode === 'focus' 
+                    ? 'bg-emerald-600 text-white shadow-xs' 
+                    : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
+                }`}
+              >
+                🔥 Focus ({settings.focusDuration}m)
+              </button>
 
-          <button
-            onClick={() => switchMode('shortBreak')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
-              mode === 'shortBreak' 
-                ? 'bg-cyan-600 text-white shadow-xs' 
-                : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
-            }`}
-          >
-            ☕ Short Break ({settings.shortBreakDuration}m)
-          </button>
+              <button
+                onClick={() => switchMode('shortBreak')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
+                  mode === 'shortBreak' 
+                    ? 'bg-cyan-600 text-white shadow-xs' 
+                    : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
+                }`}
+              >
+                ☕ Short Break ({settings.shortBreakDuration}m)
+              </button>
 
-          <button
-            onClick={() => switchMode('longBreak')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
-              mode === 'longBreak' 
-                ? 'bg-amber-600 text-white shadow-xs' 
-                : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
-            }`}
-          >
-            🌴 Long Break ({settings.longBreakDuration}m)
-          </button>
-        </div>
+              <button
+                onClick={() => switchMode('longBreak')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all btn-tactile ${
+                  mode === 'longBreak' 
+                    ? 'bg-amber-600 text-white shadow-xs' 
+                    : 'text-paper-body dark:text-night-text hover:bg-paper-card dark:hover:bg-night-card'
+                }`}
+              >
+                🌴 Long Break ({settings.longBreakDuration}m)
+              </button>
+            </div>
 
-        {/* Selected Subject Banner */}
-        <div className="flex items-center justify-center gap-2">
-          <span 
-            className="w-2.5 h-2.5 rounded-full" 
-            style={{ backgroundColor: selectedSubject?.accentColor }} 
-          />
-          <span className="text-sm font-bold text-paper-ink dark:text-night-text">
-            Studying: {selectedSubject?.name}
-          </span>
-        </div>
+            {/* Selected Subject Banner */}
+            <div className="flex items-center justify-center gap-2">
+              <span 
+                className="w-2.5 h-2.5 rounded-full" 
+                style={{ backgroundColor: selectedSubject?.accentColor }} 
+              />
+              <span className="text-sm font-bold text-paper-ink dark:text-night-text">
+                Studying: {selectedSubject?.name}
+              </span>
+            </div>
 
-        {/* Giant Timer Digits */}
-        <div className="py-2">
-          <div className="text-6xl sm:text-8xl font-black font-mono tracking-tight text-paper-ink dark:text-night-text select-none countdown-digit">
-            {formattedTime}
+            {/* Giant Timer Digits */}
+            <div className="py-2">
+              <div className="text-6xl sm:text-8xl font-black font-mono tracking-tight text-paper-ink dark:text-night-text select-none countdown-digit">
+                {formattedTime}
+              </div>
+              <p className="text-xs text-paper-muted dark:text-night-muted mt-2">
+                {mode === 'focus' ? 'Keep distractions away and master your concepts.' : 'Relax, breathe, and grab water before the next sprint.'}
+              </p>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <button
+                onClick={handleTogglePlay}
+                className={`px-8 py-3.5 rounded-2xl text-base font-extrabold text-white flex items-center gap-2 btn-tactile shadow-md transition-all ${
+                  isActive ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {isActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
+                <span>{isActive ? 'Pause' : 'Start Focus'}</span>
+              </button>
+
+              <button
+                onClick={handleReset}
+                className="p-3.5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
+                title="Reset Timer (No minutes logged)"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </button>
+
+              {mode === 'focus' && (isActive || elapsedMinutes >= 1) && (
+                <button
+                  onClick={handleManualComplete}
+                  className="px-4 py-3.5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:border-emerald-500 btn-tactile"
+                  title="Log completed study minutes right now"
+                >
+                  Log Now ({elapsedMinutes}m)
+                </button>
+              )}
+            </div>
           </div>
-          <p className="text-xs text-paper-muted dark:text-night-muted mt-2">
-            {mode === 'focus' ? 'Keep distractions away and master your concepts.' : 'Relax, breathe, and grab water before the next sprint.'}
-          </p>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-3 flex-wrap">
-          <button
-            onClick={handleTogglePlay}
-            className={`px-8 py-3.5 rounded-2xl text-base font-extrabold text-white flex items-center gap-2 btn-tactile shadow-md transition-all ${
-              isActive ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'
-            }`}
-          >
-            {isActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
-            <span>{isActive ? 'Pause' : 'Start Focus'}</span>
-          </button>
-
-          <button
-            onClick={handleReset}
-            className="p-3.5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-paper-muted hover:text-paper-ink dark:text-night-muted dark:hover:text-night-text btn-tactile"
-            title="Reset Timer (No minutes logged)"
-          >
-            <RotateCcw className="w-5 h-5" />
-          </button>
-
-          {mode === 'focus' && (isActive || elapsedMinutes >= 1) && (
-            <button
-              onClick={handleManualComplete}
-              className="px-4 py-3.5 rounded-2xl border border-paper-border dark:border-night-border bg-paper-cardElevated dark:bg-night-cardElevated text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:border-emerald-500 btn-tactile"
-              title="Log completed study minutes right now"
-            >
-              Log Now ({elapsedMinutes}m)
-            </button>
-          )}
-        </div>
-      </div>
+        {/* RIGHT COLUMN: ANALYTICS, TIME BREAKDOWN & SESSIONS */}
+        <div className="lg:col-span-6 space-y-6">
 
       {/* WEEKLY STUDY MINUTES BAR CHART */}
       <div className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-6">
@@ -690,68 +708,112 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
         </div>
       </div>
 
-      {/* Recent Sessions List & Reset Timer Data Option */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            <span>Recent Focus Sessions</span>
-          </h4>
+        {/* SUBJECT TIME BREAKDOWN */}
+        <div className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-paper-border dark:border-night-border">
+            <h3 className="text-base font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
+              <Award className="w-5 h-5 text-amber-500" />
+              <span>Subject Study Breakdown</span>
+            </h3>
+            <span className="text-xs font-mono font-bold text-paper-muted dark:text-night-muted">
+              {subjects.length} Subjects
+            </span>
+          </div>
 
-          {onResetTimerData && (
-            <button
-              onClick={() => setIsResetConfirmOpen(true)}
-              className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1.5 btn-tactile py-1 px-2 rounded-lg hover:bg-rose-500/10 transition-colors"
-              title="Reset all timer study sessions back to 0"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Reset timer data</span>
-            </button>
-          )}
+          <div className="space-y-3">
+            {subjectTimeBreakdown.map(({ subject: sub, minutes: mins }) => {
+              const pct = maxSubjectMinutes > 0 ? Math.round((mins / maxSubjectMinutes) * 100) : 0;
+              return (
+                <div key={sub.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-paper-ink dark:text-night-text flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sub.accentColor }} />
+                      <span className="truncate max-w-[200px] sm:max-w-xs">{sub.name}</span>
+                    </span>
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      {mins} mins
+                    </span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated overflow-hidden border border-paper-border dark:border-night-border">
+                    <div 
+                      className="h-full rounded-full transition-all duration-500" 
+                      style={{ 
+                        width: `${Math.max(mins > 0 ? 5 : 0, pct)}%`, 
+                        backgroundColor: sub.accentColor 
+                      }} 
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Confirmation Modal */}
-        <ConfirmModal
-          isOpen={isResetConfirmOpen}
-          title="Reset Timer Study Data?"
-          message="Are you sure you want to reset all Pomodoro focus session history for this exam? This will clear Today's and Week Total study minutes back to 0 and cannot be undone."
-          confirmText="Yes, Reset Timer Data"
-          cancelText="Keep Data"
-          isDanger={true}
-          onConfirm={() => {
-            if (onResetTimerData) onResetTimerData();
-            setIsResetConfirmOpen(false);
-          }}
-          onCancel={() => setIsResetConfirmOpen(false)}
-        />
+        {/* Recent Sessions List & Reset Timer Data Option */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-paper-muted dark:text-night-muted flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span>Recent Focus Sessions</span>
+            </h4>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {pomodoroLogs.slice(0, 6).map(log => (
-            <div 
-              key={log.id} 
-              className="p-3.5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-between text-xs"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: log.accentColor || '#10B981' }} />
-                <div>
-                  <div className="font-bold text-paper-ink dark:text-night-text">{log.subjectName || log.subjectId}</div>
-                  <div className="text-[10px] text-paper-muted dark:text-night-muted">{log.date}</div>
+            {onResetTimerData && (
+              <button
+                onClick={() => setIsResetConfirmOpen(true)}
+                className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1.5 btn-tactile py-1 px-2 rounded-lg hover:bg-rose-500/10 transition-colors"
+                title="Reset all timer study sessions back to 0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Reset timer data</span>
+              </button>
+            )}
+          </div>
+
+          {/* Confirmation Modal */}
+          <ConfirmModal
+            isOpen={isResetConfirmOpen}
+            title="Reset Timer Study Data?"
+            message="Are you sure you want to reset all Pomodoro focus session history for this exam? This will clear Today's and Week Total study minutes back to 0 and cannot be undone."
+            confirmText="Yes, Reset Timer Data"
+            cancelText="Keep Data"
+            isDanger={true}
+            onConfirm={() => {
+              if (onResetTimerData) onResetTimerData();
+              setIsResetConfirmOpen(false);
+            }}
+            onCancel={() => setIsResetConfirmOpen(false)}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {pomodoroLogs.slice(0, 6).map(log => (
+              <div 
+                key={log.id} 
+                className="p-3.5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: log.accentColor || '#10B981' }} />
+                  <div>
+                    <div className="font-bold text-paper-ink dark:text-night-text">{log.subjectName || log.subjectId}</div>
+                    <div className="text-[10px] text-paper-muted dark:text-night-muted">{log.date}</div>
+                  </div>
+                </div>
+
+                <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                  +{log.minutes} mins
                 </div>
               </div>
+            ))}
 
-              <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                +{log.minutes} mins
+            {pomodoroLogs.length === 0 && (
+              <div className="p-6 text-center rounded-2xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-paper-muted text-xs sm:col-span-2">
+                No sessions logged yet. Complete your first focus session above!
               </div>
-            </div>
-          ))}
-
-          {pomodoroLogs.length === 0 && (
-            <div className="p-6 text-center rounded-2xl bg-paper-card dark:bg-night-card border border-dashed border-paper-border dark:border-night-border text-paper-muted text-xs sm:col-span-2">
-              No sessions logged yet. Complete your first focus session above!
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+
+        </div> {/* Close right column */}
+      </div> {/* Close 2-column grid */}
 
     </div>
   );
