@@ -15,6 +15,7 @@ import {
   Sparkles, 
   Sun, 
   Moon, 
+  Rocket,
   Database, 
   ChevronDown, 
   BookOpen, 
@@ -171,14 +172,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center gap-2 cursor-pointer select-none group"
               title="Go to Today Screen"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-sm group-hover:scale-105 transition-transform">
-                <div className="w-full h-full bg-paper-card dark:bg-night-bg rounded-[10px] flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-emerald-500 to-amber-400 p-0.5 shadow-sm group-hover:scale-105 transition-transform">
+                <div className="w-full h-full bg-paper-card dark:bg-night-card rounded-[10px] flex items-center justify-center">
+                  <Rocket className="w-4 h-4 text-cyan-600 dark:text-cyan-400 -rotate-45" />
                 </div>
               </div>
               <div className="hidden lg:block">
                 <div className="text-base font-extrabold text-paper-ink dark:text-night-text tracking-tight flex items-center gap-1">
-                  Pyq<span className="text-emerald-600 dark:text-emerald-400">Ranker</span>
+                  Pyq<span className="text-cyan-600 dark:text-cyan-400">Ranker</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-mono font-bold ml-1">Orbit</span>
                 </div>
               </div>
             </div>
@@ -388,22 +390,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">💾 Backup</span>
             </button>
 
-            {/* Prominent Theme Toggle Pill Button: "☀️ Studio Day" / "🌙 Titanium Night" */}
+            {/* Prominent Theme Toggle Pill Button: "🚀 Cosmos Dark" / "☀️ Solar Day" */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all btn-hardware flex items-center gap-1.5 active:scale-95 whitespace-nowrap bg-paper-cardElevated dark:bg-night-cardElevated border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-emerald-500/50"
-              title={`Switch to ${theme === 'dark' ? 'Sunlit Architectural Stone Day Theme' : 'Smoked Titanium Night Theme'}`}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all btn-hardware flex items-center gap-1.5 active:scale-95 whitespace-nowrap bg-paper-cardElevated/90 dark:bg-night-cardElevated/90 border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-cyan-500/50 shadow-sm"
+              title={`Switch to ${theme === 'dark' ? 'Solar Orbit Day Theme' : 'Deep Cosmos Night Theme'}`}
             >
               {theme === 'dark' ? (
                 <>
                   <Sun className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="tracking-wide">☀️ Studio Day</span>
+                  <span className="tracking-wide">☀️ Solar Day</span>
                 </>
               ) : (
                 <>
-                  <Moon className="w-4 h-4 text-paper-secondary shrink-0" />
-                  <span className="tracking-wide">🌙 Titanium Night</span>
+                  <Rocket className="w-4 h-4 text-cyan-600 shrink-0" />
+                  <span className="tracking-wide">🚀 Cosmos Dark</span>
                 </>
               )}
             </button>

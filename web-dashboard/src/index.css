@@ -3,35 +3,35 @@
 @tailwind utilities;
 
 /* =========================================================================
-   CSS VARIABLES & DESIGN SYSTEM: HARDWARE & ARCHITECTURAL STUDIO TOKENS
+   CSS VARIABLES & DESIGN SYSTEM: ORBITAL EXAM MISSION CONTROL (SPACE THEME)
    ========================================================================= */
 
-/* DAY THEME: "Sunlit Architectural Stone & Tactile Ceramic Studio" */
+/* DAY THEME: "Solar Orbit Day" (Stratosphere Sunlight & Frosted Ceramic Spacecraft) */
 :root, .light, [data-theme="light"] {
-  --bg-canvas: #E6E1D6;
-  --bg-card: linear-gradient(180deg, #FFFEFC 0%, #F7F3EA 100%);
-  --bg-card-elevated: #F7F3EA;
+  --bg-canvas: #F4F8FF;
+  --bg-card: rgba(255, 255, 255, 0.90);
+  --bg-card-elevated: rgba(240, 246, 255, 0.95);
   --bg-card-hover: #FFFFFF;
-  --bg-well: #EAE4D7;
-  --surface-card: #FFFEFC;
-  --surface-hover: #F7F3EA;
-  --surface-input: #EAE4D7;
+  --bg-well: #EDF3FA;
+  --surface-card: rgba(255, 255, 255, 0.90);
+  --surface-hover: rgba(240, 246, 255, 0.95);
+  --surface-input: #EDF3FA;
 
-  --border-color: #CFC8B8;
+  --border-color: #CBD5E1;
   --border-highlight: #FFFFFF;
-  --border-hover: #B8B09F;
-  --border-well: #D5CEBF;
+  --border-hover: #94A3B8;
+  --border-well: #CBD5E1;
 
-  /* Typography: Deep Espresso Obsidian (#141413) & Warm Charcoal Slate (#4A4740) */
-  --text-primary: #141413;
-  --text-body: #141413;
-  --text-secondary: #4A4740;
-  --text-muted: #6E6A61;
+  /* Typography: Deep Navy Ink (#0F172A) & Slate (#334155) for 100% sharp contrast */
+  --text-primary: #0F172A;
+  --text-body: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
 
-  /* Accents & Buttons: Chronometer Jade (#059669) & Warm Champagne (#C9972E) */
+  /* Accents & Buttons: Orbital Cyan (#0284C7), Terra Jade (#059669), Solar Gold (#D97706) */
   --accent-main: #059669;
   --accent-hover: #047857;
-  --accent-champagne: #C9972E;
+  --accent-champagne: #D97706;
   --accent-jade: #059669;
   --accent-crimson: #DC2626;
 
@@ -41,69 +41,69 @@
 
   /* Links & Secondary Highlights */
   --accent-link: #0284C7;
-  --focus-outline: #059669;
+  --focus-outline: #0284C7;
 
-  /* 3D Tactile Shadows */
-  --shadow-card: inset 0 2px 0 0 #FFFFFF, 0 10px 24px -6px rgba(28, 25, 23, 0.12), 0 2px 6px -1px rgba(28, 25, 23, 0.07);
-  --shadow-card-hover: inset 0 2px 0 0 #FFFFFF, 0 16px 32px -8px rgba(28, 25, 23, 0.18), 0 4px 10px -2px rgba(28, 25, 23, 0.10);
-  --shadow-well: inset 0 2px 5px rgba(28, 25, 23, 0.09), 0 1px 0 #FFFFFF;
-  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 rgba(0, 0, 0, 0.22), 0 5px 10px rgba(0, 0, 0, 0.12);
-  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 0 rgba(0, 0, 0, 0.25);
+  /* Frosted Glass & Orbital Elevation */
+  --shadow-card: inset 0 1px 0 #FFFFFF, 0 10px 26px -6px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover: inset 0 1px 0 #FFFFFF, 0 16px 34px -8px rgba(15, 23, 42, 0.14), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  --shadow-well: inset 0 2px 5px rgba(15, 23, 42, 0.06), 0 1px 0 #FFFFFF;
+  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(0, 0, 0, 0.20), 0 5px 12px rgba(0, 0, 0, 0.10);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 1px 0 rgba(0, 0, 0, 0.25);
 
   /* Status Colors */
-  --status-done: #059669;         /* Strong / Done */
-  --status-okay: #D97706;         /* Okay */
-  --status-weak: #DC2626;         /* Weak */
+  --status-done: #059669;
+  --status-okay: #D97706;
+  --status-weak: #DC2626;
 }
 
-/* NIGHT THEME: "Smoked Titanium & Champagne Chronometer" */
+/* NIGHT THEME: "Deep Cosmos Night" (Nebula Glow & Dark Spacecraft Hull) */
 .dark, [data-theme="dark"] {
-  --bg-canvas: #080A0E;
-  --bg-card: linear-gradient(165deg, rgba(28, 34, 43, 0.94) 0%, rgba(15, 19, 25, 0.98) 100%);
-  --bg-card-elevated: #1C222B;
-  --bg-card-hover: #242C38;
-  --bg-well: #06080B;
-  --surface-card: #151A22;
-  --surface-hover: #1C222B;
-  --surface-input: #06080B;
+  --bg-canvas: #070B19;
+  --bg-card: rgba(13, 20, 38, 0.82);
+  --bg-card-elevated: rgba(18, 28, 54, 0.88);
+  --bg-card-hover: rgba(22, 34, 66, 0.92);
+  --bg-well: rgba(6, 10, 20, 0.88);
+  --surface-card: rgba(13, 20, 38, 0.82);
+  --surface-hover: rgba(18, 28, 54, 0.88);
+  --surface-input: rgba(6, 10, 20, 0.88);
 
-  --border-color: rgba(255, 255, 255, 0.09);
-  --border-highlight: rgba(255, 255, 255, 0.16);
-  --border-hover: rgba(255, 255, 255, 0.18);
-  --border-well: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(56, 189, 248, 0.22);
+  --border-highlight: rgba(56, 189, 248, 0.45);
+  --border-hover: rgba(56, 189, 248, 0.50);
+  --border-well: rgba(56, 189, 248, 0.15);
 
-  /* Typography: Crisp Titanium White (#F5F7FA) & Brushed Silver (#9BA3B0) */
-  --text-primary: #F5F7FA;
+  /* Typography: Star White (#F8FAFC) & Cosmic Silver (#CBD5E1) */
+  --text-primary: #F8FAFC;
   --text-body: #CBD5E1;
-  --text-secondary: #9BA3B0;
-  --text-muted: #9BA3B0;
+  --text-secondary: #94A3B8;
+  --text-muted: #94A3B8;
 
-  /* Accents & Buttons: Chronometer Jade (#10B981) & Champagne Gold (#E5C158) */
+  /* Accents & Buttons: Nebula Cyan (#38BDF8), Terra Jade (#10B981), Solar Gold (#F59E0B) */
   --accent-main: #10B981;
   --accent-hover: #34D399;
-  --accent-champagne: #E5C158;
+  --accent-champagne: #F59E0B;
   --accent-jade: #10B981;
   --accent-crimson: #F87171;
 
   --btn-bg: #10B981;
-  --btn-text: #080A0E;
+  --btn-text: #070B19;
   --btn-hover: #34D399;
 
   /* Links & Secondary Highlights */
   --accent-link: #38BDF8;
-  --focus-outline: #10B981;
+  --focus-outline: #38BDF8;
 
-  /* 3D Specular Shadows */
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.16), inset 0 0 20px rgba(255, 255, 255, 0.02), 0 14px 32px -8px rgba(0, 0, 0, 0.75);
-  --shadow-card-hover: inset 0 1px 0 0 rgba(255, 255, 255, 0.28), inset 0 0 24px rgba(229, 193, 88, 0.04), 0 20px 40px -10px rgba(0, 0, 0, 0.85);
-  --shadow-well: inset 0 3px 7px rgba(0, 0, 0, 0.85), 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* Orbital Glow Shadows */
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 14px 34px -8px rgba(0, 0, 0, 0.75), 0 0 16px rgba(56, 189, 248, 0.08);
+  --shadow-card-hover: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 20px 42px -10px rgba(0, 0, 0, 0.85), 0 0 24px rgba(56, 189, 248, 0.16);
+  --shadow-well: inset 0 3px 8px rgba(0, 0, 0, 0.90), 0 1px 0 rgba(56, 189, 248, 0.10);
   --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 3px 0 rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.35);
-  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 0 rgba(0, 0, 0, 0.5);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 1px 0 rgba(0, 0, 0, 0.50);
 
   /* Status Colors */
-  --status-done: #10B981;         /* Strong (Jade) */
-  --status-okay: #E5C158;         /* Okay (Champagne) */
-  --status-weak: #F87171;         /* Weak (Coral/Crimson) */
+  --status-done: #10B981;
+  --status-okay: #F59E0B;
+  --status-weak: #F87171;
 }
 
 @layer base {
@@ -126,32 +126,10 @@
     padding: 0 !important;
     min-height: 100vh;
     color: var(--text-body);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.4s ease, color 0.4s ease;
   }
 
-  /* DAY THEME BODY: Warm Architectural Sandstone + Sunlit Horizon Spotlight + Micro-dot grid */
-  .light body, [data-theme="light"] body {
-    background-color: #E6E1D6;
-    background-image: 
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 248, 231, 0.95), rgba(230, 225, 214, 0.45) 65%),
-      radial-gradient(rgba(20, 20, 19, 0.07) 1px, transparent 1px);
-    background-size: 100% 100%, 24px 24px;
-    background-attachment: fixed;
-    color: #141413;
-  }
-
-  /* NIGHT THEME BODY: Deep Carbon Onyx + Atmospheric Horizon Spotlight + Micro-dot grid */
-  .dark body, [data-theme="dark"] body {
-    background-color: #080A0E;
-    background-image: 
-      radial-gradient(ellipse 80% 45% at 50% -10%, rgba(229, 193, 88, 0.12), rgba(16, 185, 129, 0.08), transparent 70%),
-      radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-    background-size: 100% 100%, 24px 24px;
-    background-attachment: fixed;
-    color: #CBD5E1;
-  }
-
-  /* Universal Form Input & Textarea Theming: Recessed Physical Wells */
+  /* Form Input & Textarea Theming: Recessed Spacecraft Bay */
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   select,
   textarea {
@@ -197,16 +175,18 @@
 }
 
 /* =========================================================================
-   3D HARDWARE & ARCHITECTURAL STUDIO UTILITIES
+   SPACE, PLANETS & ROCKETS UTILITIES
    ========================================================================= */
 
-/* 3D Brushed Titanium / Ceramic-Ivory Hardware Cards */
+/* Translucent Frosted Spacecraft Glass Cards */
 .hardware-card,
 .bg-paper-card {
   background: var(--bg-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 .hardware-card:hover {
   transform: translateY(-3px);
@@ -216,24 +196,27 @@
 .dark .dark\:bg-night-card,
 [data-theme="dark"] .dark\:bg-night-card {
   background: var(--bg-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
-/* Sunken Instrument Wells for Gauges, Meters, Counts, Inputs */
+/* Sunken Instrument Wells for Controls, Gauges, Counters */
 .instrument-well {
   background-color: var(--bg-well) !important;
   border: 1px solid var(--border-well) !important;
   box-shadow: var(--shadow-well) !important;
+  backdrop-filter: blur(8px);
 }
 
-/* Tactile Physical Push Buttons */
+/* Tactile Physical Push Buttons with Thruster Lift */
 .btn-hardware {
   box-shadow: var(--shadow-btn);
   transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, filter 0.12s ease;
   user-select: none;
 }
 .btn-hardware:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.04);
+  transform: translateY(-2px);
+  filter: brightness(1.06);
 }
 .btn-hardware:active {
   transform: translateY(2px) !important;
@@ -241,7 +224,8 @@
 }
 
 /* Precision Chronometer Displays */
-.chronometer-display {
+.chronometer-display,
+.countdown-digit {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
@@ -304,11 +288,154 @@ button.btn-primary-action:hover {
   animation: urgentExamPulse 2s infinite;
 }
 
-/* Monospace Numbers for Ticking Countdown */
-.countdown-digit {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+/* =========================================================================
+   SPACE SCENE KEYFRAMES (TWINKLE, ORBITS, ROCKET THRUSTER, SHOOTING STARS)
+   ========================================================================= */
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+.animate-twinkle {
+  animation: twinkle infinite ease-in-out;
+}
+
+@keyframes floatOrbit {
+  0%, 100% {
+    transform: translateY(0px) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-16px) rotate(2deg);
+  }
+}
+.animate-float-orbit {
+  animation: floatOrbit 18s ease-in-out infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(1deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(-2deg);
+  }
+}
+.animate-float-slow {
+  animation: floatSlow 15s ease-in-out infinite;
+}
+
+@keyframes floatReverse {
+  0%, 100% {
+    transform: translateY(-50%) translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-50%) translateY(14px) scale(1.02);
+  }
+}
+.animate-float-reverse {
+  animation: floatReverse 16s ease-in-out infinite;
+}
+
+@keyframes moonOrbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-moon-orbit {
+  animation: moonOrbit 12s linear infinite;
+}
+
+/* Shooting Stars */
+.shooting-star {
+  position: absolute;
+  top: 15%;
+  right: 15%;
+  width: 140px;
+  height: 2px;
+  background: linear-gradient(90deg, #FFFFFF, rgba(56, 189, 248, 0.8), transparent);
+  transform: rotate(-35deg);
+  opacity: 0;
+  pointer-events: none;
+}
+.shooting-star-1 {
+  animation: shootingStar 9s ease-in-out 2s infinite;
+}
+.shooting-star-2 {
+  top: 35%;
+  right: 40%;
+  width: 100px;
+  animation: shootingStar 13s ease-in-out 7s infinite;
+}
+
+@keyframes shootingStar {
+  0% {
+    transform: translateX(0) translateY(0) rotate(-35deg) scaleX(0);
+    opacity: 0;
+  }
+  10% {
+    transform: translateX(-40px) translateY(40px) rotate(-35deg) scaleX(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translateX(-200px) translateY(200px) rotate(-35deg) scaleX(1.4);
+    opacity: 0.8;
+  }
+  60%, 100% {
+    transform: translateX(-320px) translateY(320px) rotate(-35deg) scaleX(0);
+    opacity: 0;
+  }
+}
+
+/* Rocket Thruster Flame Flicker */
+@keyframes flameFlicker {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 0.95;
+  }
+  25% {
+    transform: scaleY(1.22) scaleX(0.92);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(0.92) scaleX(1.08);
+    opacity: 0.88;
+  }
+  75% {
+    transform: scaleY(1.3) scaleX(0.95);
+    opacity: 1;
+  }
+}
+.animate-flame {
+  animation: flameFlicker 0.16s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* Rocket Boost Pulse on Action Click */
+@keyframes rocketBoost {
+  0% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-8px) scale(1.04);
+  }
+  60% {
+    transform: translateY(-3px) scale(1.01);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-rocket-boost {
+  animation: rocketBoost 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Print Optimization */

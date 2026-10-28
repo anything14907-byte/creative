@@ -1,3 +1,23 @@
+// Kill Any Stuck Service Worker & Clear Stale Caches Immediately
+if (typeof window !== 'undefined') {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister().then((success) => {
+          if (success) console.log('Successfully unregistered stale service worker:', registration.scope);
+        });
+      }
+    }).catch((err) => console.warn('Error clearing service workers:', err));
+  }
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      for (const key of keys) {
+        caches.delete(key).then(() => console.log('Cleared cache storage:', key));
+      }
+    }).catch(() => {});
+  }
+}
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -8,27 +28,3 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <App />
   </React.StrictMode>
 );
-
-// Register Service Worker for PWA offline functionality
-if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then(
-      (registration) => {
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                window.dispatchEvent(new CustomEvent('pyq-app-update-available'));
-              }
-            });
-          }
-        });
-        console.log('PyqRanker PWA ServiceWorker registered with scope:', registration.scope);
-      },
-      (err) => {
-        console.log('PyqRanker PWA ServiceWorker registration failed:', err);
-      }
-    );
-  });
-}

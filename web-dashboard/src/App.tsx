@@ -28,6 +28,7 @@ import { BackupModal } from './components/BackupModal';
 import { MobileBottomNav, ExtendedNavView } from './components/MobileBottomNav';
 import { Toast, ToastMessage } from './components/Toast';
 import { SearchIndexItem } from './utils/searchService';
+import { SpaceScene } from './components/SpaceScene';
 
 function DashboardContent() {
   // 1. Multiple Exams State (Requirement 3)
@@ -499,10 +500,13 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
+    <div className="relative min-h-screen w-full bg-paper-bg dark:bg-night-bg text-paper-ink dark:text-night-text transition-colors duration-200">
+      {/* Fixed Full-Viewport Space, Planets & Rockets Backdrop */}
+      <SpaceScene />
       
-      {/* Top Header Bar with MULTIPLE EXAMS SWITCHER & GLOBAL SEARCH */}
-      <Navbar
+      <div className="relative z-10 w-full min-h-screen">
+        {/* Top Header Bar with MULTIPLE EXAMS SWITCHER & GLOBAL SEARCH */}
+        <Navbar
         currentView={currentView}
         onSelectView={setCurrentView}
         subjects={subjects}
@@ -721,6 +725,7 @@ function DashboardContent() {
       {/* Toast Feedback */}
       <Toast toasts={toasts} onDismiss={dismissToast} />
 
+      </div>
     </div>
   );
 }
