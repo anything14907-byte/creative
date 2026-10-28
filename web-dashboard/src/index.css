@@ -3,32 +3,52 @@
 @tailwind utilities;
 
 /* =========================================================================
-   CSS VARIABLES: THEME SPECIFICATION
+   CSS VARIABLES & DESIGN SYSTEM: HARDWARE & ARCHITECTURAL STUDIO TOKENS
    ========================================================================= */
+
+/* DAY THEME: "Sunlit Architectural Stone & Tactile Ceramic Studio" */
 :root, .light, [data-theme="light"] {
-  /* LIGHT MODE (Warm Alabaster #F3F0E8 & Crisp White Cards #FFFFFF) */
-  --bg-base: #F3F0E8;             /* Warm Alabaster/Paper page background */
-  --surface-card: #FFFFFF;        /* Crisp white cards, panels, modals */
-  --surface-hover: #F8F7F2;       /* Subtle elevated surface */
-  --surface-input: #FFFFFF;       /* Clean white inputs */
-  --border-color: #CBD5E1;        /* Clear slate border (1px solid #CBD5E1) */
-  --border-hover: #94A3B8;
+  --bg-canvas: #E6E1D6;
+  --bg-card: linear-gradient(180deg, #FFFEFC 0%, #F7F3EA 100%);
+  --bg-card-elevated: #F7F3EA;
+  --bg-card-hover: #FFFFFF;
+  --bg-well: #EAE4D7;
+  --surface-card: #FFFEFC;
+  --surface-hover: #F7F3EA;
+  --surface-input: #EAE4D7;
 
-  /* Text: Deep Charcoal Ink text (#0F172A) for maximum sharpness */
-  --text-primary: #0F172A;        /* Deep Charcoal Ink (titles, countdowns, topic numbers) */
-  --text-body: #1E293B;           /* Dark Slate body text (>= 7:1 contrast) */
-  --text-secondary: #475569;      /* Captions, dates, hints */
+  --border-color: #CFC8B8;
+  --border-highlight: #FFFFFF;
+  --border-hover: #B8B09F;
+  --border-well: #D5CEBF;
 
-  /* Accents & Buttons */
-  --accent-main: #059669;         /* High-contrast emerald */
+  /* Typography: Deep Espresso Obsidian (#141413) & Warm Charcoal Slate (#4A4740) */
+  --text-primary: #141413;
+  --text-body: #141413;
+  --text-secondary: #4A4740;
+  --text-muted: #6E6A61;
+
+  /* Accents & Buttons: Chronometer Jade (#059669) & Warm Champagne (#C9972E) */
+  --accent-main: #059669;
   --accent-hover: #047857;
+  --accent-champagne: #C9972E;
+  --accent-jade: #059669;
+  --accent-crimson: #DC2626;
+
   --btn-bg: #059669;
   --btn-text: #FFFFFF;
   --btn-hover: #047857;
 
   /* Links & Secondary Highlights */
   --accent-link: #0284C7;
-  --focus-outline: #0284C7;
+  --focus-outline: #059669;
+
+  /* 3D Tactile Shadows */
+  --shadow-card: inset 0 2px 0 0 #FFFFFF, 0 10px 24px -6px rgba(28, 25, 23, 0.12), 0 2px 6px -1px rgba(28, 25, 23, 0.07);
+  --shadow-card-hover: inset 0 2px 0 0 #FFFFFF, 0 16px 32px -8px rgba(28, 25, 23, 0.18), 0 4px 10px -2px rgba(28, 25, 23, 0.10);
+  --shadow-well: inset 0 2px 5px rgba(28, 25, 23, 0.09), 0 1px 0 #FFFFFF;
+  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 0 rgba(0, 0, 0, 0.22), 0 5px 10px rgba(0, 0, 0, 0.12);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 0 rgba(0, 0, 0, 0.25);
 
   /* Status Colors */
   --status-done: #059669;         /* Strong / Done */
@@ -36,35 +56,54 @@
   --status-weak: #DC2626;         /* Weak */
 }
 
+/* NIGHT THEME: "Smoked Titanium & Champagne Chronometer" */
 .dark, [data-theme="dark"] {
-  /* DARK MODE (Deep Midnight Slate #0B131E & Elevated Cards #131F2E) */
-  --bg-base: #0B131E;             /* Deep Midnight Slate (zero purple) */
-  --surface-card: #131F2E;        /* Dark elevated cards, panels, modals */
-  --surface-hover: #1C2D42;       /* Hover or selected card */
-  --surface-input: #0E1825;       /* Inputs background */
-  --border-color: #23354D;        /* Subtle slate border (1px solid #23354D) */
-  --border-hover: #374E6F;
+  --bg-canvas: #080A0E;
+  --bg-card: linear-gradient(165deg, rgba(28, 34, 43, 0.94) 0%, rgba(15, 19, 25, 0.98) 100%);
+  --bg-card-elevated: #1C222B;
+  --bg-card-hover: #242C38;
+  --bg-well: #06080B;
+  --surface-card: #151A22;
+  --surface-hover: #1C222B;
+  --surface-input: #06080B;
 
-  /* Typography: Crisp white/silver typography (#F8FAFC / #CBD5E1) */
-  --text-primary: #F8FAFC;        /* Crisp white primary text */
-  --text-body: #CBD5E1;           /* Silver body text */
-  --text-secondary: #94A3B8;      /* Muted silver */
+  --border-color: rgba(255, 255, 255, 0.09);
+  --border-highlight: rgba(255, 255, 255, 0.16);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --border-well: rgba(255, 255, 255, 0.05);
 
-  /* Accents & Buttons */
-  --accent-main: #10B981;         /* Emerald accent */
+  /* Typography: Crisp Titanium White (#F5F7FA) & Brushed Silver (#9BA3B0) */
+  --text-primary: #F5F7FA;
+  --text-body: #CBD5E1;
+  --text-secondary: #9BA3B0;
+  --text-muted: #9BA3B0;
+
+  /* Accents & Buttons: Chronometer Jade (#10B981) & Champagne Gold (#E5C158) */
+  --accent-main: #10B981;
   --accent-hover: #34D399;
+  --accent-champagne: #E5C158;
+  --accent-jade: #10B981;
+  --accent-crimson: #F87171;
+
   --btn-bg: #10B981;
-  --btn-text: #0B131E;
+  --btn-text: #080A0E;
   --btn-hover: #34D399;
 
   /* Links & Secondary Highlights */
   --accent-link: #38BDF8;
-  --focus-outline: #38BDF8;
+  --focus-outline: #10B981;
+
+  /* 3D Specular Shadows */
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.16), inset 0 0 20px rgba(255, 255, 255, 0.02), 0 14px 32px -8px rgba(0, 0, 0, 0.75);
+  --shadow-card-hover: inset 0 1px 0 0 rgba(255, 255, 255, 0.28), inset 0 0 24px rgba(229, 193, 88, 0.04), 0 20px 40px -10px rgba(0, 0, 0, 0.85);
+  --shadow-well: inset 0 3px 7px rgba(0, 0, 0, 0.85), 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-btn: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 3px 0 rgba(0, 0, 0, 0.45), 0 6px 14px rgba(0, 0, 0, 0.35);
+  --shadow-btn-active: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 0 rgba(0, 0, 0, 0.5);
 
   /* Status Colors */
-  --status-done: #34D399;         /* Strong (Green) */
-  --status-okay: #FBBF24;         /* Okay (Amber) */
-  --status-weak: #F87171;         /* Weak (Coral) */
+  --status-done: #10B981;         /* Strong (Jade) */
+  --status-okay: #E5C158;         /* Okay (Champagne) */
+  --status-weak: #F87171;         /* Weak (Coral/Crimson) */
 }
 
 @layer base {
@@ -86,23 +125,45 @@
     margin: 0 !important;
     padding: 0 !important;
     min-height: 100vh;
-    background-color: var(--bg-base);
     color: var(--text-body);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Universal Form Input & Textarea Theming */
+  /* DAY THEME BODY: Warm Architectural Sandstone + Sunlit Horizon Spotlight + Micro-dot grid */
+  .light body, [data-theme="light"] body {
+    background-color: #E6E1D6;
+    background-image: 
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 248, 231, 0.95), rgba(230, 225, 214, 0.45) 65%),
+      radial-gradient(rgba(20, 20, 19, 0.07) 1px, transparent 1px);
+    background-size: 100% 100%, 24px 24px;
+    background-attachment: fixed;
+    color: #141413;
+  }
+
+  /* NIGHT THEME BODY: Deep Carbon Onyx + Atmospheric Horizon Spotlight + Micro-dot grid */
+  .dark body, [data-theme="dark"] body {
+    background-color: #080A0E;
+    background-image: 
+      radial-gradient(ellipse 80% 45% at 50% -10%, rgba(229, 193, 88, 0.12), rgba(16, 185, 129, 0.08), transparent 70%),
+      radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 24px 24px;
+    background-attachment: fixed;
+    color: #CBD5E1;
+  }
+
+  /* Universal Form Input & Textarea Theming: Recessed Physical Wells */
   input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   select,
   textarea {
     background-color: var(--surface-input) !important;
-    border-color: var(--border-color) !important;
+    border-color: var(--border-well) !important;
+    box-shadow: var(--shadow-well) !important;
     color: var(--text-body) !important;
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: var(--text-secondary) !important;
+    color: var(--text-muted) !important;
   }
 
   input:focus,
@@ -135,20 +196,58 @@
   }
 }
 
-/* Base Body Application Styles */
-.light body, [data-theme="light"] body {
-  background-color: #F3F0E8;
-  color: #1E293B;
-}
-
-.dark body, [data-theme="dark"] body {
-  background-color: #0B131E;
-  color: #CBD5E1;
-}
-
 /* =========================================================================
-   PRIMARY BUTTONS & ACCENTS
+   3D HARDWARE & ARCHITECTURAL STUDIO UTILITIES
    ========================================================================= */
+
+/* 3D Brushed Titanium / Ceramic-Ivory Hardware Cards */
+.hardware-card,
+.bg-paper-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+.hardware-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.dark .dark\:bg-night-card,
+[data-theme="dark"] .dark\:bg-night-card {
+  background: var(--bg-card);
+}
+
+/* Sunken Instrument Wells for Gauges, Meters, Counts, Inputs */
+.instrument-well {
+  background-color: var(--bg-well) !important;
+  border: 1px solid var(--border-well) !important;
+  box-shadow: var(--shadow-well) !important;
+}
+
+/* Tactile Physical Push Buttons */
+.btn-hardware {
+  box-shadow: var(--shadow-btn);
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, filter 0.12s ease;
+  user-select: none;
+}
+.btn-hardware:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+.btn-hardware:active {
+  transform: translateY(2px) !important;
+  box-shadow: var(--shadow-btn-active) !important;
+}
+
+/* Precision Chronometer Displays */
+.chronometer-display {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* Primary Action Buttons */
 .btn-primary,
 button.btn-primary-action {
   background-color: var(--btn-bg) !important;
@@ -165,9 +264,7 @@ button.btn-primary-action:hover {
   background-color: var(--accent-main) !important;
 }
 
-/* =========================================================================
-   TACTILE MICRO-ANIMATIONS
-   ========================================================================= */
+/* Tactile Micro-Animations */
 .btn-tactile {
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   user-select: none;
@@ -197,10 +294,10 @@ button.btn-primary-action:hover {
 /* Urgent Exam Countdown Pulse (< 5 Days) */
 @keyframes urgentExamPulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(178, 90, 78, 0.35);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(178, 90, 78, 0);
+    box-shadow: 0 0 0 7px rgba(248, 113, 113, 0);
   }
 }
 .pulse-urgent-exam {
@@ -209,9 +306,9 @@ button.btn-primary-action:hover {
 
 /* Monospace Numbers for Ticking Countdown */
 .countdown-digit {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.04em;
 }
 
 /* Print Optimization */
@@ -258,5 +355,3 @@ header, nav, .navbar, .header-container, .topbar {
   padding-right: 20px !important;
   box-sizing: border-box !important;
 }
-
-

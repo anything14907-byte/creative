@@ -43,7 +43,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       metaThemeColor.setAttribute('name', 'theme-color');
       document.head.appendChild(metaThemeColor);
     }
-    metaThemeColor.setAttribute('content', theme === 'dark' ? '#0B131E' : '#F3F0E8');
+    metaThemeColor.setAttribute('content', theme === 'dark' ? '#080A0E' : '#E6E1D6');
   }, [theme]);
 
   const toggleTheme = () => {

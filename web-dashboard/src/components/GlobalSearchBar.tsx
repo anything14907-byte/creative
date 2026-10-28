@@ -197,13 +197,13 @@ export const GlobalSearchBar: React.FC<GlobalSearchBarProps> = ({
       case 'Topics':
         return <BookOpen className="w-3.5 h-3.5 text-emerald-500" />;
       case 'Notes & Files':
-        return <FileText className="w-3.5 h-3.5 text-indigo-500" />;
+        return <FileText className="w-3.5 h-3.5 text-cyan-500" />;
       case 'Videos':
         return <Video className="w-3.5 h-3.5 text-red-500" />;
       case 'PYQs':
         return <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />;
       case 'Flashcards':
-        return <Brain className="w-3.5 h-3.5 text-purple-500" />;
+        return <Brain className="w-3.5 h-3.5 text-emerald-500" />;
       case 'Tasks':
         return <CheckSquare className="w-3.5 h-3.5 text-teal-500" />;
       default:
@@ -230,7 +230,7 @@ export const GlobalSearchBar: React.FC<GlobalSearchBarProps> = ({
           onFocus={() => setIsSearchOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={isMobile ? `Search ${searchAllExams ? 'all exams' : activeExam.name}...` : `Search ${searchAllExams ? 'all exams' : activeExam.name}... (Press /)`}
-          className="w-full pl-8 pr-14 py-1.5 text-xs rounded-xl bg-paper-cardElevated dark:bg-night-cardElevated border border-paper-border dark:border-night-border text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:border-emerald-500 transition-colors shadow-xs"
+          className="w-full pl-8 pr-14 py-1.5 text-xs rounded-xl instrument-well text-paper-ink dark:text-night-text placeholder-paper-muted dark:placeholder-night-muted focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
         />
 
         <div className="absolute right-2 flex items-center gap-1">
@@ -284,7 +284,7 @@ export const GlobalSearchBar: React.FC<GlobalSearchBarProps> = ({
                 onChange={(e) => setSearchAllExams(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-7 h-4 bg-paper-border dark:bg-night-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600 relative"></div>
+              <div className="w-7 h-4 bg-paper-border dark:bg-night-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-transparent after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600 relative"></div>
             </label>
           </div>
 

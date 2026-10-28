@@ -549,7 +549,7 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
         
         {/* Sidebar Box 1: Subject Title, Countdown, Date & Palette */}
         <div 
-          className="p-5 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-4"
+          className="p-5 rounded-3xl hardware-card space-y-4"
           style={{ borderTop: `6px solid ${subject.accentColor}` }}
         >
           {/* Top row: Back button & Delete */}
@@ -941,8 +941,11 @@ export const SubjectWorkspace: React.FC<SubjectWorkspaceProps> = ({
             return (
               <div 
                 key={unit.id}
-                className="p-6 rounded-3xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card space-y-6 transition-all"
-                style={{ borderLeft: `6px solid ${subject.accentColor}` }}
+                className="p-6 rounded-3xl hardware-card space-y-6 transition-all"
+                style={{ 
+                  borderTop: `4px solid ${subject.accentColor}`,
+                  borderLeft: `6px solid ${subject.accentColor}` 
+                }}
               >
                 {/* Unit Header Banner */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-paper-border dark:border-night-border">

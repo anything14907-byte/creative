@@ -156,7 +156,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
 
   return (
-    <header className="sticky top-0 z-40 w-full max-w-[100vw] backdrop-blur-md bg-paper-card/95 dark:bg-night-card/95 border-b border-paper-border dark:border-night-border shadow-sm print:hidden transition-colors">
+    <header className="sticky top-0 z-40 w-full max-w-[100vw] backdrop-blur-xl bg-paper-cardElevated/85 dark:bg-night-card/85 border-b border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card print:hidden transition-colors">
       <div className="w-full px-4 sm:px-5 py-2.5">
         
         {/* Main Header Bar (3-Zone Balanced Flex Layout) */}
@@ -352,25 +352,27 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           </div>
 
-          {/* ZONE 2: CENTER (flex: 1, justify-center, gap: 6px, min-width: 0) */}
-          <nav className="hidden lg:flex flex-1 justify-center items-center gap-1.5 py-0.5 min-w-0 flex-nowrap">
-            {navItems.map(item => {
-              const isActive = currentView === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectView(item.id)}
-                  className={`px-3 py-1.5 rounded-xl text-[13.5px] font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all shrink-0 ${
-                    isActive
-                      ? 'bg-emerald-600 text-white shadow-glow-emerald dark:bg-emerald-500 dark:text-night-bg'
-                      : 'text-paper-body dark:text-night-text hover:bg-paper-cardElevated dark:hover:bg-night-cardElevated'
-                  }`}
-                >
-                  {item.icon}
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </button>
-              );
-            })}
+          {/* ZONE 2: CENTER (flex: 1, justify-center, gap: 6px, min-width: 0) - Tactile Segmented Pill Dock */}
+          <nav className="hidden lg:flex flex-1 justify-center items-center py-0.5 min-w-0 flex-nowrap">
+            <div className="flex items-center gap-1 p-1 rounded-2xl bg-paper-well/70 dark:bg-night-well/80 border border-paper-borderWell dark:border-night-borderWell shadow-inner">
+              {navItems.map(item => {
+                const isActive = currentView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectView(item.id)}
+                    className={`px-3 py-1.5 rounded-xl text-[13px] font-bold flex items-center gap-1.5 btn-tactile whitespace-nowrap transition-all shrink-0 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shadow-glow-emerald dark:from-emerald-500 dark:to-emerald-400 dark:text-night-bg btn-hardware'
+                        : 'text-paper-secondary dark:text-night-secondary hover:text-paper-ink dark:hover:text-night-text hover:bg-paper-cardElevated/80 dark:hover:bg-night-cardElevated/80'
+                    }`}
+                  >
+                    {item.icon}
+                    <span className="whitespace-nowrap">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </nav>
 
           {/* ZONE 3: RIGHT (flex-shrink: 0, gap: 10px) - Backup & Prominent Theme Toggle Pill Button */}
@@ -386,22 +388,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">💾 Backup</span>
             </button>
 
-            {/* Prominent Theme Toggle Pill Button */}
+            {/* Prominent Theme Toggle Pill Button: "☀️ Studio Day" / "🌙 Titanium Night" */}
             <button
               type="button"
               onClick={toggleTheme}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all btn-tactile flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap bg-paper-cardElevated dark:bg-night-cardElevated border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-emerald-500/50"
-              title={`Switch to ${theme === 'dark' ? 'Warm Alabaster Light Mode' : 'Deep Midnight Dark Mode'}`}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all btn-hardware flex items-center gap-1.5 active:scale-95 whitespace-nowrap bg-paper-cardElevated dark:bg-night-cardElevated border-paper-border dark:border-night-border text-paper-ink dark:text-night-text hover:border-emerald-500/50"
+              title={`Switch to ${theme === 'dark' ? 'Sunlit Architectural Stone Day Theme' : 'Smoked Titanium Night Theme'}`}
             >
               {theme === 'dark' ? (
                 <>
                   <Sun className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span>☀️ Light Mode</span>
+                  <span className="tracking-wide">☀️ Studio Day</span>
                 </>
               ) : (
                 <>
-                  <Moon className="w-4 h-4 text-slate-700 dark:text-slate-200 shrink-0" />
-                  <span>🌙 Dark Mode</span>
+                  <Moon className="w-4 h-4 text-paper-secondary shrink-0" />
+                  <span className="tracking-wide">🌙 Titanium Night</span>
                 </>
               )}
             </button>

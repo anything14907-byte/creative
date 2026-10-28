@@ -198,8 +198,11 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
       {/* 1. NEXT EXAM COUNTDOWN HERO BANNER (100% Widescreen Horizontal Layout) */}
       {nextSubject && nextUrgency && nextUrgency.hasDate && (
         <div 
-          className="relative overflow-hidden rounded-3xl p-6 sm:p-7 bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card transition-all w-full"
-          style={{ borderLeft: `8px solid ${nextSubject.accentColor}` }}
+          className="relative overflow-hidden rounded-3xl p-6 sm:p-7 hardware-card transition-all w-full"
+          style={{ 
+            borderTop: `4px solid ${nextSubject.accentColor}`,
+            borderLeft: `6px solid ${nextSubject.accentColor}`
+          }}
         >
           {/* Subtle background glow */}
           <div 
@@ -262,26 +265,30 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
               </div>
             </div>
 
-            {/* Center: Live DAYS : HOURS : MINUTES : SECONDS Urgency Clock */}
+            {/* Center: Live DAYS : HOURS : MINUTES : SECONDS Urgency Chronometer Well */}
             <div 
-              className="flex flex-col items-center justify-center px-6 py-4 rounded-2xl border shadow-sm transition-all text-center xl:min-w-[300px] shrink-0"
-              style={{ 
-                backgroundColor: `${nextUrgency.hslColor}10`,
-                borderColor: `${nextUrgency.hslColor}40`
-              }}
+              className={`flex flex-col items-center justify-center px-7 py-5 rounded-2xl instrument-well transition-all text-center xl:min-w-[320px] shrink-0 ${
+                nextUrgency.fractionalDays <= 5 ? 'pulse-urgent-exam ring-2 ring-red-500/40' : nextUrgency.fractionalDays <= 15 ? 'ring-1 ring-amber-500/40' : 'ring-1 ring-emerald-500/30'
+              }`}
             >
-              <div className="text-[10px] font-bold uppercase tracking-widest text-paper-muted dark:text-night-muted mb-1 flex items-center gap-1.5">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-paper-muted dark:text-night-muted mb-1.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" style={{ color: nextUrgency.hslColor }} />
-                <span>Urgency Countdown Clock</span>
+                <span>Urgency Chronometer</span>
               </div>
               <div 
-                className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-mono tracking-tight"
-                style={{ color: nextUrgency.hslColor }}
+                className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-mono tracking-wider countdown-digit"
+                style={{ 
+                  color: nextUrgency.hslColor,
+                  textShadow: nextUrgency.fractionalDays <= 5 ? '0 0 16px rgba(248, 113, 113, 0.45)' : nextUrgency.fractionalDays <= 15 ? '0 0 16px rgba(229, 193, 88, 0.35)' : '0 0 16px rgba(16, 185, 129, 0.35)'
+                }}
               >
                 {nextUrgency.formattedCountdown}
               </div>
-              <div className="text-[10px] text-paper-muted dark:text-night-muted font-medium mt-1">
-                {nextUrgency.fractionalDays <= 5 ? '🚨 High Priority Exam' : 'Target Locked'}
+              <div className="text-[11px] font-medium mt-1.5 flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${nextUrgency.fractionalDays <= 5 ? 'bg-red-500 animate-ping' : nextUrgency.fractionalDays <= 15 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                <span className="text-paper-muted dark:text-night-muted">
+                  {nextUrgency.fractionalDays <= 5 ? '🚨 High Priority Exam' : nextUrgency.fractionalDays <= 15 ? '⚡ Approaching Target' : '🎯 On Track'}
+                </span>
               </div>
             </div>
 
@@ -322,14 +329,14 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
               <div className="flex items-center gap-2 pt-1">
                 <button
                   onClick={() => onNavigateView('timer')}
-                  className="flex-1 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
+                  className="flex-1 px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 btn-hardware shadow-sm"
                 >
                   <Timer className="w-4 h-4" />
                   <span>Start Focus (25m)</span>
                 </button>
                 <button
                   onClick={() => onSelectSubject(nextSubject.id)}
-                  className="flex-1 px-3.5 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 btn-tactile shadow-sm"
+                  className="flex-1 px-3.5 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 btn-hardware shadow-sm"
                   style={{ backgroundColor: nextSubject.accentColor }}
                 >
                   <BookOpen className="w-4 h-4" />
@@ -347,7 +354,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         {/* Stat 1: Overall Syllabus Progress */}
         <div 
           onClick={() => onNavigateView('syllabus')}
-          className="p-4 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group"
+          className="p-4 rounded-2xl hardware-card hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group btn-tactile"
         >
           <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <BookOpen className="w-6 h-6" />
@@ -365,7 +372,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         {/* Stat 2: Focus Time Today */}
         <div 
           onClick={() => onNavigateView('timer')}
-          className="p-4 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group"
+          className="p-4 rounded-2xl hardware-card hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group btn-tactile"
         >
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Timer className="w-6 h-6" />
@@ -383,7 +390,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
         {/* Stat 3: Spaced Repetition Due Today */}
         <div 
           onClick={() => onNavigateView('flashcards')}
-          className="p-4 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group"
+          className="p-4 rounded-2xl hardware-card hover:border-emerald-500 cursor-pointer transition-all flex items-center gap-4 group btn-tactile"
         >
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <Brain className="w-6 h-6" />
@@ -472,8 +479,11 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                 onDragStart={(e) => handleDragStart(e, idx)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, idx)}
-                className={`p-5 rounded-2xl bg-paper-card dark:bg-night-card border border-paper-border dark:border-night-border shadow-paper-card dark:shadow-night-card flex flex-col justify-between transition-all hover:shadow-md group ${draggedIdx === idx ? 'opacity-40 scale-95 border-dashed border-emerald-500' : ''}`}
-                style={{ borderTop: `4px solid ${sub.accentColor}` }}
+                className={`p-5 rounded-2xl hardware-card flex flex-col justify-between transition-all group ${draggedIdx === idx ? 'opacity-40 scale-95 border-dashed border-emerald-500' : ''}`}
+                style={{ 
+                  borderTop: `4px solid ${sub.accentColor}`,
+                  boxShadow: 'var(--shadow-card)'
+                }}
               >
                 <div>
                   {/* Header: Title & Action Controls */}
@@ -578,12 +588,13 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                       <span className="font-semibold text-paper-body dark:text-night-text">Syllabus Completion</span>
                       <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{progress.percentage}%</span>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-paper-cardElevated dark:bg-night-cardElevated overflow-hidden border border-paper-border dark:border-night-border">
+                    <div className="w-full h-2.5 rounded-full instrument-well overflow-hidden p-0.5">
                       <div 
                         className="h-full rounded-full transition-all duration-500"
                         style={{ 
                           width: `${progress.percentage}%`,
-                          backgroundColor: sub.accentColor 
+                          background: `linear-gradient(90deg, ${sub.accentColor}, #10B981)`,
+                          boxShadow: `0 0 10px ${sub.accentColor}80`
                         }}
                       />
                     </div>
@@ -593,19 +604,19 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Topic Mastery Tags Breakdown (Weak / Okay / Strong) */}
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold mb-3">
-                    <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                      <div>{progress.weakCount}</div>
-                      <div className="text-[9px] font-normal opacity-80">Weak</div>
+                  {/* Topic Mastery Tags Breakdown (Weak / Okay / Strong - Sunken Instrument Wells) */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold mb-3">
+                    <div className="p-2 rounded-xl instrument-well text-rose-600 dark:text-rose-400">
+                      <div className="text-sm font-extrabold font-mono">{progress.weakCount}</div>
+                      <div className="text-[9px] font-semibold uppercase tracking-wider opacity-80 mt-0.5">Weak</div>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                      <div>{progress.okayCount}</div>
-                      <div className="text-[9px] font-normal opacity-80">Okay</div>
+                    <div className="p-2 rounded-xl instrument-well text-amber-600 dark:text-amber-400">
+                      <div className="text-sm font-extrabold font-mono">{progress.okayCount}</div>
+                      <div className="text-[9px] font-semibold uppercase tracking-wider opacity-80 mt-0.5">Okay</div>
                     </div>
-                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <div>{progress.strongCount}</div>
-                      <div className="text-[9px] font-normal opacity-80">Strong</div>
+                    <div className="p-2 rounded-xl instrument-well text-emerald-600 dark:text-emerald-400">
+                      <div className="text-sm font-extrabold font-mono">{progress.strongCount}</div>
+                      <div className="text-[9px] font-semibold uppercase tracking-wider opacity-80 mt-0.5">Strong</div>
                     </div>
                   </div>
 
@@ -662,11 +673,14 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
 
                 </div>
 
-                {/* Bottom Action Button (Styled in User's chosen Card Accent Color) */}
+                {/* Bottom Action Button (3D Hardware Keycap in Accent Color) */}
                 <button
                   onClick={() => onSelectSubject(sub.id)}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 shadow-sm btn-tactile btn-shimmer"
-                  style={{ backgroundColor: sub.accentColor }}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 btn-hardware"
+                  style={{ 
+                    backgroundColor: sub.accentColor,
+                    boxShadow: 'var(--shadow-btn)'
+                  }}
                 >
                   <span>Open Subject</span>
                   <ArrowRight className="w-3.5 h-3.5" />

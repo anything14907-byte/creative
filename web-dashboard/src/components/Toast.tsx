@@ -25,7 +25,7 @@ export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
               ? 'bg-emerald-950/90 border-emerald-800 text-emerald-100'
               : t.type === 'error'
               ? 'bg-rose-950/90 border-rose-800 text-rose-100'
-              : 'bg-slate-900/90 border-slate-700 text-slate-100'
+              : 'bg-night-card/95 border-night-border text-night-text'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export const Toast: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
 
           <button
             onClick={() => onDismiss(t.id)}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-night-muted hover:text-night-text transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
